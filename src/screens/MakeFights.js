@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES } from '../game/constants';
 import { venuesNear } from '../game/venues';
-import { Panel, Button, WeightPill, Flag } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
 
 const TYPE_LABELS = {
   [FIGHT_TYPES.SINGLE]: 'Single Fight',
@@ -75,6 +75,7 @@ export default function MakeFights() {
         <div className="fe-opponent-list">
           {opponents.map(o => (
             <div key={o.id} className={`fe-opponent-row ${opponentId === o.id ? 'selected' : ''}`} onClick={() => setOpponentId(o.id)}>
+              <Avatar fighter={o} size={26} />
               <WeightPill id={o.weightClass} />
               <Flag nationality={o.nationality} />
               <span className="fe-boxer-name">{o.name}</span>

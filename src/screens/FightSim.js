@@ -70,6 +70,8 @@ export default function FightSim() {
   const currentTick = ticks[Math.max(0, index - 1)] || ticks[0];
   const currentRoundNum = currentTick?.roundNum || 1;
   const currentBeat = currentTick?.kind === 'beat' ? currentTick.beat : null;
+  const isFinishMoment = currentBeat?.type === 'knockdown' || currentBeat?.type === 'submission';
+  const completedRounds = ticks.slice(0, index).filter(t => t.kind === 'roundEnd').map(t => t.round);
 
   const posA = currentBeat?.posA || { x: 35, y: 50 };
   const posB = currentBeat?.posB || { x: 65, y: 50 };
@@ -136,14 +138,20 @@ export default function FightSim() {
         </div>
 
         <div className="fe-fs-ring-col">
-          <div className="fe-cage">
+          <div className={`fe-cage ${isFinishMoment ? 'fe-cage-flash' : ''}`}>
             <div className="fe-cage-fence" />
             <div className="fe-cage-badge">FIGHT<br />EMPIRE</div>
             <div className={`fe-position-tag fe-position-${position}`}>{position === 'ground' ? 'On the ground' : 'Standing'}</div>
-            <div className="fe-fighter-dot fe-fighter-a" style={{ left: `${posA.x}%`, top: `${posA.y}%` }}>
+            <div
+              className={`fe-fighter-dot fe-fighter-a ${currentBeat?.actor === 'A' ? 'fe-fighter-acting' : ''}`}
+              style={{ left: `${posA.x}%`, top: `${posA.y}%`, filter: `saturate(${1 - damageA / 200})` }}
+            >
               <span>{fighter.name.split(' ').slice(-1)[0]}</span>
             </div>
-            <div className="fe-fighter-dot fe-fighter-b" style={{ left: `${posB.x}%`, top: `${posB.y}%` }}>
+            <div
+              className={`fe-fighter-dot fe-fighter-b ${currentBeat?.actor === 'B' ? 'fe-fighter-acting' : ''}`}
+              style={{ left: `${posB.x}%`, top: `${posB.y}%`, filter: `saturate(${1 - damageB / 200})` }}
+            >
               <span>{opponent.name.split(' ').slice(-1)[0]}</span>
             </div>
             {currentBeat && (
@@ -154,6 +162,17 @@ export default function FightSim() {
             <div>FIGHT EMPIRE</div>
             <div>Round {currentRoundNum} of {activeFight.sim.rounds}</div>
             <div className="fe-clock">{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</div>
+            <div className="fe-scorecard-pips">
+              {Array.from({ length: activeFight.sim.rounds }, (_, i) => {
+                const rd = completedRounds.find(r => r.roundNum === i + 1);
+                let cls = 'pending';
+                if (rd) {
+                  if (rd.scoreA === rd.scoreB) cls = 'draw';
+                  else cls = rd.scoreA > rd.scoreB ? 'a' : 'b';
+                }
+                return <span key={i} className={`fe-pip fe-pip-${cls}`} />;
+              })}
+            </div>
           </div>
           <div className="fe-condition-row">
             <ConditionBar label={fighter.name} damage={damageA} side="left" />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { WEIGHT_CLASS_MAP } from '../game/constants';
 
 export function Panel({ title, children, className = '', right }) {
   return (
@@ -34,4 +35,36 @@ export function WeightPill({ id }) {
 export function Flag({ nationality }) {
   if (!nationality) return null;
   return <span className="fe-flag" title={nationality.name}>{nationality.flag}</span>;
+}
+
+function initials(name = '') {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function isLightColor(hex) {
+  if (!hex) return false;
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  // perceived luminance
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
+export function Avatar({ fighter, size = 30, champion = false }) {
+  if (!fighter) return null;
+  const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
+  const bg = wc?.color || '#3a4050';
+  const dark = isLightColor(bg);
+  return (
+    <span
+      className={`fe-avatar ${champion ? 'fe-avatar-champion' : ''}`}
+      style={{ background: bg, color: dark ? '#0b0c0f' : '#fff', width: size, height: size, fontSize: Math.round(size * 0.4) }}
+      title={fighter.name}
+    >
+      {initials(fighter.name)}
+    </span>
+  );
 }

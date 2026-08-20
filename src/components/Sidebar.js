@@ -1,13 +1,14 @@
 import React from 'react';
 import { useGameActions, useGameState } from '../context/GameContext';
+import { HomeIcon, RosterIcon, FightsIcon, RankingsIcon, PromotionsIcon, NewsIcon } from './icons';
 
 const NAV_ITEMS = [
-  { id: 'hub', label: 'Hub' },
-  { id: 'roster', label: 'Roster' },
-  { id: 'makeFights', label: 'Make Fights' },
-  { id: 'rankings', label: 'Rankings' },
-  { id: 'promotions', label: 'Promotions' },
-  { id: 'news', label: 'News' },
+  { id: 'hub', label: 'Hub', Icon: HomeIcon },
+  { id: 'roster', label: 'Roster', Icon: RosterIcon },
+  { id: 'makeFights', label: 'Make Fights', Icon: FightsIcon },
+  { id: 'rankings', label: 'Rankings', Icon: RankingsIcon },
+  { id: 'promotions', label: 'Promotions', Icon: PromotionsIcon },
+  { id: 'news', label: 'News', Icon: NewsIcon },
 ];
 
 export default function Sidebar() {
@@ -28,6 +29,7 @@ export default function Sidebar() {
             className={`fe-nav-item ${active === item.id ? 'active' : ''}`}
             onClick={() => goTo(item.id)}
           >
+            <span className="fe-nav-icon"><item.Icon /></span>
             {item.label}
           </button>
         ))}

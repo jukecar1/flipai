@@ -26,8 +26,9 @@ export default function StartScreen() {
         <div className="fe-hero-logo">
           <span className="fe-hero-fe">FE</span>
         </div>
+        <span className="fe-eyebrow">MMA Promotion Sim</span>
         <h1>FIGHT EMPIRE</h1>
-        <p className="fe-tagline">Build the roster. Book the fights. Own the sport.</p>
+        <p className="fe-tagline">Sign the roster. Book the cards. Outgrow the giants.</p>
       </div>
 
       <Panel title="Your Promotions" className="fe-start-panel">
@@ -37,7 +38,7 @@ export default function StartScreen() {
               <>
                 <div className="fe-save-info">
                   <strong>{entry.meta.promotionName}</strong>
-                  <span>{entry.meta.managerName} · Week {entry.meta.week} · ${entry.meta.funds.toLocaleString()}</span>
+                  <span>{entry.meta.managerName} · Week {entry.meta.week} · ${entry.meta.funds.toLocaleString()} · {entry.meta.record.wins}-{entry.meta.record.losses}-{entry.meta.record.draws}</span>
                 </div>
                 <div className="fe-save-actions">
                   <Button variant="secondary" onClick={() => handleLoad(slot)}>Continue</Button>

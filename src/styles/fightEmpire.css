@@ -1,3 +1,21 @@
+/* Self-hosted (not CDN-loaded) so the native app works offline and has no
+   first-paint dependency on network — see src/fonts. */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/bebas-neue-latin-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../fonts/inter-latin-variable.woff2') format('woff2');
+}
+
 :root {
   --fe-bg: #101218;
   --fe-bg-alt: #171a22;
@@ -14,6 +32,8 @@
   --fe-teal: #2ec4b6;
   --fe-blue: #3a86ff;
   --fe-radius: 10px;
+  --fe-font-display: 'Bebas Neue', 'Oswald', 'Arial Narrow', sans-serif;
+  --fe-font-body: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -28,7 +48,7 @@ body {
   margin: 0;
   background: var(--fe-bg);
   color: var(--fe-text);
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--fe-font-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -41,7 +61,10 @@ button, select, input {
 .fe-app-shell {
   display: flex;
   min-height: 100vh;
-  background: var(--fe-bg);
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(226, 38, 58, 0.08), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(244, 185, 66, 0.05), transparent 60%),
+    var(--fe-bg);
 }
 
 .fe-main {
@@ -91,9 +114,9 @@ button, select, input {
 }
 
 .fe-logo-text {
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1.15;
+  font-family: var(--fe-font-display);
+  font-size: 17px;
+  line-height: 1.05;
   letter-spacing: 0.5px;
   color: var(--fe-text);
 }
@@ -114,6 +137,15 @@ button, select, input {
   font-size: 14px;
   cursor: pointer;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
+}
+
+.fe-nav-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .fe-nav-item:hover {
@@ -182,8 +214,9 @@ button, select, input {
 }
 
 .fe-value {
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--fe-font-display);
+  font-size: 19px;
+  letter-spacing: 0.3px;
 }
 
 .fe-gold {
@@ -193,13 +226,14 @@ button, select, input {
 /* ---------- Buttons ---------- */
 
 .fe-btn {
+  font-family: var(--fe-font-display);
   border: none;
   border-radius: 8px;
-  padding: 10px 18px;
-  font-weight: 700;
-  font-size: 13.5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  letter-spacing: 0.4px;
   cursor: pointer;
-  transition: filter 0.15s ease, opacity 0.15s ease;
+  transition: filter 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .fe-btn:disabled {
@@ -208,7 +242,13 @@ button, select, input {
 }
 
 .fe-btn:not(:disabled):hover {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.fe-btn:not(:disabled):active {
+  transform: translateY(0);
+  filter: brightness(0.96);
 }
 
 .fe-btn-primary {
@@ -229,6 +269,10 @@ button, select, input {
   box-shadow: 0 4px 14px rgba(226, 38, 58, 0.35);
 }
 
+.fe-btn-advance:not(:disabled):hover {
+  box-shadow: 0 6px 20px rgba(226, 38, 58, 0.5);
+}
+
 /* ---------- Panels ---------- */
 
 .fe-panel {
@@ -237,18 +281,19 @@ button, select, input {
   border-radius: var(--fe-radius);
   margin-bottom: 16px;
   overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
 
 .fe-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 11px 16px;
   background: var(--fe-panel-alt);
   border-bottom: 1px solid var(--fe-border);
-  font-weight: 800;
-  font-size: 12.5px;
-  letter-spacing: 0.6px;
+  font-family: var(--fe-font-display);
+  font-size: 16px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--fe-text-dim);
 }
@@ -273,12 +318,13 @@ button, select, input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
+  min-width: 32px;
   height: 20px;
   padding: 0 5px;
   border-radius: 5px;
-  font-size: 9.5px;
-  font-weight: 800;
+  font-family: var(--fe-font-display);
+  font-size: 12px;
+  letter-spacing: 0.3px;
   color: #0b0c0f;
 }
 
@@ -294,6 +340,22 @@ button, select, input {
 
 .fe-flag {
   font-size: 14px;
+}
+
+.fe-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--fe-font-display);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+
+.fe-avatar-champion {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25), 0 0 0 2px var(--fe-gold);
 }
 
 /* ---------- Start / Create screens ---------- */
@@ -321,21 +383,33 @@ button, select, input {
   margin: 0 auto 14px;
   border-radius: 16px;
   background: linear-gradient(135deg, var(--fe-red), var(--fe-orange));
-  font-weight: 900;
-  font-size: 28px;
+  font-family: var(--fe-font-display);
+  font-size: 32px;
   color: #fff;
+  box-shadow: 0 8px 28px rgba(226, 38, 58, 0.4);
 }
 
 .fe-start-hero h1 {
-  font-size: 32px;
+  font-family: var(--fe-font-display);
+  font-size: 48px;
   letter-spacing: 2px;
   margin: 0;
-  font-weight: 900;
+}
+
+.fe-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--fe-gold);
+  margin-bottom: 4px;
 }
 
 .fe-tagline {
   color: var(--fe-text-dim);
   margin-top: 6px;
+  font-size: 15px;
 }
 
 .fe-save-row {
@@ -348,10 +422,13 @@ button, select, input {
   margin-bottom: 10px;
   cursor: pointer;
   border: 1px solid var(--fe-border);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .fe-save-row:hover {
-  border-color: var(--fe-border-light);
+  border-color: var(--fe-red);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 .fe-save-info {
@@ -437,11 +514,21 @@ button, select, input {
   background: var(--fe-panel-alt);
   border: 1px solid transparent;
   font-size: 13.5px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.fe-boxer-row:hover, .fe-ranking-row:hover {
+  background: var(--fe-border);
 }
 
 .fe-opponent-row, .fe-venue-row {
   cursor: pointer;
   justify-content: space-between;
+}
+
+.fe-opponent-row:hover, .fe-venue-row:hover {
+  border-color: var(--fe-border-light);
+  transform: translateX(2px);
 }
 
 .fe-opponent-row.selected, .fe-venue-row.selected {
@@ -601,9 +688,16 @@ button, select, input {
   padding: 10px;
   border-radius: 7px;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 13px;
+  font-family: var(--fe-font-display);
+  font-size: 15px;
+  letter-spacing: 0.3px;
   text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fe-type-tab:not(.active):hover {
+  border-color: var(--fe-border-light);
+  color: var(--fe-text);
 }
 
 .fe-type-tab.active {
@@ -667,6 +761,12 @@ button, select, input {
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.fe-wc-tab:hover {
+  border-color: var(--fe-border-light);
+  transform: translateY(-1px);
 }
 
 .fe-wc-tab.active {
@@ -730,6 +830,11 @@ button, select, input {
   border-radius: 7px;
   background: var(--fe-panel-alt);
   font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.fe-leaderboard-row:hover, .fe-champ-row:hover, .fe-free-agent-row:hover {
+  background: var(--fe-border);
 }
 
 .fe-leaderboard-row.mine {
@@ -928,8 +1033,8 @@ button, select, input {
   border: 2px solid rgba(244, 185, 66, 0.35);
   border-radius: 40px;
   padding: 10px 24px;
-  font-weight: 900;
-  font-size: 15px;
+  font-family: var(--fe-font-display);
+  font-size: 20px;
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
   line-height: 1.1;
@@ -966,8 +1071,8 @@ button, select, input {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: left 0.4s ease, top 0.4s ease;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+  transition: left 0.4s ease, top 0.4s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25), 0 3px 10px rgba(0, 0, 0, 0.4);
 }
 
 .fe-fighter-a {
@@ -976,6 +1081,17 @@ button, select, input {
 
 .fe-fighter-b {
   background: var(--fe-blue);
+}
+
+.fe-fighter-acting {
+  animation: fe-dot-pulse 0.5s ease;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 0 16px rgba(244, 185, 66, 0.6);
+}
+
+@keyframes fe-dot-pulse {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  40% { transform: translate(-50%, -50%) scale(1.25); }
+  100% { transform: translate(-50%, -50%) scale(1); }
 }
 
 .fe-fighter-dot span {
@@ -988,6 +1104,40 @@ button, select, input {
   background: rgba(0, 0, 0, 0.5);
   padding: 1px 5px;
   border-radius: 4px;
+}
+
+.fe-cage-flash {
+  animation: fe-cage-flash 0.5s ease;
+}
+
+@keyframes fe-cage-flash {
+  0% { background: radial-gradient(circle at 50% 40%, #7a1420, #3a0d12 70%); }
+  100% { background: radial-gradient(circle at 50% 40%, #2b2f3a, #14161c 70%); }
+}
+
+.fe-scorecard-pips {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.fe-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fe-border-light);
+}
+
+.fe-pip-a {
+  background: var(--fe-red);
+}
+
+.fe-pip-b {
+  background: var(--fe-blue);
+}
+
+.fe-pip-draw {
+  background: var(--fe-gold);
 }
 
 .fe-beat-caption {
@@ -1014,13 +1164,15 @@ button, select, input {
   border: 1px solid var(--fe-border);
   border-radius: 8px;
   padding: 8px;
-  font-size: 12px;
+  font-family: var(--fe-font-display);
+  font-size: 14px;
+  letter-spacing: 0.4px;
   color: var(--fe-text-dim);
 }
 
 .fe-clock {
-  font-size: 18px;
-  font-weight: 800;
+  font-family: var(--fe-font-display);
+  font-size: 24px;
   color: var(--fe-gold);
 }
 

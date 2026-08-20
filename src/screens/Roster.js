@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES } from '../game/constants';
-import { Panel, Button, WeightPill, Flag } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
 
 export default function Roster() {
   const state = useGameState();
@@ -28,7 +28,7 @@ export default function Roster() {
           </div>
           {state.roster.map(f => (
             <div key={f.id} className="fe-roster-row">
-              <span className="fe-roster-name"><WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} /> {f.name}</span>
+              <span className="fe-roster-name"><Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} /> {f.name}</span>
               <span>{f.age}</span>
               <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
               <span>{f.stats.striking}</span>

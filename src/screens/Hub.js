@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { Panel, Button, WeightPill, Flag } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
 
 export default function Hub() {
   const state = useGameState();
@@ -17,6 +17,7 @@ export default function Hub() {
           <div className="fe-boxer-list">
             {roster.map(f => (
               <div key={f.id} className="fe-boxer-row">
+                <Avatar fighter={f} size={28} />
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
                 <span className="fe-boxer-name">{f.name}</span>

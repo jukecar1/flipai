@@ -2,7 +2,7 @@ import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
 import { prestigeTierLabel } from '../game/gameReducer';
-import { Panel, Button, WeightPill, Flag } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
 
 export default function Promotions() {
   const state = useGameState();
@@ -48,6 +48,7 @@ export default function Promotions() {
               <WeightPill id={wc.id} />
               {champ ? (
                 <>
+                  <Avatar fighter={champ} size={26} champion />
                   <Flag nationality={champ.nationality} />
                   <span className="fe-boxer-name">{champ.name}</span>
                   <span className="fe-champ-record">{champ.record.wins}-{champ.record.losses}-{champ.record.draws}</span>
@@ -69,6 +70,7 @@ export default function Promotions() {
             const cost = Math.round(f.purseFloor * 3);
             return (
               <div key={f.id} className="fe-free-agent-row">
+                <Avatar fighter={f} size={26} />
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
                 <div className="fe-boxer-name">
