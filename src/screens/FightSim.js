@@ -57,6 +57,19 @@ export default function FightSim() {
     }
   }, [index, ticks]);
 
+  const skipToEnd = () => {
+    setPlaying(false);
+    setIndex(ticks.length);
+    const allBeats = ticks.filter(t => t.kind === 'beat' && t.beat.actor).map((t, i) => ({ ...t.beat, roundNum: t.roundNum, id: `end-${i}` }));
+    setLog(allBeats.slice(-40).reverse());
+  };
+
+  useEffect(() => {
+    if (state.meta.autoSkipFights) skipToEnd();
+    // Only re-run when a new fight starts, not on every skipToEnd/setting change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFight?.fightId]);
+
   if (!activeFight || !fighter || !opponent) {
     return (
       <div className="fe-fight-sim">
@@ -67,7 +80,15 @@ export default function FightSim() {
     );
   }
 
-  const currentTick = ticks[Math.max(0, index - 1)] || ticks[0];
+  let currentTick = ticks[Math.max(0, index - 1)] || ticks[0];
+  if (currentTick?.kind === 'fightEnd') {
+    // The sentinel end-of-fight tick carries no beat/round data — freeze
+    // the display on the last real moment instead of snapping back to
+    // Round 1 / 5:00 defaults.
+    for (let i = ticks.length - 1; i >= 0; i--) {
+      if (ticks[i].kind === 'beat') { currentTick = ticks[i]; break; }
+    }
+  }
   const currentRoundNum = currentTick?.roundNum || 1;
   const currentBeat = currentTick?.kind === 'beat' ? currentTick.beat : null;
   const isFinishMoment = currentBeat?.type === 'knockdown' || currentBeat?.type === 'submission';
@@ -82,13 +103,6 @@ export default function FightSim() {
   const isFightOver = index >= ticks.length;
 
   const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
-
-  const skipToEnd = () => {
-    setPlaying(false);
-    setIndex(ticks.length);
-    const allBeats = ticks.filter(t => t.kind === 'beat' && t.beat.actor).map((t, i) => ({ ...t.beat, roundNum: t.roundNum, id: `end-${i}` }));
-    setLog(allBeats.slice(-40).reverse());
-  };
 
   const finish = () => dispatch({ type: 'RESOLVE_FIGHT' });
 

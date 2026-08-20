@@ -1,5 +1,8 @@
-import { gameReducer, newCareerState, drawMultiplier } from './gameReducer';
-import { FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR } from './constants';
+import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor } from './gameReducer';
+import {
+  FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
+  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, CONTRACT_RENEWAL_MULTIPLIER,
+} from './constants';
 
 function baseState() {
   const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville' });
@@ -287,4 +290,159 @@ test('promoting an amateur who has not hit the win threshold does nothing', () =
   const next = gameReducer(stateWithAmateur, { type: 'PROMOTE_AMATEUR', fighterId: 'am3' });
   expect(next.roster.some(f => f.id === 'am3')).toBe(false);
   expect(next.amateurs.length).toBe(1);
+});
+
+test('winProbability is even at equal overall and swings toward the better fighter', () => {
+  const even = winProbability({ overall: 12 }, { overall: 12 });
+  expect(even).toBeCloseTo(0.5, 5);
+  const favored = winProbability({ overall: 18 }, { overall: 6 });
+  const underdog = winProbability({ overall: 6 }, { overall: 18 });
+  expect(favored).toBeGreaterThan(0.9);
+  expect(underdog).toBeLessThan(0.1);
+});
+
+test('prestigeUpsetFactor rewards upsets and discounts stay-busy wins', () => {
+  expect(prestigeUpsetFactor(0.5, true)).toBeCloseTo(1, 5);
+  expect(prestigeUpsetFactor(0.1, true)).toBeGreaterThan(1.5); // won as a big underdog
+  expect(prestigeUpsetFactor(0.9, true)).toBeLessThan(0.5); // won as a heavy favorite
+  expect(prestigeUpsetFactor(0.9, false)).toBeGreaterThan(1.5); // lost as a heavy favorite — costly
+  expect(prestigeUpsetFactor(0.1, false)).toBeLessThan(0.5); // lost as a big underdog — barely stings
+});
+
+test('training a stat spends XP and raises it, respecting the coach specialty discount', () => {
+  let state = baseState();
+  state = { ...state, meta: { ...state.meta, coachSpecialty: 'striking' } };
+  const before = state.roster.find(f => f.id === 'champ1');
+  const specialtyCost = Math.round(before.stats.striking * TRAINING_XP_PER_STAT_POINT * 0.75);
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, xp: specialtyCost } : f)) };
+  const next = gameReducer(state, { type: 'TRAIN_STAT', fighterId: 'champ1', stat: 'striking' });
+  const after = next.roster.find(f => f.id === 'champ1');
+  expect(after.stats.striking).toBe(before.stats.striking + 1);
+  expect(after.xp).toBe(0);
+});
+
+test('training without enough XP does nothing', () => {
+  const state = baseState();
+  const stateNoXp = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, xp: 0 } : f)) };
+  const next = gameReducer(stateNoXp, { type: 'TRAIN_STAT', fighterId: 'champ1', stat: 'striking' });
+  const before = state.roster.find(f => f.id === 'champ1');
+  const after = next.roster.find(f => f.id === 'champ1');
+  expect(after.stats.striking).toBe(before.stats.striking);
+});
+
+test('renewing a contract resets the countdown and spends funds', () => {
+  const state = baseState();
+  const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractWeeksLeft: 2 } : f)) };
+  const fighter = stateWithContract.roster.find(f => f.id === 'champ1');
+  const cost = Math.round(fighter.purseFloor * CONTRACT_RENEWAL_MULTIPLIER);
+  const next = gameReducer(stateWithContract, { type: 'RENEW_CONTRACT', fighterId: 'champ1' });
+  expect(next.funds).toBe(stateWithContract.funds - cost);
+  expect(next.roster.find(f => f.id === 'champ1').contractWeeksLeft).toBeGreaterThan(2);
+});
+
+test('a fighter whose contract runs out during ADVANCE_WEEK leaves the roster for a rival', () => {
+  const state = baseState();
+  const stateExpiring = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractWeeksLeft: 1 } : f)) };
+  const next = gameReducer(stateExpiring, { type: 'ADVANCE_WEEK' });
+  expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
+  expect(next.worldPool.FLW.some(f => f.id === 'champ1')).toBe(true);
+  expect(next.news.some(n => n.category === 'poached')).toBe(true);
+});
+
+test('moving a fighter to an adjacent weight class spends funds and updates their division', () => {
+  const state = baseState(); // champ1 starts at FLW
+  const next = gameReducer(state, { type: 'MOVE_WEIGHT_CLASS', fighterId: 'champ1', direction: 'lighter' });
+  expect(next.roster.find(f => f.id === 'champ1').weightClass).toBe('STW');
+  expect(next.funds).toBe(state.funds - WEIGHT_MOVE_COST);
+});
+
+test('moving past the lightest weight class does nothing', () => {
+  const state = baseState();
+  const stateAtEdge = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, weightClass: 'STW' } : f)) };
+  const next = gameReducer(stateAtEdge, { type: 'MOVE_WEIGHT_CLASS', fighterId: 'champ1', direction: 'lighter' });
+  expect(next.roster.find(f => f.id === 'champ1').weightClass).toBe('STW');
+  expect(next.funds).toBe(stateAtEdge.funds);
+});
+
+test('BOOK_CARD books every bout on one venue fee, atomically', () => {
+  const state = baseState();
+  const fighterB = state.roster[1];
+  const bouts = [
+    { fighterId: 'champ1', opponent: { ...opponent, id: 'opp1' }, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+    { fighterId: fighterB.id, opponent: { ...opponent, id: 'opp2', name: 'Opponent Two' }, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'pressure' },
+  ];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next.funds).toBe(state.funds - venue.fee);
+  expect(next.scheduledFights.length).toBe(2);
+  expect(next.cards.length).toBe(1);
+  expect(next.scheduledFights.every(f => f.cardId === next.cards[0].id)).toBe(true);
+});
+
+test('BOOK_CARD refuses to book the same fighter twice on one card', () => {
+  const state = baseState();
+  const bouts = [
+    { fighterId: 'champ1', opponent: { ...opponent, id: 'opp1' }, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+    { fighterId: 'champ1', opponent: { ...opponent, id: 'opp2', name: 'Opponent Two' }, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+  ];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next).toBe(state); // unchanged
+});
+
+test('BOOK_CARD refuses more than CARD_MAX_FIGHTS bouts', () => {
+  const state = baseState();
+  const bouts = Array.from({ length: CARD_MAX_FIGHTS + 1 }, (_, i) => ({
+    fighterId: state.roster[i % state.roster.length]?.id || 'champ1',
+    opponent: { ...opponent, id: `opp${i}` },
+    fightType: FIGHT_TYPES.SHOWCASE,
+    gameplan: 'balanced',
+  }));
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next).toBe(state);
+});
+
+test('booking a crossover Main Event against a rival-contracted fighter charges the sanction fee', () => {
+  const state = baseState();
+  const rivalOpponent = { ...opponent, id: 'rival1', promotionId: 'apex' };
+  const next = gameReducer(state, { type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent: rivalOpponent, fightType: FIGHT_TYPES.MAIN_EVENT });
+  expect(next.funds).toBe(state.funds - venue.fee - SUPER_FIGHT_SANCTION_FEE);
+  expect(next.scheduledFights[0].isSuperFight).toBe(true);
+});
+
+test('poaching a rival fighter succeeds when the roll favors you and removes them from the world pool', () => {
+  const state = baseState();
+  const rivalFighter = { ...opponent, id: 'rival2', promotionId: 'apex', purseFloor: 1000, champion: true, title: 'Flyweight' };
+  const stateWithRival = { ...state, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, rivalFighter] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // always beats the success threshold
+  const next = gameReducer(stateWithRival, { type: 'POACH_FIGHTER', fighterId: 'rival2' });
+  spy.mockRestore();
+  expect(next.roster.some(f => f.id === 'rival2')).toBe(true);
+  expect(next.worldPool.FLW.some(f => f.id === 'rival2')).toBe(false);
+  expect(next.funds).toBe(stateWithRival.funds - Math.round(rivalFighter.purseFloor * POACH_COST_MULTIPLIER));
+});
+
+test('a failed poach attempt costs nothing and leaves the fighter with the rival', () => {
+  const state = baseState();
+  const rivalFighter = { ...opponent, id: 'rival3', promotionId: 'apex', purseFloor: 1000 };
+  const stateWithRival = { ...state, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, rivalFighter] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99); // always fails
+  const next = gameReducer(stateWithRival, { type: 'POACH_FIGHTER', fighterId: 'rival3' });
+  spy.mockRestore();
+  expect(next.roster.some(f => f.id === 'rival3')).toBe(false);
+  expect(next.funds).toBe(stateWithRival.funds);
+});
+
+test('starting a career with a chosen champion crowns them and boosts starting prestige', () => {
+  const drafted = [
+    { id: 'd1', name: 'Draft Champ', weightClass: 'HW', stats: { striking: 10, wrestling: 10, submission: 10, chin: 10, cardio: 10 }, overall: 10, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0, purseFloor: 1000 },
+    { id: 'd2', name: 'Draft Two', weightClass: 'LW', stats: { striking: 10, wrestling: 10, submission: 10, chin: 10, cardio: 10 }, overall: 10, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0, purseFloor: 1000 },
+  ];
+  const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville', selectedFighters: drafted, championFighterId: 'd1' });
+  expect(state.titles.HW.holderId).toBe('d1');
+  expect(state.roster.find(f => f.id === 'd1').title).toBe('Heavyweight');
+  expect(state.prestige).toBeGreaterThan(50);
+});
+
+test('starting a career with no champion leaves every title vacant', () => {
+  const state = baseState();
+  expect(Object.keys(state.titles).length).toBe(0);
 });

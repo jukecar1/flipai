@@ -14,6 +14,42 @@ export default function Hub() {
 
   const tickerItems = news.slice(0, 8);
 
+  // Group card-based bouts (Showcase/Main Event) under their shared event;
+  // Single Fights have no card and just list on their own.
+  const cardGroups = [];
+  const cardGroupsById = {};
+  const soloFights = [];
+  scheduledFights.forEach(f => {
+    if (!f.cardId) {
+      soloFights.push(f);
+      return;
+    }
+    if (!cardGroupsById[f.cardId]) {
+      const card = (state.cards || []).find(c => c.id === f.cardId);
+      cardGroupsById[f.cardId] = { card, fights: [] };
+      cardGroups.push(cardGroupsById[f.cardId]);
+    }
+    cardGroupsById[f.cardId].fights.push(f);
+  });
+
+  const renderFightRow = (f, showVenue) => {
+    const fighter = roster.find(x => x.id === f.fighterId);
+    return (
+      <div key={f.id} className="fe-fight-row">
+        <WeightPill id={fighter?.weightClass} />
+        {f.isTitle && <span title="Title fight">🏆</span>}
+        {f.isSuperFight && <span title="Crossover event">⚔️</span>}
+        <span className="fe-fight-title">{fighter?.name} v {f.opponentName || 'TBD'}</span>
+        {showVenue && <span className="fe-fight-venue">{f.venue.name}, {f.venue.city}</span>}
+        {f.weeksOut > 0 ? (
+          <span className="fe-weeks-out">{f.weeksOut}w</span>
+        ) : (
+          <Button variant="advance" className="fe-fight-btn" onClick={() => readyFight(f.id)}>FIGHT</Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="fe-hub-page">
       <div className="fe-hub">
@@ -38,23 +74,22 @@ export default function Hub() {
 
           <Panel title="UPCOMING FIGHTS">
             {scheduledFights.length === 0 && <div className="fe-empty">No fights booked. Head to Make Fights.</div>}
-            <div className="fe-fight-list">
-              {scheduledFights.map(f => {
-                const fighter = roster.find(x => x.id === f.fighterId);
-                return (
-                  <div key={f.id} className="fe-fight-row">
-                    <WeightPill id={fighter?.weightClass} />
-                    <span className="fe-fight-title">{fighter?.name} v {f.opponentName || 'TBD'}</span>
-                    <span className="fe-fight-venue">{f.venue.name}, {f.venue.city}</span>
-                    {f.weeksOut > 0 ? (
-                      <span className="fe-weeks-out">{f.weeksOut}w</span>
-                    ) : (
-                      <Button variant="advance" className="fe-fight-btn" onClick={() => readyFight(f.id)}>FIGHT</Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {cardGroups.map(({ card, fights }) => (
+              <div key={card?.id || fights[0].cardId} className="fe-card-group">
+                <div className="fe-card-group-header">
+                  <span>{card?.venue.name}, {card?.venue.city}</span>
+                  <span className="fe-hint">{fights.length} bout{fights.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className="fe-fight-list">
+                  {fights.map(f => renderFightRow(f, false))}
+                </div>
+              </div>
+            ))}
+            {soloFights.length > 0 && (
+              <div className="fe-fight-list">
+                {soloFights.map(f => renderFightRow(f, true))}
+              </div>
+            )}
           </Panel>
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym } from '../game/constants';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -26,6 +26,7 @@ export default function Roster() {
 
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
   const rosterFull = state.roster.length >= rosterLimit;
+  const alreadyBooked = new Set(state.scheduledFights.map(f => f.fighterId));
 
   const scout = () => setCandidates(makeScoutCandidates(scoutClass, 3));
   const signCandidate = fighter => {
@@ -37,6 +38,8 @@ export default function Roster() {
       dispatch({ type: 'RETIRE_FIGHTER', fighterId: fighter.id });
     }
   };
+  const renew = fighter => dispatch({ type: 'RENEW_CONTRACT', fighterId: fighter.id });
+  const moveWeight = (fighter, direction) => dispatch({ type: 'MOVE_WEIGHT_CLASS', fighterId: fighter.id, direction });
 
   return (
     <div className="fe-roster">
@@ -57,11 +60,17 @@ export default function Roster() {
             <span>OVR</span>
             <span>Status</span>
             <span>Followers</span>
+            <span>Contract</span>
             <span>Purse</span>
             <span></span>
           </div>
           {state.roster.map(f => {
             const status = statusInfo(f);
+            const wcIdx = WEIGHT_CLASSES.findIndex(w => w.id === f.weightClass);
+            const canMoveUp = wcIdx > 0 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;
+            const canMoveDown = wcIdx < WEIGHT_CLASSES.length - 1 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;
+            const contractLeft = f.contractWeeksLeft ?? '—';
+            const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_WEEKS;
             return (
               <div key={f.id} className="fe-roster-row">
                 <span className="fe-roster-name">
@@ -79,8 +88,19 @@ export default function Roster() {
                 <span className="fe-ovr">{f.overall}</span>
                 <span className={`fe-status fe-status-${status.cls}`}>{status.text}</span>
                 <Followers count={f.followers} />
+                <button
+                  className={`fe-contract-badge ${contractWarn ? 'warn' : ''}`}
+                  onClick={() => renew(f)}
+                  title={`Renew ${f.name}'s contract for $${Math.round(f.purseFloor * 1.5).toLocaleString()}`}
+                >
+                  {contractLeft}w
+                </button>
                 <span>${f.purseFloor.toLocaleString()}</span>
-                <button className="fe-retire-btn" onClick={() => retire(f)} title={`Retire ${f.name}`}>Retire</button>
+                <span className="fe-roster-actions">
+                  <button className="fe-move-btn" disabled={!canMoveUp} onClick={() => moveWeight(f, 'heavier')} title={`Move up a weight class ($${WEIGHT_MOVE_COST.toLocaleString()})`}>▲</button>
+                  <button className="fe-move-btn" disabled={!canMoveDown} onClick={() => moveWeight(f, 'lighter')} title={`Move down a weight class ($${WEIGHT_MOVE_COST.toLocaleString()})`}>▼</button>
+                  <button className="fe-retire-btn" onClick={() => retire(f)} title={`Retire ${f.name}`}>Retire</button>
+                </span>
               </div>
             );
           })}

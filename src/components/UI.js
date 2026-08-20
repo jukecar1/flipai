@@ -49,6 +49,7 @@ const NEWS_ICONS = {
   trending: '📈',
   facility: '🏋️',
   retirement: '🎗️',
+  superfight: '⚔️',
 };
 
 export function NewsCategoryIcon({ category }) {

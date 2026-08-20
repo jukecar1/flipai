@@ -3,6 +3,7 @@ import { useGameActions, useGameState } from '../context/GameContext';
 import {
   HomeIcon, RosterIcon, FightsIcon, RankingsIcon, PromotionsIcon, NewsIcon,
   GymsIcon, TitlesIcon, BoutsIcon, HallOfFameIcon, AmateursIcon, LeaderboardsIcon,
+  StatsIcon, SettingsIcon,
 } from './icons';
 
 const NAV_ITEMS = [
@@ -44,6 +45,14 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="fe-sidebar-footer">
+        <button className={`fe-nav-item ${active === 'careerStats' ? 'active' : ''}`} onClick={() => goTo('careerStats')}>
+          <span className="fe-nav-icon"><StatsIcon /></span>
+          Career Stats
+        </button>
+        <button className={`fe-nav-item ${active === 'settings' ? 'active' : ''}`} onClick={() => goTo('settings')}>
+          <span className="fe-nav-icon"><SettingsIcon /></span>
+          Settings
+        </button>
         <button className="fe-nav-item fe-nav-quit" onClick={backToStart}>
           Save &amp; Exit
         </button>

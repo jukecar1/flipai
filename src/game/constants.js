@@ -81,3 +81,66 @@ export const RETIREMENT_AGE = 39;
 export const AMATEUR_SIGN_COST = 400;
 export const AMATEUR_PROMOTION_WINS = 3;
 export const AMATEUR_POOL_LIMIT = 6;
+
+// Training: banked XP (earned from fights) spent to raise one stat point
+// at a time. Cost scales with how high the stat already is — polishing
+// an elite fighter costs a lot more than raising a raw prospect.
+export const STAT_KEYS = ['striking', 'wrestling', 'submission', 'chin', 'cardio'];
+export const STAT_LABELS = {
+  striking: 'Striking',
+  wrestling: 'Wrestling',
+  submission: 'Submission',
+  chin: 'Chin',
+  cardio: 'Cardio',
+};
+export const TRAINING_XP_PER_STAT_POINT = 180;
+export const MAX_STAT = 20;
+// A coach specializing in a stat discounts training it.
+export const COACH_SPECIALTY_DISCOUNT = 0.25;
+
+export function trainingCost(statValue, isSpecialty) {
+  const discount = isSpecialty ? 1 - COACH_SPECIALTY_DISCOUNT : 1;
+  return Math.round(statValue * TRAINING_XP_PER_STAT_POINT * discount);
+}
+
+// Contracts: every signed fighter (starting roster, scouted, free agent,
+// promoted amateur) has a contract that runs out — renew it before it
+// does or a rival scoops them up, same as an unsigned free agent.
+export const CONTRACT_LENGTH_RANGE = [40, 90];
+export const CONTRACT_WARNING_WEEKS = 8;
+export const CONTRACT_RENEWAL_MULTIPLIER = 1.5;
+
+// Moving a fighter to an adjacent weight class costs a training-camp fee
+// and takes a toll on their conditioning that week.
+export const WEIGHT_MOVE_COST = 800;
+
+// Stay broke too long and the bank shuts your promotion down.
+export const BANKRUPTCY_WEEKS = 6;
+
+// A rival won't sit still on a fighter they've marked as a champion —
+// poaching one out from under a rival promotion costs a steep buyout
+// with a success chance driven by your prestige relative to theirs.
+export const POACH_COST_MULTIPLIER = 6;
+
+// A free agent's asking price climbs as their countdown runs out — other
+// promotions are circling too, so waiting costs you.
+export function freeAgentCost(agent) {
+  return Math.round(agent.purseFloor * (3 + Math.max(0, 8 - agent.weeksLeft) * 0.3));
+}
+
+// Booking a crossover fight against a rival's contracted fighter (up to
+// and including their champion) costs an extra sanctioning fee on top
+// of the venue, and pays a bigger prestige swing than a normal Main Event.
+export const SUPER_FIGHT_SANCTION_FEE = 8000;
+
+// A Fight Night card can host this many bouts sharing one venue booking.
+export const CARD_MAX_FIGHTS = 5;
+
+// Pre-fight gameplans nudge the sim by lightly reshaping your fighter's
+// effective stats for that one fight — a real tradeoff, not a free bonus.
+export const GAMEPLANS = [
+  { id: 'balanced', label: 'Balanced', description: 'Fight your natural game — no adjustments.' },
+  { id: 'pressure', label: 'Push the Pace', description: '+2 striking, -2 cardio. High output, gasses faster.' },
+  { id: 'patient', label: 'Play It Safe', description: '+1 chin, +1 cardio, -1 striking. Safer, slower pace.' },
+  { id: 'finish', label: 'Hunt the Finish', description: '+2 submission, +1 striking, -2 chin. Aggressive, exposed.' },
+];

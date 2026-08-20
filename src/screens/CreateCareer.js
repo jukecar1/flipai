@@ -23,6 +23,7 @@ export default function CreateCareer({ slot }) {
 
   const [pool, setPool] = useState(() => makeRosterCandidates());
   const [selectedIds, setSelectedIds] = useState([]);
+  const [championId, setChampionId] = useState('');
 
   const canContinue = managerName.trim().length > 0;
   const canStart = selectedIds.length === ROSTER_SIZE;
@@ -50,8 +51,54 @@ export default function CreateCareer({ slot }) {
       promotionName: (promotionName.trim() || `${managerName.trim()} MMA`),
       hq,
       selectedFighters,
+      championFighterId: championId || undefined,
     });
   };
+
+  if (step === 'champion') {
+    const drafted = pool.filter(f => selectedIds.includes(f.id));
+    return (
+      <div className="fe-draft-screen">
+        <Panel title="NAME YOUR CHAMPION (OPTIONAL)" className="fe-draft-panel">
+          <p className="fe-hint">
+            Start with one of your drafted fighters already holding their division's belt — or skip and let every
+            title open vacant, up for grabs the normal way.
+          </p>
+          <div className="fe-draft-grid">
+            {drafted.map(f => {
+              const selected = championId === f.id;
+              return (
+                <div
+                  key={f.id}
+                  className={`fe-draft-card ${selected ? 'selected' : ''}`}
+                  onClick={() => setChampionId(selected ? '' : f.id)}
+                >
+                  <div className="fe-draft-card-head">
+                    <Avatar fighter={f} size={28} champion={selected} />
+                    <WeightPill id={f.weightClass} />
+                    <Flag nationality={f.nationality} />
+                    <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
+                    <span className="fe-draft-check">{selected ? '👑' : ''}</span>
+                  </div>
+                  <div className="fe-draft-card-meta">
+                    <span>{ARCHETYPE_LABELS[f.archetype]}</span>
+                    <span>Age {f.age}</span>
+                    <span className="fe-ovr">OVR {f.overall}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="fe-row-actions">
+            <Button variant="secondary" onClick={() => setStep('roster')}>Back</Button>
+            <Button variant="advance" onClick={handleStart}>
+              {championId ? 'Start Career with Champion' : 'Start Career (No Champion)'}
+            </Button>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   if (step === 'roster') {
     return (
@@ -100,8 +147,8 @@ export default function CreateCareer({ slot }) {
           </div>
           <div className="fe-row-actions">
             <Button variant="secondary" onClick={() => setStep('details')}>Back</Button>
-            <Button variant="advance" onClick={handleStart} disabled={!canStart}>
-              Start Career {canStart ? '' : `(${selectedIds.length}/${ROSTER_SIZE})`}
+            <Button variant="advance" onClick={() => canStart && setStep('champion')} disabled={!canStart}>
+              Continue {canStart ? '' : `(${selectedIds.length}/${ROSTER_SIZE})`}
             </Button>
           </div>
         </Panel>

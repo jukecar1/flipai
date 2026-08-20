@@ -134,3 +134,22 @@ export function LeaderboardsIcon() {
     </svg>
   );
 }
+
+export function StatsIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 12 12 5.5" />
+      <path d="M12 12 17 15" />
+    </svg>
+  );
+}
+
+export function SettingsIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.4M12 18.1v2.4M4.6 7.3l2.1 1.2M17.3 15.5l2.1 1.2M4.6 16.7l2.1-1.2M17.3 8.5l2.1-1.2M3.5 12h2.4M18.1 12h2.4" />
+    </svg>
+  );
+}

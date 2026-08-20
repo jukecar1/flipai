@@ -18,6 +18,9 @@ import Bouts from './screens/Bouts';
 import HallOfFame from './screens/HallOfFame';
 import Amateurs from './screens/Amateurs';
 import Leaderboards from './screens/Leaderboards';
+import GameOver from './screens/GameOver';
+import CareerStats from './screens/CareerStats';
+import Settings from './screens/Settings';
 import './styles/fightEmpire.css';
 
 function Router() {
@@ -29,6 +32,7 @@ function Router() {
     const slot = Number(screen.split('-')[1]);
     return <CreateCareer slot={slot} />;
   }
+  if (screen === 'gameOver') return <GameOver />;
 
   const inFightSim = screen === 'fightSim';
 
@@ -52,6 +56,8 @@ function Router() {
           {screen === 'hallOfFame' && <HallOfFame />}
           {screen === 'amateurs' && <Amateurs />}
           {screen === 'leaderboards' && <Leaderboards />}
+          {screen === 'careerStats' && <CareerStats />}
+          {screen === 'settings' && <Settings />}
         </div>
       </div>
     </div>
