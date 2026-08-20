@@ -1,4 +1,4 @@
-import { WEIGHT_CLASSES } from './constants';
+import { WEIGHT_CLASSES, STARTING_ROSTER_POOL_SIZE } from './constants';
 import { randomFighterName } from './namePool';
 
 let fighterCounter = 1;
@@ -82,6 +82,23 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
 export function makeStartingRoster(count = 3) {
   const classes = [...WEIGHT_CLASSES].sort(() => Math.random() - 0.5).slice(0, count);
   return classes.map(wc => makeFighter({ weightClassId: wc.id, level: 'prospect' }));
+}
+
+// A wide, visible spread of prospects to draft a starting roster from —
+// weight classes are cycled and shuffled so the pool doesn't clump into
+// just a couple of divisions, and archetype/stats fall out naturally from
+// makeFighter's own randomization.
+export function makeRosterCandidates(count = STARTING_ROSTER_POOL_SIZE) {
+  const classes = [];
+  while (classes.length < count) classes.push(...WEIGHT_CLASSES.map(w => w.id));
+  const shuffled = classes.slice(0, count).sort(() => Math.random() - 0.5);
+  return shuffled.map(wcId => makeFighter({ weightClassId: wcId, level: 'prospect' }));
+}
+
+// A scouting trip turns up a small handful of prospects at one weight
+// class to choose between, instead of silently handing you one.
+export function makeScoutCandidates(weightClassId, count = 3) {
+  return Array.from({ length: count }, () => makeFighter({ weightClassId, level: 'prospect' }));
 }
 
 export function makeOpponentPool(weightClassId, count = 12) {

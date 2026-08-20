@@ -1,5 +1,5 @@
 import { gameReducer, newCareerState, drawMultiplier } from './gameReducer';
-import { FIGHT_TYPES } from './constants';
+import { FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym } from './constants';
 
 function baseState() {
   const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville' });
@@ -160,4 +160,58 @@ test('a bigger combined following books a bigger purse for the same card', () =>
   const smallPurse = bookMainEvent(state, 'champ1').scheduledFights[0].purse;
   const bigPurse = bookMainEvent(bigFollowerState, 'champ1').scheduledFights[0].purse;
   expect(bigPurse).toBeGreaterThan(smallPurse);
+});
+
+test('starting a career with hand-picked fighters uses exactly that roster', () => {
+  const drafted = [
+    { id: 'd1', name: 'Draft One', weightClass: 'HW', stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0 },
+    { id: 'd2', name: 'Draft Two', weightClass: 'LW', stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0 },
+  ];
+  const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville', selectedFighters: drafted });
+  expect(state.roster.map(f => f.id)).toEqual(['d1', 'd2']);
+  expect(state.roster.every(f => f.signed)).toBe(true);
+});
+
+test('a new career starts at gym level 1 with the level-1 roster limit', () => {
+  const state = baseState();
+  expect(state.meta.gymLevel).toBe(1);
+  expect(rosterLimitForGym(state.meta.gymLevel)).toBe(GYM_LEVELS[0].rosterLimit);
+});
+
+test('signing a scouted prospect adds them to the roster and spends funds', () => {
+  const state = baseState();
+  const prospect = { id: 'scouted1', name: 'Scouted Fighter', weightClass: 'FLW', stats: { striking: 8, wrestling: 8, submission: 8, chin: 8, cardio: 8 }, overall: 8, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0, purseFloor: 1000, age: 22 };
+  const next = gameReducer(state, { type: 'SIGN_SCOUTED_PROSPECT', fighter: prospect });
+  expect(next.roster.some(f => f.id === 'scouted1')).toBe(true);
+  expect(next.funds).toBe(state.funds - 1500);
+});
+
+test('a full roster cannot sign another scouted prospect', () => {
+  let state = baseState();
+  const limit = rosterLimitForGym(state.meta.gymLevel);
+  // Pad the roster up to the gym's limit with filler fighters.
+  const filler = Array.from({ length: limit - state.roster.length }, (_, i) => ({
+    id: `filler${i}`, name: `Filler ${i}`, weightClass: 'FLW', stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0,
+  }));
+  state = { ...state, roster: [...state.roster, ...filler] };
+  expect(state.roster.length).toBe(limit);
+
+  const prospect = { id: 'overflow1', name: 'Overflow Fighter', weightClass: 'FLW', stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0 };
+  const next = gameReducer(state, { type: 'SIGN_SCOUTED_PROSPECT', fighter: prospect });
+  expect(next.roster.length).toBe(limit);
+});
+
+test('upgrading the gym raises the roster limit and spends funds', () => {
+  const state = { ...baseState(), funds: GYM_LEVELS[1].upgradeCost };
+  const next = gameReducer(state, { type: 'UPGRADE_GYM' });
+  expect(next.meta.gymLevel).toBe(2);
+  expect(next.funds).toBe(0);
+  expect(rosterLimitForGym(next.meta.gymLevel)).toBe(GYM_LEVELS[1].rosterLimit);
+});
+
+test('upgrading the gym without enough funds does nothing', () => {
+  const state = { ...baseState(), funds: GYM_LEVELS[1].upgradeCost - 1 };
+  const next = gameReducer(state, { type: 'UPGRADE_GYM' });
+  expect(next.meta.gymLevel).toBe(1);
+  expect(next.funds).toBe(state.funds);
 });

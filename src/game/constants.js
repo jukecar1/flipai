@@ -51,3 +51,23 @@ export const PRESTIGE_TIERS = [
   { min: 6000, label: 'Global Contender' },
   { min: 9000, label: 'Industry Leader' },
 ];
+
+// Your gym's active roster capacity. You start at level 1 and spend funds
+// to expand — each level raises how many fighters you can have signed at
+// once. upgradeCost is the price to move from the previous level to this one.
+export const GYM_LEVELS = [
+  { level: 1, rosterLimit: 8, upgradeCost: 0 },
+  { level: 2, rosterLimit: 10, upgradeCost: 18000 },
+  { level: 3, rosterLimit: 12, upgradeCost: 40000 },
+  { level: 4, rosterLimit: 15, upgradeCost: 75000 },
+  { level: 5, rosterLimit: 18, upgradeCost: 130000 },
+];
+
+export function rosterLimitForGym(level) {
+  const entry = GYM_LEVELS.find(g => g.level === level);
+  return entry ? entry.rosterLimit : GYM_LEVELS[GYM_LEVELS.length - 1].rosterLimit;
+}
+
+// How many prospects you're shown to draft your starting roster from at
+// career creation — you pick GYM_LEVELS[0].rosterLimit of them.
+export const STARTING_ROSTER_POOL_SIZE = 20;

@@ -46,6 +46,7 @@ const NEWS_ICONS = {
   injury: '🏥',
   title: '🏆',
   trending: '📈',
+  facility: '🏋️',
 };
 
 export function NewsCategoryIcon({ category }) {

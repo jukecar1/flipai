@@ -1,4 +1,4 @@
-import { WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS } from './constants';
+import { WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS, GYM_LEVELS, rosterLimitForGym } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
 import { simulateFight } from './engine';
@@ -69,13 +69,15 @@ function makeFreeAgent() {
   return { ...f, weeksLeft: randInt(4, 8) };
 }
 
-export function newCareerState({ managerName, promotionName, hq }) {
-  const roster = makeStartingRoster(3).map(f => ({ ...f, signed: true }));
+export function newCareerState({ managerName, promotionName, hq, selectedFighters }) {
+  const roster = (selectedFighters && selectedFighters.length ? selectedFighters : makeStartingRoster(3))
+    .map(f => ({ ...f, signed: true }));
   return {
     meta: {
       managerName: managerName || 'Player',
       promotionName: promotionName || `${managerName}'s MMA`,
       hq: hq || pick(CITIES).city,
+      gymLevel: 1,
       createdAt: Date.now(),
     },
     week: 1,
@@ -135,11 +137,11 @@ export function gameReducer(state, action) {
     case 'SET_SCREEN':
       return { ...state, ui: { ...state.ui, screen: action.screen, params: action.params || null } };
 
-    case 'SCOUT_PROSPECT': {
+    case 'SIGN_SCOUTED_PROSPECT': {
       const cost = 1500;
-      if (state.funds < cost) return state;
-      const prospect = makeFighter({ weightClassId: action.weightClassId, level: 'prospect' });
-      prospect.signed = true;
+      const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
+      if (!action.fighter || state.funds < cost || state.roster.length >= rosterLimit) return state;
+      const prospect = { ...action.fighter, signed: true };
       return {
         ...state,
         funds: state.funds - cost,
@@ -152,7 +154,8 @@ export function gameReducer(state, action) {
       const agent = state.freeAgents.find(f => f.id === action.fighterId);
       if (!agent) return state;
       const cost = Math.round(agent.purseFloor * 3);
-      if (state.funds < cost) return state;
+      const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
+      if (state.funds < cost || state.roster.length >= rosterLimit) return state;
       const { weeksLeft, ...fighter } = agent;
       return {
         ...state,
@@ -161,6 +164,17 @@ export function gameReducer(state, action) {
         freeAgents: state.freeAgents.filter(f => f.id !== agent.id),
         prestige: state.prestige + 15,
         news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${state.meta.promotionName} signs free agent ${fighter.name}`, body: `${fighter.name} turned down interest from rival promotions to join ${state.meta.promotionName}.` }, ...state.news],
+      };
+    }
+
+    case 'UPGRADE_GYM': {
+      const nextLevel = GYM_LEVELS.find(g => g.level === state.meta.gymLevel + 1);
+      if (!nextLevel || state.funds < nextLevel.upgradeCost) return state;
+      return {
+        ...state,
+        funds: state.funds - nextLevel.upgradeCost,
+        meta: { ...state.meta, gymLevel: nextLevel.level },
+        news: [{ id: `n${Date.now()}`, week: state.week, category: 'facility', title: `${state.meta.promotionName} expands its gym`, body: `Your facility upgrade raises the active roster limit to ${nextLevel.rosterLimit} fighters.` }, ...state.news],
       };
     }
 

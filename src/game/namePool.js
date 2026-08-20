@@ -82,6 +82,40 @@ export function randomFighterName() {
   return { name: `${first} ${last}`, nationality: country };
 }
 
+const PROMOTION_WORDS = [
+  'Apex', 'Vanguard', 'Ironclad', 'Redline', 'Warfront', 'Fury', 'Steel', 'Grit',
+  'Blackout', 'Rampart', 'Frontline', 'Overdrive', 'Titan', 'Renegade', 'Bedrock',
+  'Skyline', 'Grudge', 'Hazard', 'Wolfpack', 'Insurgent',
+];
+
+const PROMOTION_SUFFIXES = ['Fighting Championship', 'MMA', 'Fight League', 'Combat Series', 'Fighting Alliance'];
+
+function surnameOf(fullName = '') {
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1] || fullName;
+}
+
+// A handful of promotion-name suggestions to click instead of typing one
+// from scratch — mixes the manager's surname and HQ city in with a bank
+// of invented, trademark-safe fight-promotion words.
+export function suggestPromotionNames(managerName, hqCity, count = 4) {
+  const surname = surnameOf(managerName) || 'Empire';
+  const candidates = new Set();
+  const templates = [
+    () => `${surname} Fighting Championship`,
+    () => `${surname} MMA`,
+    () => `${pick(PROMOTION_WORDS)} ${pick(PROMOTION_SUFFIXES)}`,
+    () => `${hqCity || pick(CITIES).city} Fight League`,
+    () => `${surname} ${pick(PROMOTION_SUFFIXES)}`,
+    () => `${pick(PROMOTION_WORDS)} ${surname} MMA`,
+  ];
+  let guard = 0;
+  while (candidates.size < count && guard++ < 40) {
+    candidates.add(pick(templates)());
+  }
+  return [...candidates];
+}
+
 export const CITIES = [
   { city: 'Jacksonville', country: 'USA' },
   { city: 'Tampa', country: 'USA' },

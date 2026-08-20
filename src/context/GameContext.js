@@ -33,8 +33,8 @@ export function useGameActions() {
   const dispatch = useGameDispatch();
 
   const startNewCareer = useCallback(
-    (slot, { managerName, promotionName, hq }) => {
-      const state = newCareerState({ managerName, promotionName, hq });
+    (slot, { managerName, promotionName, hq, selectedFighters }) => {
+      const state = newCareerState({ managerName, promotionName, hq, selectedFighters });
       state.slot = slot;
       dispatch({ type: 'LOAD_STATE', state });
     },
