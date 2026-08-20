@@ -94,7 +94,7 @@ export default function Promotions() {
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
                 <div className="fe-boxer-name">
-                  {f.name}
+                  <span className="fe-boxer-name-text">{f.name}</span>
                   <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {f.overall}</span>
                 </div>
                 <span className="fe-weeks-out">{f.weeksLeft}w left</span>

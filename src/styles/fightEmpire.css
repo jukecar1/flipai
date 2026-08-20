@@ -561,11 +561,18 @@ button, select, input {
 .fe-boxer-name {
   font-weight: 600;
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fe-boxer-record {
   color: var(--fe-text-dim);
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fe-boxer-overall {
@@ -582,12 +589,21 @@ button, select, input {
 
 .fe-fight-title {
   flex: 1;
+  min-width: 0;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fe-fight-venue {
   color: var(--fe-text-dim);
   font-size: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 30%;
 }
 
 .fe-weeks-out {
@@ -607,10 +623,14 @@ button, select, input {
 }
 
 .fe-news-item, .fe-news-full-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   padding: 8px 6px;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .fe-news-full-item:hover, .fe-news-item:hover {
@@ -622,11 +642,16 @@ button, select, input {
   border-left: 3px solid var(--fe-red);
 }
 
+.fe-news-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
 .fe-news-week {
   color: var(--fe-gold);
   font-weight: 700;
-  margin-right: 8px;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 /* ---------- Roster ---------- */
@@ -957,7 +982,24 @@ button, select, input {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1 1 130px;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.fe-free-agent-row .fe-weeks-out,
+.fe-free-agent-row .fe-btn {
+  flex-shrink: 0;
+}
+
+.fe-boxer-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
 }
 
 /* ---------- News screen ---------- */

@@ -40,7 +40,8 @@ export default function Roster() {
               <div key={f.id} className="fe-roster-row">
                 <span className="fe-roster-name">
                   <Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
-                  {f.name}{f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
+                  <span className="fe-boxer-name-text">{f.name}</span>
+                  {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                 </span>
                 <span>{f.age}</span>
                 <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>

@@ -37,6 +37,20 @@ export function Flag({ nationality }) {
   return <span className="fe-flag" title={nationality.name}>{nationality.flag}</span>;
 }
 
+const NEWS_ICONS = {
+  welcome: '🎬',
+  signing: '✍️',
+  poached: '🔁',
+  rival: '📰',
+  fight: '🥊',
+  injury: '🏥',
+  title: '🏆',
+};
+
+export function NewsCategoryIcon({ category }) {
+  return <span className="fe-news-icon">{NEWS_ICONS[category] || '📰'}</span>;
+}
+
 function initials(name = '') {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();

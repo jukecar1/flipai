@@ -88,7 +88,7 @@ export function newCareerState({ managerName, promotionName, hq }) {
     scheduledFights: [],
     fightHistory: [],
     news: [
-      { id: 'n0', week: 1, title: 'Welcome to Fight Empire', body: `${promotionName || 'Your promotion'} opens its doors in ${hq || 'your hometown'}. Sign fighters, book cards, and climb past the sport's giants.` },
+      { id: 'n0', week: 1, category: 'welcome', title: 'Welcome to Fight Empire', body: `${promotionName || 'Your promotion'} opens its doors in ${hq || 'your hometown'}. Sign fighters, book cards, and climb past the sport's giants.` },
     ],
     activeFight: null,
     ui: { screen: 'hub' },
@@ -133,7 +133,7 @@ export function gameReducer(state, action) {
         ...state,
         funds: state.funds - cost,
         roster: [...state.roster, prospect],
-        news: [{ id: `n${Date.now()}`, week: state.week, title: `${state.meta.promotionName} signs ${prospect.name}`, body: `A new ${WEIGHT_CLASSES.find(w => w.id === prospect.weightClass).name} prospect joins the roster.` }, ...state.news],
+        news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${state.meta.promotionName} signs ${prospect.name}`, body: `A new ${WEIGHT_CLASSES.find(w => w.id === prospect.weightClass).name} prospect joins the roster.` }, ...state.news],
       };
     }
 
@@ -149,7 +149,7 @@ export function gameReducer(state, action) {
         roster: [...state.roster, { ...fighter, signed: true }],
         freeAgents: state.freeAgents.filter(f => f.id !== agent.id),
         prestige: state.prestige + 15,
-        news: [{ id: `n${Date.now()}`, week: state.week, title: `${state.meta.promotionName} signs free agent ${fighter.name}`, body: `${fighter.name} turned down interest from rival promotions to join ${state.meta.promotionName}.` }, ...state.news],
+        news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${state.meta.promotionName} signs free agent ${fighter.name}`, body: `${fighter.name} turned down interest from rival promotions to join ${state.meta.promotionName}.` }, ...state.news],
       };
     }
 
@@ -211,7 +211,7 @@ export function gameReducer(state, action) {
             ...worldPool,
             [agent.weightClass]: [...worldPool[agent.weightClass], { ...agent, promotionId: promo.id, champion: false, weeksLeft: undefined }],
           };
-          news.unshift({ id: `n${Date.now()}_${agent.id}`, week, title: `${agent.name} signs with ${promo.name}`, body: `${promo.name} moved fast to lock up ${agent.name} while you were still deciding.` });
+          news.unshift({ id: `n${Date.now()}_${agent.id}`, week, category: 'poached', title: `${agent.name} signs with ${promo.name}`, body: `${promo.name} moved fast to lock up ${agent.name} while you were still deciding.` });
         } else {
           stillFree.push({ ...agent, weeksLeft });
         }
@@ -224,7 +224,7 @@ export function gameReducer(state, action) {
       // light flavor news from the rival landscape
       if (Math.random() < 0.12) {
         const promo = pick(state.rivals);
-        news.unshift({ id: `n${Date.now()}_flavor`, week, title: `${promo.name} announces a new card`, body: `${promo.name} continues to expand its reach as a ${promo.tier.toLowerCase()} organization.` });
+        news.unshift({ id: `n${Date.now()}_flavor`, week, category: 'rival', title: `${promo.name} announces a new card`, body: `${promo.name} continues to expand its reach as a ${promo.tier.toLowerCase()} organization.` });
       }
 
       return { ...state, week, scheduledFights, funds, roster, rivals, prestige, freeAgents, worldPool, news };
@@ -329,12 +329,12 @@ export function gameReducer(state, action) {
         ? `${fighterRef?.name} and ${oppRef?.name} battle ${methodText}`
         : `${fighterWon ? fighterRef?.name : oppRef?.name} defeats ${fighterWon ? oppRef?.name : fighterRef?.name} ${methodText}`;
 
-      const news = [{ id: `n${Date.now()}`, week: state.week, title: headline, body: 'A fight for the ages in front of the crowd.' }];
+      const news = [{ id: `n${Date.now()}`, week: state.week, category: 'fight', title: headline, body: 'A fight for the ages in front of the crowd.' }];
       if (fighterInjuryWeeks > 0) {
-        news.unshift({ id: `n${Date.now()}_inja`, week: state.week, title: `${fighterRef?.name} injured, out ${fighterInjuryWeeks} weeks`, body: `${fighterRef?.name} picked up an injury in the fight and won't be bookable for ${fighterInjuryWeeks} weeks.` });
+        news.unshift({ id: `n${Date.now()}_inja`, week: state.week, category: 'injury', title: `${fighterRef?.name} injured, out ${fighterInjuryWeeks} weeks`, body: `${fighterRef?.name} picked up an injury in the fight and won't be bookable for ${fighterInjuryWeeks} weeks.` });
       }
       if (opponentInjuryWeeks > 0) {
-        news.unshift({ id: `n${Date.now()}_injb`, week: state.week, title: `${oppRef?.name} injured, out ${opponentInjuryWeeks} weeks`, body: `${oppRef?.name} picked up an injury in the fight and will be sidelined for ${opponentInjuryWeeks} weeks.` });
+        news.unshift({ id: `n${Date.now()}_injb`, week: state.week, category: 'injury', title: `${oppRef?.name} injured, out ${opponentInjuryWeeks} weeks`, body: `${oppRef?.name} picked up an injury in the fight and will be sidelined for ${opponentInjuryWeeks} weeks.` });
       }
 
       // Home promotion title fight: win it (or defend it) to hold the belt;
@@ -355,13 +355,14 @@ export function gameReducer(state, action) {
           news.unshift({
             id: `n${Date.now()}_title`,
             week: state.week,
+            category: 'title',
             title: defenses > 0 ? `${fighterRef.name} retains the ${wcName} title` : `${fighterRef.name} becomes ${state.meta.promotionName}'s ${wcName} Champion`,
             body: defenses > 0 ? `${fighterRef.name} makes the ${defenses === 1 ? '1st' : `${defenses}th`} defense of the belt.` : `${fighterRef.name} wins the newly created ${wcName} Championship.`,
           });
         } else if (wasDefense && !draw) {
           titles = { ...titles, [wcId]: null };
           roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: null } : f));
-          news.unshift({ id: `n${Date.now()}_titlevacant`, week: state.week, title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
+          news.unshift({ id: `n${Date.now()}_titlevacant`, week: state.week, category: 'title', title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
         }
       }
 

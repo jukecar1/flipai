@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState } from '../context/GameContext';
-import { Panel } from '../components/UI';
+import { Panel, NewsCategoryIcon } from '../components/UI';
 
 export default function News() {
   const state = useGameState();
@@ -13,13 +13,14 @@ export default function News() {
         <div className="fe-news-full-list">
           {state.news.map(n => (
             <div key={n.id} className={`fe-news-full-item ${selected?.id === n.id ? 'selected' : ''}`} onClick={() => setSelectedId(n.id)}>
+              <NewsCategoryIcon category={n.category} />
               <span className="fe-news-week">W{n.week}</span>
-              {n.title}
+              <span className="fe-boxer-name-text">{n.title}</span>
             </div>
           ))}
         </div>
       </Panel>
-      <Panel title={selected?.title || 'News'} className="fe-news-detail-panel">
+      <Panel title={selected?.title || 'News'} className="fe-news-detail-panel" right={selected && <NewsCategoryIcon category={selected.category} />}>
         {selected && (
           <>
             <div className="fe-hint">Published week {selected.week}</div>
