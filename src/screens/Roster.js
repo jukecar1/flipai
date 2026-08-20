@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES } from '../game/constants';
-import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 function statusInfo(f) {
   if (f.injuryWeeks > 0) return { text: `Injured · ${f.injuryWeeks}w`, cls: 'injured' };
@@ -32,6 +32,7 @@ export default function Roster() {
             <span>CAR</span>
             <span>OVR</span>
             <span>Status</span>
+            <span>Followers</span>
             <span>Purse</span>
           </div>
           {state.roster.map(f => {
@@ -40,7 +41,7 @@ export default function Roster() {
               <div key={f.id} className="fe-roster-row">
                 <span className="fe-roster-name">
                   <Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
-                  <span className="fe-boxer-name-text">{f.name}</span>
+                  <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                 </span>
                 <span>{f.age}</span>
@@ -52,6 +53,7 @@ export default function Roster() {
                 <span>{f.stats.cardio}</span>
                 <span className="fe-ovr">{f.overall}</span>
                 <span className={`fe-status fe-status-${status.cls}`}>{status.text}</span>
+                <Followers count={f.followers} />
                 <span>${f.purseFloor.toLocaleString()}</span>
               </div>
             );

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
-import { Panel, WeightPill, Flag, Avatar } from '../components/UI';
+import { Panel, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 export default function Rankings() {
   const state = useGameState();
@@ -35,9 +35,10 @@ export default function Rankings() {
                 <span className="fe-rank-num">{f.champion ? '👑' : f.title ? '🏆' : i + 1}</span>
                 <Avatar fighter={f} size={28} champion={f.champion || !!f.title} />
                 <Flag nationality={f.nationality} />
-                <span className="fe-boxer-name">{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
+                <span className="fe-boxer-name" title={f.name}>{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
                 <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
                 {promo && <span className="fe-champ-promo" style={{ color: promo.color }}>{promo.name}</span>}
+                <Followers count={f.followers} />
                 <span className="fe-boxer-overall">OVR {f.overall}</span>
               </div>
             );

@@ -358,6 +358,21 @@ button, select, input {
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25), 0 0 0 2px var(--fe-gold);
 }
 
+.fe-followers {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--fe-teal);
+  flex-shrink: 0;
+}
+
+.fe-followers-icon {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
 /* ---------- Start / Create screens ---------- */
 
 .fe-start-screen {
@@ -662,12 +677,12 @@ button, select, input {
 
 .fe-roster-head, .fe-roster-row {
   display: grid;
-  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 1fr 0.9fr;
+  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 1fr 0.9fr 0.9fr;
   gap: 8px;
   padding: 8px 6px;
   align-items: center;
   font-size: 12.5px;
-  min-width: 760px;
+  min-width: 860px;
 }
 
 .fe-roster-head {
@@ -1044,6 +1059,25 @@ button, select, input {
 
 .fe-stat-block h4 {
   margin: 0 0 8px;
+}
+
+.fe-follower-delta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--fe-border);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.fe-delta-up {
+  color: var(--fe-teal);
+}
+
+.fe-delta-down {
+  color: var(--fe-red);
 }
 
 /* ---------- Fight sim ---------- */
@@ -1474,7 +1508,7 @@ button, select, input {
     min-width: 0;
   }
   .fe-roster-head, .fe-roster-row {
-    min-width: 680px;
+    min-width: 780px;
   }
   .fe-fs-body {
     grid-template-columns: 1fr;

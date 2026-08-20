@@ -2,7 +2,7 @@ import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
 import { prestigeTierLabel } from '../game/gameReducer';
-import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, formatFollowers } from '../components/UI';
 
 export default function Promotions() {
   const state = useGameState();
@@ -38,7 +38,7 @@ export default function Promotions() {
               <div key={wc.id} className="fe-your-title-row">
                 <span>🏆</span>
                 <WeightPill id={wc.id} />
-                <span className="fe-boxer-name">{title.holderName}</span>
+                <span className="fe-boxer-name" title={title.holderName}>{title.holderName}</span>
                 <span className="fe-hint">{title.defenses} defense{title.defenses === 1 ? '' : 's'}</span>
               </div>
             ))
@@ -70,8 +70,9 @@ export default function Promotions() {
                 <>
                   <Avatar fighter={champ} size={26} champion />
                   <Flag nationality={champ.nationality} />
-                  <span className="fe-boxer-name">{champ.name}</span>
+                  <span className="fe-boxer-name" title={champ.name}>{champ.name}</span>
                   <span className="fe-champ-record">{champ.record.wins}-{champ.record.losses}-{champ.record.draws}</span>
+                  <Followers count={champ.followers} />
                   <span className="fe-champ-promo" style={{ color: promo?.color }}>{promo?.name}</span>
                 </>
               ) : (
@@ -94,8 +95,8 @@ export default function Promotions() {
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
                 <div className="fe-boxer-name">
-                  <span className="fe-boxer-name-text">{f.name}</span>
-                  <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {f.overall}</span>
+                  <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
+                  <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} · OVR {f.overall} · {formatFollowers(f.followers)} followers</span>
                 </div>
                 <span className="fe-weeks-out">{f.weeksLeft}w left</span>
                 <Button variant="advance" onClick={() => sign(f.id)} disabled={funds < cost}>

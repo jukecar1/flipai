@@ -1,4 +1,4 @@
-import { gameReducer, newCareerState } from './gameReducer';
+import { gameReducer, newCareerState, drawMultiplier } from './gameReducer';
 import { FIGHT_TYPES } from './constants';
 
 function baseState() {
@@ -124,4 +124,33 @@ test('a fighter below the title threshold never gets a title fight', () => {
   state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, overall: 8 } : f)) };
   state = bookMainEvent(state, 'champ1');
   expect(state.scheduledFights[0].isTitle).toBe(false);
+});
+
+test('winning a fight grows followers; losing shrinks them (floored at 0)', () => {
+  const winState = { ...baseState() };
+  const winStateWithFollowers = { ...winState, roster: winState.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 1000 } : f)) };
+  const bookedWin = bookMainEvent(winStateWithFollowers, 'champ1');
+  const won = resolveWithResult(bookedWin, bookedWin.scheduledFights[0].id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(won.roster.find(f => f.id === 'champ1').followers).toBeGreaterThan(1000);
+
+  const loseState = { ...baseState() };
+  const loseStateWithFollowers = { ...loseState, roster: loseState.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 5 } : f)) };
+  const bookedLoss = bookMainEvent(loseStateWithFollowers, 'champ1');
+  const lost = resolveWithResult(bookedLoss, bookedLoss.scheduledFights[0].id, 'champ1', 'opp1', 'KO', 'opp1');
+  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeGreaterThanOrEqual(0);
+  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeLessThan(6); // a tiny starting base can't go negative
+});
+
+test('drawMultiplier scales purse potential with combined followers, capped', () => {
+  expect(drawMultiplier(0, 0)).toBe(1);
+  expect(drawMultiplier(20000, 20000)).toBeCloseTo(2, 5);
+  expect(drawMultiplier(1000000, 1000000)).toBeCloseTo(2.5, 5); // capped at +1.5x
+});
+
+test('a bigger combined following books a bigger purse for the same card', () => {
+  let state = baseState();
+  const bigFollowerState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 30000 } : f)) };
+  const smallPurse = bookMainEvent(state, 'champ1').scheduledFights[0].purse;
+  const bigPurse = bookMainEvent(bigFollowerState, 'champ1').scheduledFights[0].purse;
+  expect(bigPurse).toBeGreaterThan(smallPurse);
 });

@@ -42,7 +42,9 @@ function assignPromotions(worldPool) {
       if (i === 0) {
         const promo = RIVAL_PROMOTIONS[promoCursor % RIVAL_PROMOTIONS.length];
         promoCursor++;
-        return { ...f, promotionId: promo.id, champion: true };
+        // divisional champions are the face of their promotion — give them
+        // a following to match
+        return { ...f, promotionId: promo.id, champion: true, followers: f.followers + randInt(15000, 40000) };
       }
       if (i <= 3 && Math.random() < 0.55) {
         const promo = pick(RIVAL_PROMOTIONS);
@@ -105,11 +107,20 @@ function findFighterAnywhere(state, fighterId) {
   return null;
 }
 
-function purseForFight(fighter, type, venue) {
+// Combined social following of both fighters drives ticket/PPV demand —
+// a bigger draw fills more seats and pushes the gate (and everyone's cut
+// of it) up, on top of what the venue and card type already set.
+export function drawMultiplier(fighterFollowers = 0, opponentFollowers = 0) {
+  const combined = fighterFollowers + opponentFollowers;
+  return 1 + Math.min(1.5, combined / 40000);
+}
+
+function purseForFight(fighter, opponent, type, venue) {
   const base = fighter.purseFloor;
   const typeMult = type === FIGHT_TYPES.MAIN_EVENT ? 2.4 : type === FIGHT_TYPES.SHOWCASE ? 1.3 : 1;
   const venueMult = 1 + venue.capacity / 20000;
-  return Math.round(base * typeMult * venueMult);
+  const drawMult = drawMultiplier(fighter.followers, opponent?.followers);
+  return Math.round(base * typeMult * venueMult * drawMult);
 }
 
 function costForFight(type, venue) {
@@ -170,7 +181,7 @@ export function gameReducer(state, action) {
         venue,
         weeksOut,
         rounds: fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3,
-        purse: Math.round(purseForFight(fighter, fightType, venue) * (titleFight ? 1.6 : 1)),
+        purse: Math.round(purseForFight(fighter, opponent, fightType, venue) * (titleFight ? 1.6 : 1)),
         isTitle: titleFight,
         createdWeek: state.week,
       };
@@ -265,7 +276,25 @@ export function gameReducer(state, action) {
         return lostByFinish ? randInt(4, 10) : randInt(2, 6);
       };
 
-      const updateRecord = (fighter, won, drew, finishType, damageTaken) => {
+      // Winning draws eyes, especially against a bigger name or in a
+      // finish; losing costs you some, more so if it was an upset loss to
+      // a lesser-rated opponent. Draws are a small net gain either way —
+      // fans remember a good scrap.
+      const followerChange = (won, drew, opponentOverall, fighterOverall, finish, titleFight) => {
+        if (drew) return randInt(10, 40);
+        const gap = opponentOverall - fighterOverall;
+        if (won) {
+          let gain = randInt(80, 220) + Math.max(0, gap) * 25;
+          if (finish) gain *= 1.5;
+          if (titleFight) gain *= 2;
+          return Math.round(gain);
+        }
+        let loss = randInt(40, 120) + Math.max(0, -gap) * 15;
+        if (titleFight) loss *= 1.5;
+        return -Math.round(loss);
+      };
+
+      const updateRecord = (fighter, won, drew, finishType, damageTaken, opponentOverall) => {
         if (!fighter) return fighter;
         const record = { ...fighter.record };
         if (drew) record.draws += 1;
@@ -278,22 +307,31 @@ export function gameReducer(state, action) {
         }
         const lostByFinish = !drew && !won && isFinish;
         const injuryWeeks = rollInjuryWeeks(damageTaken, lostByFinish);
+        const followerDelta = followerChange(won, drew, opponentOverall, fighter.overall, isFinish, !!fight?.isTitle);
         return {
-          ...fighter,
-          record,
-          xp: fighter.xp + randInt(400, 900),
-          fatigue: Math.min(100, fighter.fatigue + 40),
-          injuryWeeks: Math.max(fighter.injuryWeeks || 0, injuryWeeks),
+          fighter: {
+            ...fighter,
+            record,
+            xp: fighter.xp + randInt(400, 900),
+            fatigue: Math.min(100, fighter.fatigue + 40),
+            injuryWeeks: Math.max(fighter.injuryWeeks || 0, injuryWeeks),
+            followers: Math.max(0, (fighter.followers || 0) + followerDelta),
+          },
+          followerDelta,
         };
       };
 
       let fighterInjuryWeeks = 0;
       let opponentInjuryWeeks = 0;
+      let fighterFollowerDelta = 0;
+      let opponentFollowerDelta = 0;
 
       const roster = state.roster.map(f => {
         if (f.id === active.fighterId) {
-          const updated = updateRecord(f, fighterWon, draw, isFinish ? result.method : null, damageTakenA);
+          const oppOverall = findFighterAnywhere(state, active.opponentId)?.overall || f.overall;
+          const { fighter: updated, followerDelta } = updateRecord(f, fighterWon, draw, isFinish ? result.method : null, damageTakenA, oppOverall);
           fighterInjuryWeeks = updated.injuryWeeks;
+          fighterFollowerDelta = followerDelta;
           return updated;
         }
         return f;
@@ -304,8 +342,10 @@ export function gameReducer(state, action) {
         worldPool[wc] = worldPool[wc].map(f => {
           if (f.id === active.opponentId) {
             const oppWon = !draw && result.winnerId === active.opponentId;
-            const updated = updateRecord(f, oppWon, draw, isFinish ? result.method : null, damageTakenB);
+            const bookedFighterOverall = state.roster.find(r => r.id === active.fighterId)?.overall || f.overall;
+            const { fighter: updated, followerDelta } = updateRecord(f, oppWon, draw, isFinish ? result.method : null, damageTakenB, bookedFighterOverall);
             opponentInjuryWeeks = updated.injuryWeeks;
+            opponentFollowerDelta = followerDelta;
             return updated;
           }
           return f;
@@ -377,7 +417,7 @@ export function gameReducer(state, action) {
         prestige,
         titles,
         scheduledFights: state.scheduledFights.filter(f => f.id !== active.fightId),
-        fightHistory: [{ id: active.fightId, week: state.week, fighterId: active.fighterId, opponentId: active.opponentId, result, isTitle: !!fight?.isTitle }, ...state.fightHistory],
+        fightHistory: [{ id: active.fightId, week: state.week, fighterId: active.fighterId, opponentId: active.opponentId, result, isTitle: !!fight?.isTitle, fighterFollowerDelta, opponentFollowerDelta }, ...state.fightHistory],
         news: [...news, ...state.news],
         activeFight: null,
         ui: { ...state.ui, screen: 'fightResult' },

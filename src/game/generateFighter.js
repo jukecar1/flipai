@@ -53,6 +53,10 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
   const kos = Math.round(finishes * (archetype === 'wrestler' ? 0.3 : 0.6));
   const subs = finishes - kos;
 
+  // A fresh prospect has no following yet — a proven gatekeeper or
+  // contender has already built an audience through their record.
+  const followers = level === 'prospect' ? 0 : level === 'gatekeeper' ? randInt(500, 3000) : randInt(3000, 15000);
+
   return {
     id: seedId || `fx_${fighterCounter++}_${Date.now().toString(36)}`,
     name,
@@ -63,6 +67,7 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
     stats,
     overall: clamp(overall, 1, 20),
     record: { wins, losses, draws, kos, subs },
+    followers,
     fatigue: 0,
     injuryWeeks: 0,
     xp: randInt(0, 5000),

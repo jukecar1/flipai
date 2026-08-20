@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers } from '../components/UI';
 
 export default function Hub() {
   const state = useGameState();
@@ -20,10 +20,11 @@ export default function Hub() {
                 <Avatar fighter={f} size={28} />
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
-                <span className="fe-boxer-name">{f.name}</span>
+                <span className="fe-boxer-name" title={f.name}>{f.name}</span>
                 {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                 <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO, {f.record.subs}SUB)</span>
                 {f.injuryWeeks > 0 && <span className="fe-status fe-status-injured">Injured · {f.injuryWeeks}w</span>}
+                <Followers count={f.followers} />
                 <span className="fe-boxer-overall">OVR {f.overall}</span>
               </div>
             ))}

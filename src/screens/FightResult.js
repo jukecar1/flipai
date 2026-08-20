@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameActions } from '../context/GameContext';
-import { Panel, Button } from '../components/UI';
+import { Panel, Button, Followers } from '../components/UI';
 
 const METHOD_TEXT = {
   KO: 'wins by Knockout',
@@ -42,8 +42,8 @@ export default function FightResult() {
         </div>
         {loser && <div className="fe-result-sub">{loser.name} falls to {loser.record.wins}-{loser.record.losses}-{loser.record.draws}</div>}
         <div className="fe-result-stats-grid">
-          <StatBlock label={fighter?.name} stats={result.totalStats.A} />
-          <StatBlock label={opponent?.name} stats={result.totalStats.B} />
+          <StatBlock label={fighter?.name} stats={result.totalStats.A} followers={fighter?.followers} delta={last.fighterFollowerDelta} />
+          <StatBlock label={opponent?.name} stats={result.totalStats.B} followers={opponent?.followers} delta={last.opponentFollowerDelta} />
         </div>
         <Button variant="advance" onClick={() => goTo('hub')} className="fe-confirm-btn">Back to Hub</Button>
       </Panel>
@@ -51,7 +51,7 @@ export default function FightResult() {
   );
 }
 
-function StatBlock({ label, stats }) {
+function StatBlock({ label, stats, followers, delta }) {
   return (
     <div className="fe-stat-block">
       <h4>{label}</h4>
@@ -59,6 +59,12 @@ function StatBlock({ label, stats }) {
       <div>Ground Strikes: {stats.groundStrikes.landed}/{stats.groundStrikes.thrown}</div>
       <div>Takedowns: {stats.takedowns.landed}/{stats.takedowns.thrown}</div>
       <div>Sub. Attempts: {stats.submissions.thrown}</div>
+      {typeof delta === 'number' && (
+        <div className="fe-follower-delta">
+          <Followers count={followers} />
+          <span className={delta >= 0 ? 'fe-delta-up' : 'fe-delta-down'}>{delta >= 0 ? '+' : ''}{delta.toLocaleString()}</span>
+        </div>
+      )}
     </div>
   );
 }

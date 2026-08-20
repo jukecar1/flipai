@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES, WEIGHT_CLASS_MAP } from '../game/constants';
-import { isTitleFight } from '../game/gameReducer';
+import { isTitleFight, drawMultiplier } from '../game/gameReducer';
 import { venuesNear } from '../game/venues';
-import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 const TYPE_LABELS = {
   [FIGHT_TYPES.SINGLE]: 'Single Fight',
@@ -42,6 +42,14 @@ export default function MakeFights() {
   const isTitle = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && isTitleFight(state, fighter);
   const isDefense = isTitle && state.titles[fighter.weightClass]?.holderId === fighter.id;
 
+  const drawMult = opponent && fighter ? drawMultiplier(fighter.followers, opponent.followers) : 1;
+  const estimatedPurse = (() => {
+    if (!fighter || !venue) return 0;
+    const typeMult = fightType === FIGHT_TYPES.MAIN_EVENT ? 2.4 : fightType === FIGHT_TYPES.SHOWCASE ? 1.3 : 1;
+    const venueMult = 1 + venue.capacity / 20000;
+    return Math.round(fighter.purseFloor * typeMult * venueMult * drawMult * (isTitle ? 1.6 : 1));
+  })();
+
   const confirm = () => {
     if (!canConfirm) return;
     dispatch({ type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType, venue });
@@ -62,6 +70,7 @@ export default function MakeFights() {
         {fighter && isInjured(fighter) && (
           <p className="fe-hint fe-hint-warn">{fighter.name} is injured and can't be booked for {fighter.injuryWeeks} more week{fighter.injuryWeeks === 1 ? '' : 's'}.</p>
         )}
+        {fighter && <div className="fe-row-actions"><Followers count={fighter.followers} /><span className="fe-hint">following</span></div>}
 
         <div className="fe-type-tabs">
           {Object.values(FIGHT_TYPES).map(t => (
@@ -90,8 +99,9 @@ export default function MakeFights() {
               <Avatar fighter={o} size={26} />
               <WeightPill id={o.weightClass} />
               <Flag nationality={o.nationality} />
-              <span className="fe-boxer-name">{o.name}</span>
+              <span className="fe-boxer-name" title={o.name}>{o.name}</span>
               <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws}</span>
+              <Followers count={o.followers} />
               <span className="fe-boxer-overall">OVR {o.overall}</span>
             </div>
           ))}
@@ -116,7 +126,11 @@ export default function MakeFights() {
             {isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
             <div><strong>{fighter.name}</strong> vs <strong>{opponent.name}</strong></div>
             <div>{venue.name}, {venue.city}</div>
-            <div>Est. purse: <span className="fe-gold">${Math.round(fighter.purseFloor * (isTitle ? 1.6 : 1)).toLocaleString()}+</span></div>
+            <div>
+              Draw power: <span className="fe-gold">{drawMult.toFixed(2)}x gate</span>
+              <span className="fe-hint"> ({(fighter.followers + opponent.followers).toLocaleString()} combined followers)</span>
+            </div>
+            <div>Est. purse: <span className="fe-gold">${estimatedPurse.toLocaleString()}+</span></div>
             <div>Cost to book: <span className="fe-gold">${cost.toLocaleString()}</span></div>
           </div>
         )}

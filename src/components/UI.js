@@ -67,6 +67,20 @@ function isLightColor(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 150;
 }
 
+export function formatFollowers(n = 0) {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
+  return `${n}`;
+}
+
+export function Followers({ count }) {
+  return (
+    <span className="fe-followers" title={`${(count || 0).toLocaleString()} followers`}>
+      <span className="fe-followers-icon">👥</span>{formatFollowers(count || 0)}
+    </span>
+  );
+}
+
 export function Avatar({ fighter, size = 30, champion = false }) {
   if (!fighter) return null;
   const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
