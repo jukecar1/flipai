@@ -94,6 +94,47 @@ export const STARTING_ROSTER_POOL_SIZE = 20;
 // (if their career earns it) or just a quiet exit.
 export const RETIREMENT_AGE = 39;
 
+// A fighter's true physical prime is their late 20s. Younger fighters are
+// still developing (a 19-year-old prospect hasn't hit their ceiling yet)
+// and older fighters decline — gently through their early-to-mid 30s, then
+// sharper heading into retirement. This scales EFFECTIVE ability (what
+// actually plays out in the cage, and what OVR reports) without ever
+// touching the raw trained stat numbers on the Roster screen — training
+// gains are real and permanent, age just determines how much of them
+// you're currently fighting at.
+const PRIME_START_AGE = 26;
+const PRIME_END_AGE = 30;
+const VETERAN_AGE = 34;
+
+export function ageCurveMultiplier(age) {
+  if (age < PRIME_START_AGE) {
+    const t = Math.max(0, Math.min(1, (age - 19) / (PRIME_START_AGE - 19)));
+    return 0.9 + t * 0.1; // ramps 0.90 -> 1.00 rising into their prime
+  }
+  if (age <= PRIME_END_AGE) return 1;
+  if (age <= VETERAN_AGE) {
+    const t = (age - PRIME_END_AGE) / (VETERAN_AGE - PRIME_END_AGE);
+    return 1 - t * 0.1; // gentle decline, down to 0.90 at 34
+  }
+  const t = Math.max(0, Math.min(1, (age - VETERAN_AGE) / (RETIREMENT_AGE - VETERAN_AGE)));
+  return 0.9 - t * 0.22; // sharper drop-off, down to ~0.68 near retirement
+}
+
+export function careerStage(age) {
+  if (age < PRIME_START_AGE) return { id: 'rookie', label: 'Rookie' };
+  if (age <= PRIME_END_AGE) return { id: 'prime', label: 'Prime' };
+  if (age <= VETERAN_AGE) return { id: 'veteran', label: 'Veteran' };
+  return { id: 'declining', label: 'Declining' };
+}
+
+// The single source of truth for a fighter's OVR — always their trained
+// stats scaled by their current age curve, so it reflects both how much
+// they've trained AND how much of that they can still bring on fight night.
+export function effectiveOverall(stats, age) {
+  const raw = (stats.striking + stats.wrestling + stats.submission + stats.chin + stats.cardio) / 5;
+  return Math.max(1, Math.min(20, Math.round(raw * ageCurveMultiplier(age))));
+}
+
 // The amateur feeder tier: cheap, unproven signings you can promote to
 // the real roster once they've built a small amateur record.
 export const AMATEUR_SIGN_COST = 400;

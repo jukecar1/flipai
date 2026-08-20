@@ -2,7 +2,7 @@ import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUp
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, CONTRACT_RENEWAL_MULTIPLIER,
-  STARTING_FUNDS,
+  STARTING_FUNDS, ageCurveMultiplier, effectiveOverall,
 } from './constants';
 import { CITIES } from './namePool';
 
@@ -265,6 +265,43 @@ test('fighters age a year and retire once they cross the retirement age', () => 
   expect(next.week).toBe(WEEKS_PER_YEAR);
   expect(next.roster.some(f => f.id === 'old1')).toBe(false);
   expect(next.news.some(n => n.category === 'retirement')).toBe(true);
+});
+
+test('ageCurveMultiplier peaks in the late 20s and declines toward retirement', () => {
+  expect(ageCurveMultiplier(19)).toBeLessThan(1);
+  expect(ageCurveMultiplier(27)).toBe(1);
+  expect(ageCurveMultiplier(29)).toBe(1);
+  expect(ageCurveMultiplier(34)).toBeLessThan(1);
+  expect(ageCurveMultiplier(38)).toBeLessThan(ageCurveMultiplier(34));
+  expect(ageCurveMultiplier(RETIREMENT_AGE - 1)).toBeGreaterThan(0.6);
+});
+
+test('effectiveOverall scales the same stats down for an older fighter', () => {
+  const stats = { striking: 16, wrestling: 16, submission: 16, chin: 16, cardio: 16 };
+  const primeOverall = effectiveOverall(stats, 28);
+  const veteranOverall = effectiveOverall(stats, 37);
+  expect(primeOverall).toBe(16);
+  expect(veteranOverall).toBeLessThan(primeOverall);
+});
+
+test('a birthday recomputes OVR from the age curve, not just the stat total', () => {
+  const state = baseState();
+  const veteran = { ...state.roster[1], id: 'vet1', age: 37, stats: { striking: 16, wrestling: 16, submission: 16, chin: 16, cardio: 16 }, overall: 16 };
+  const withVeteran = { ...state, week: WEEKS_PER_YEAR - 1, roster: [...state.roster, veteran] };
+  const next = gameReducer(withVeteran, { type: 'ADVANCE_WEEK' });
+  const aged = next.roster.find(f => f.id === 'vet1');
+  expect(aged.age).toBe(38);
+  expect(aged.overall).toBeLessThan(16);
+});
+
+test('training recomputes OVR through the age curve too', () => {
+  const state = baseState();
+  const young = { ...state.roster[1], id: 'young1', age: 28, xp: 100000, stats: { striking: 10, wrestling: 10, submission: 10, chin: 10, cardio: 10 } };
+  const withYoung = { ...state, roster: [...state.roster, young] };
+  const next = gameReducer(withYoung, { type: 'TRAIN_STAT', fighterId: 'young1', stat: 'striking' });
+  const trained = next.roster.find(f => f.id === 'young1');
+  expect(trained.stats.striking).toBe(11);
+  expect(trained.overall).toBe(effectiveOverall(trained.stats, trained.age));
 });
 
 test('signing an amateur adds them to the amateur pool and spends funds', () => {

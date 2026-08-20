@@ -4,7 +4,7 @@ import {
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
   CONTRACT_LENGTH_RANGE, CONTRACT_RENEWAL_MULTIPLIER, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
-  cityTierForPopulation, startingFundsForPopulation,
+  cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -20,12 +20,29 @@ function pick(arr) {
   return arr[randInt(0, arr.length - 1)];
 }
 
-function recomputeOverall(stats) {
-  return Math.round((stats.striking + stats.wrestling + stats.submission + stats.chin + stats.cardio) / 5);
-}
-
 function clampStat(n) {
   return Math.max(1, Math.min(20, n));
+}
+
+// A fighter's age curve (see ageCurveMultiplier in constants.js) scales
+// their EFFECTIVE stats for actual combat — a declining veteran's OVR
+// being lower than their raw training suggests has to be real in the cage,
+// not just a cosmetic number. Trained stats on the Roster screen are never
+// touched by this; it's applied fresh, right before a fighter steps in.
+function applyAgeCurve(fighter) {
+  const mult = ageCurveMultiplier(fighter.age);
+  if (mult === 1) return fighter;
+  const stats = fighter.stats;
+  return {
+    ...fighter,
+    stats: {
+      striking: clampStat(Math.round(stats.striking * mult)),
+      wrestling: clampStat(Math.round(stats.wrestling * mult)),
+      submission: clampStat(Math.round(stats.submission * mult)),
+      chin: clampStat(Math.round(stats.chin * mult)),
+      cardio: clampStat(Math.round(stats.cardio * mult)),
+    },
+  };
 }
 
 // A pre-fight gameplan reshapes the booked fighter's effective stats for
@@ -53,13 +70,14 @@ function applyGameplan(fighter, gameplanId) {
 // the final stoppage descriptor if the fight ended, and the carried-over
 // session state for whatever rounds remain after that.
 function runFightRounds(fighter, opponent, gameplanId, session, fromRound, totalRounds, mode) {
-  const gameplanFighter = applyGameplan(fighter, gameplanId);
+  const gameplanFighter = applyGameplan(applyAgeCurve(fighter), gameplanId);
+  const ageAdjustedOpponent = applyAgeCurve(opponent);
   const roundsOut = [];
   let stoppedOut = null;
   let s = session;
   let r = fromRound;
   do {
-    const { roundData, stopped, session: next } = simulateFightRound(s, gameplanFighter, opponent, r);
+    const { roundData, stopped, session: next } = simulateFightRound(s, gameplanFighter, ageAdjustedOpponent, r);
     s = next;
     roundsOut.push(roundData);
     stoppedOut = stopped;
@@ -466,7 +484,7 @@ export function gameReducer(state, action) {
       const stats = { ...fighter.stats, [stat]: fighter.stats[stat] + 1 };
       return {
         ...state,
-        roster: state.roster.map(f => (f.id === fighterId ? { ...f, stats, overall: recomputeOverall(stats), xp: f.xp - cost } : f)),
+        roster: state.roster.map(f => (f.id === fighterId ? { ...f, stats, overall: effectiveOverall(stats, f.age), xp: f.xp - cost } : f)),
       };
     }
 
@@ -615,13 +633,19 @@ export function gameReducer(state, action) {
       });
       const upkeep = 25 * state.roster.length;
       const funds = Math.max(0, state.funds - upkeep);
-      const agedRoster = state.roster.map(f => ({
-        ...f,
-        fatigue: Math.max(0, f.fatigue - 15),
-        injuryWeeks: Math.max(0, f.injuryWeeks - 1),
-        age: week % WEEKS_PER_YEAR === 0 ? f.age + 1 : f.age,
-        contractWeeksLeft: (f.contractWeeksLeft ?? randomContractLength()) - 1,
-      }));
+      const agedRoster = state.roster.map(f => {
+        const age = week % WEEKS_PER_YEAR === 0 ? f.age + 1 : f.age;
+        return {
+          ...f,
+          fatigue: Math.max(0, f.fatigue - 15),
+          injuryWeeks: Math.max(0, f.injuryWeeks - 1),
+          age,
+          // A birthday can nudge OVR before a single punch is thrown — the
+          // age curve is always live, not just something training reveals.
+          overall: age === f.age ? f.overall : effectiveOverall(f.stats, age),
+          contractWeeksLeft: (f.contractWeeksLeft ?? randomContractLength()) - 1,
+        };
+      });
 
       // Anyone who's aged into retirement leaves the roster — a genuinely
       // great career earns a Hall of Fame plaque, and a vacated belt goes
@@ -748,8 +772,8 @@ export function gameReducer(state, action) {
       // whole thing at once with the pre-fight gameplan locked in, same as
       // the game always worked before between-rounds adjustments existed.
       if (state.meta.autoSkipFights) {
-        const gameplanFighter = applyGameplan(fighter, fight.gameplan);
-        const sim = simulateFight(gameplanFighter, opponent, { rounds });
+        const gameplanFighter = applyGameplan(applyAgeCurve(fighter), fight.gameplan);
+        const sim = simulateFight(gameplanFighter, applyAgeCurve(opponent), { rounds });
         return {
           ...state,
           activeFight: { fightId: fight.id, fighterId: fighter.id, opponentId: opponent.id, gameplan: fight.gameplan, finished: true, sim },

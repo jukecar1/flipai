@@ -1102,6 +1102,30 @@ button, select, input {
   color: var(--fe-red);
 }
 
+/* Career stage — a quick visual read on where a fighter sits on the age
+   curve (see careerStage/effectiveOverall in constants.js); OVR already
+   bakes this in, this is just the "why". */
+.fe-age {
+  font-weight: 700;
+  cursor: help;
+}
+
+.fe-age-rookie {
+  color: var(--fe-blue);
+}
+
+.fe-age-prime {
+  color: var(--fe-teal);
+}
+
+.fe-age-veteran {
+  color: var(--fe-gold);
+}
+
+.fe-age-declining {
+  color: var(--fe-red);
+}
+
 .fe-belt-badge {
   margin-left: 6px;
   font-size: 12px;

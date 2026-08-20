@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST } from '../game/constants';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST, careerStage } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -78,7 +78,9 @@ export default function Roster() {
                   <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                 </span>
-                <span>{f.age}</span>
+                <span className={`fe-age fe-age-${careerStage(f.age).id}`} title={`${careerStage(f.age).label} — OVR already reflects this`}>
+                  {f.age}
+                </span>
                 <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
                 <span>{f.stats.striking}</span>
                 <span>{f.stats.wrestling}</span>

@@ -1,4 +1,4 @@
-import { WEIGHT_CLASSES, STARTING_ROSTER_POOL_SIZE } from './constants';
+import { WEIGHT_CLASSES, STARTING_ROSTER_POOL_SIZE, effectiveOverall } from './constants';
 import { randomFighterName } from './namePool';
 
 let fighterCounter = 1;
@@ -40,12 +40,10 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
   if (archetype === 'allrounder') submission = boost(submission);
 
   const stats = { striking, wrestling, submission, chin, cardio };
-
-  const overall = Math.round(
-    (stats.striking + stats.wrestling + stats.submission + stats.chin + stats.cardio) / 5
-  );
-
   const age = level === 'amateur' ? randInt(18, 23) : randInt(19, 36);
+  // OVR always reflects trained stats scaled by the age curve — see
+  // effectiveOverall in constants.js for the rookie-ramp/prime/decline math.
+  const overall = effectiveOverall(stats, age);
   const wins = level === 'amateur' ? 0 : level === 'prospect' ? randInt(0, 3) : level === 'gatekeeper' ? randInt(8, 18) : randInt(15, 30);
   const losses = level === 'amateur' ? 0 : level === 'prospect' ? (Math.random() < 0.15 ? 1 : 0) : randInt(0, 6);
   const draws = level === 'amateur' ? 0 : (Math.random() < 0.05 ? 1 : 0);
