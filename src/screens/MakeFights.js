@@ -11,6 +11,12 @@ const TYPE_LABELS = {
   [FIGHT_TYPES.MAIN_EVENT]: 'Main Event',
 };
 
+const TYPE_DESCRIPTIONS = {
+  [FIGHT_TYPES.SINGLE]: 'No venue fee — you just split the purse. Fastest, cheapest way to get a fighter booked. 3 rounds.',
+  [FIGHT_TYPES.SHOWCASE]: 'A proper undercard slot. Costs the venue’s site fee but pays a bigger purse than a Single Fight. 3 rounds.',
+  [FIGHT_TYPES.MAIN_EVENT]: 'Your biggest stage — top billing, biggest purse, title-eligible if your fighter qualifies. Costs the most to book. 5 rounds.',
+};
+
 export default function MakeFights() {
   const state = useGameState();
   const dispatch = useGameDispatch();
@@ -38,7 +44,6 @@ export default function MakeFights() {
 
   const cost = venue ? (fightType === FIGHT_TYPES.SINGLE ? 0 : venue.fee) : 0;
   const canConfirm = fighter && opponent && venue && state.funds >= cost && !alreadyBooked.has(fighter.id) && !isInjured(fighter);
-  const rounds = fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3;
   const isTitle = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && isTitleFight(state, fighter);
   const isDefense = isTitle && state.titles[fighter.weightClass]?.holderId === fighter.id;
 
@@ -75,15 +80,11 @@ export default function MakeFights() {
         <div className="fe-type-tabs">
           {Object.values(FIGHT_TYPES).map(t => (
             <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => setFightType(t)}>
-              {TYPE_LABELS[t]}
+              <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
+              <span className="fe-type-tab-desc">{TYPE_DESCRIPTIONS[t]}</span>
             </button>
           ))}
         </div>
-        <p className="fe-hint">
-          {fightType === FIGHT_TYPES.SINGLE && `Quickest option — no site fee, you take a cut of the purse. ${rounds} rounds.`}
-          {fightType === FIGHT_TYPES.SHOWCASE && `A modest card built around this fight. Costs the venue site fee. ${rounds} rounds.`}
-          {fightType === FIGHT_TYPES.MAIN_EVENT && `Headline event at a bigger venue. Higher cost, higher purse, ${rounds} rounds.`}
-        </p>
         {isTitle && (
           <p className="fe-hint fe-hint-title">
             🏆 {isDefense ? `Title defense — ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship` : `Title fight for the vacant ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship`}

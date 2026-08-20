@@ -766,15 +766,15 @@ button, select, input {
 }
 
 .fe-type-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   background: var(--fe-panel-alt);
   border: 1px solid var(--fe-border);
   color: var(--fe-text-dim);
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: 7px;
   cursor: pointer;
-  font-family: var(--fe-font-display);
-  font-size: 15px;
-  letter-spacing: 0.3px;
   text-align: left;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -786,8 +786,25 @@ button, select, input {
 
 .fe-type-tab.active {
   border-color: var(--fe-red);
-  color: #fff;
   background: rgba(226, 38, 58, 0.12);
+}
+
+.fe-type-tab-label {
+  font-family: var(--fe-font-display);
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  color: var(--fe-text);
+}
+
+.fe-type-tab.active .fe-type-tab-label {
+  color: #fff;
+}
+
+.fe-type-tab-desc {
+  font-family: var(--fe-font-body);
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--fe-text-dim);
 }
 
 .fe-venue-list {
