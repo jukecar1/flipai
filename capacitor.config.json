@@ -1,0 +1,10 @@
+{
+  "appId": "com.fightempire.app",
+  "appName": "Fight Empire",
+  "webDir": "build",
+  "backgroundColor": "#101218",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#101218"
+  }
+}

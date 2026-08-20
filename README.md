@@ -1,70 +1,62 @@
-# Getting Started with Create React App
+# Fight Empire
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A boxing-promoter career sim: sign prospects, book fights, watch them
+play out round-by-round in an animated ring, and chase your roster up
+the rankings. Built as a React web app and wrapped natively for iOS
+with [Capacitor](https://capacitorjs.com/).
 
-## Available Scripts
+## Playing / developing
 
-In the project directory, you can run:
+```bash
+npm install
+npm start        # http://localhost:3000
+```
 
-### `npm start`
+- `npm test` — runs the unit tests (game engine + a smoke render test).
+- `npm run build` — production web build.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Progress autosaves to the browser's local storage across up to three
+promotion slots — nothing leaves the device.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## How it's put together
 
-### `npm test`
+```
+src/
+  game/         data + pure logic: constants, name/venue generation,
+                boxer generation, the fight-simulation engine, the
+                central reducer, and localStorage save/load
+  context/      React context wiring the reducer + persistence to screens
+  screens/      one component per screen (Hub, Roster, Make Fights,
+                Rankings, News, the animated Fight Sim, Fight Result)
+  components/   shared UI chrome (top bar, sidebar, buttons/panels)
+  styles/       the "Fight Empire" visual theme
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The fight engine (`src/game/engine.js`) simulates a full bout up front —
+round by round, punch by punch, with knockdown/decision logic and full
+punch-type stat tracking — and the Fight Sim screen plays that back as
+an animated ring view with live commentary and stats, at adjustable
+speed, with a skip-to-result option.
 
-### `npm run build`
+## Shipping to the App Store
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+See [`docs/APP_STORE_SUBMISSION.md`](docs/APP_STORE_SUBMISSION.md) for
+the full walkthrough — registering the app with Apple, the local Xcode
+loop, screenshots/listing requirements, and an automated
+GitHub-Actions-to-TestFlight pipeline you can run once you've added
+your Apple signing secrets.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Quick reference:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm run cap:sync       # build the web app + copy it into the iOS project
+npm run cap:open:ios   # open ios/App/App.xcworkspace in Xcode
+npm run icons          # regenerate app icons from scripts/icon.svg
+```
 
-### `npm run eject`
+## Monetization
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+No real purchases are wired up yet — the UI is scoped to a complete,
+free core loop first. StoreKit/subscriptions are a deliberate follow-up
+once the app has a real App Store Connect record to configure them
+against (see §6 of the submission doc).

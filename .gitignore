@@ -21,3 +21,13 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# iOS (Capacitor) — public/ is regenerated from the web build by
+# `npm run cap:sync`; don't commit build output or signing material.
+/ios/App/App/public
+/ios/App/**/xcuserdata
+/ios/App/fastlane/report.xml
+/ios/App/fastlane/AuthKey.p8
+*.p12
+*.mobileprovision
+
