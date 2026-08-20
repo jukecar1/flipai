@@ -1,5 +1,7 @@
 // Fight Empire — venue list used when booking shows
 
+import { FIGHT_TYPES } from './constants';
+
 export const VENUES = [
   { id: 'v1', name: 'Jacksonville Activity Center', city: 'Jacksonville', country: 'USA', tier: 'small_hall', capacity: 500, fee: 825, indoor: true },
   { id: 'v2', name: 'Riverside Community Hall', city: 'Jacksonville', country: 'USA', tier: 'small_hall', capacity: 650, fee: 900, indoor: true },
@@ -28,4 +30,20 @@ export const VENUES = [
 
 export function venuesNear(city) {
   return [...VENUES].sort((a, b) => (a.city === city ? -1 : 0) - (b.city === city ? -1 : 0));
+}
+
+// A Single Fight is a no-frills local booking, a Showcase is an undercard
+// slot on a proper Fight Night, and a Main Event is the headline slot —
+// each is scoped to venues sized for that billing, small local halls up
+// through the big arenas and stadiums.
+const TIERS_BY_FIGHT_TYPE = {
+  [FIGHT_TYPES.SINGLE]: ['small_hall'],
+  [FIGHT_TYPES.SHOWCASE]: ['small_hall', 'theatre'],
+  [FIGHT_TYPES.MAIN_EVENT]: ['arena', 'stadium'],
+};
+
+export function venuesForFightType(fightType, city) {
+  const allowedTiers = TIERS_BY_FIGHT_TYPE[fightType];
+  const pool = allowedTiers ? VENUES.filter(v => allowedTiers.includes(v.tier)) : VENUES;
+  return [...pool].sort((a, b) => (a.city === city ? -1 : 0) - (b.city === city ? -1 : 0));
 }

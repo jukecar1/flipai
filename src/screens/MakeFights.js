@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS } from '../game/constants';
 import { isTitleFight, drawMultiplier, purseForFight, winProbability } from '../game/gameReducer';
-import { venuesNear } from '../game/venues';
+import { venuesNear, venuesForFightType } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 const TYPE_LABELS = {
@@ -12,9 +12,9 @@ const TYPE_LABELS = {
 };
 
 const TYPE_DESCRIPTIONS = {
-  [FIGHT_TYPES.SINGLE]: 'No venue fee — you just split the purse. Fastest, cheapest way to get a fighter booked. 3 rounds.',
-  [FIGHT_TYPES.SHOWCASE]: 'A proper undercard slot on a Fight Night card. Costs a shared site fee, pays a bigger purse. 3 rounds.',
-  [FIGHT_TYPES.MAIN_EVENT]: 'Your biggest stage — top billing, biggest purse, title-eligible if your fighter qualifies. 5 rounds.',
+  [FIGHT_TYPES.SINGLE]: 'No venue fee — you just split the purse. Small local halls only, fastest and cheapest way to get a fighter booked. 3 rounds.',
+  [FIGHT_TYPES.SHOWCASE]: 'A proper undercard slot on a Fight Night card, at a small hall or theatre. Costs a shared site fee, pays a bigger purse. 3 rounds.',
+  [FIGHT_TYPES.MAIN_EVENT]: 'Your biggest stage — headline a full arena or stadium, biggest purse, title-eligible if your fighter qualifies. 5 rounds.',
 };
 
 function MatchupCompare({ fighter, opponent }) {
@@ -138,7 +138,7 @@ function SingleBookingFlow() {
   const opponent = opponents.find(o => o.id === opponentId) || crossoverOpponents.find(o => o.id === opponentId);
   const isSuperFight = fightType === FIGHT_TYPES.MAIN_EVENT && !!opponent?.promotionId;
 
-  const venues = useMemo(() => venuesNear(meta.hq), [meta.hq]);
+  const venues = useMemo(() => venuesForFightType(fightType, meta.hq), [fightType, meta.hq]);
   const isCardType = fightType !== FIGHT_TYPES.SINGLE;
   const bookableCards = useMemo(() => {
     if (!isCardType) return [];
