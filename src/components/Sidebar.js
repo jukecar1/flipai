@@ -1,14 +1,23 @@
 import React from 'react';
 import { useGameActions, useGameState } from '../context/GameContext';
-import { HomeIcon, RosterIcon, FightsIcon, RankingsIcon, PromotionsIcon, NewsIcon } from './icons';
+import {
+  HomeIcon, RosterIcon, FightsIcon, RankingsIcon, PromotionsIcon, NewsIcon,
+  GymsIcon, TitlesIcon, BoutsIcon, HallOfFameIcon, AmateursIcon, LeaderboardsIcon,
+} from './icons';
 
 const NAV_ITEMS = [
   { id: 'hub', label: 'Hub', Icon: HomeIcon },
   { id: 'roster', label: 'Roster', Icon: RosterIcon },
   { id: 'makeFights', label: 'Make Fights', Icon: FightsIcon },
+  { id: 'gyms', label: 'Gyms', Icon: GymsIcon },
+  { id: 'titles', label: 'Titles', Icon: TitlesIcon },
   { id: 'rankings', label: 'Rankings', Icon: RankingsIcon },
-  { id: 'promotions', label: 'Promotions', Icon: PromotionsIcon },
+  { id: 'bouts', label: 'Bouts', Icon: BoutsIcon },
   { id: 'news', label: 'News', Icon: NewsIcon },
+  { id: 'hallOfFame', label: 'Hall of Fame', Icon: HallOfFameIcon },
+  { id: 'amateurs', label: 'Amateurs', Icon: AmateursIcon },
+  { id: 'leaderboards', label: 'Leaderboards', Icon: LeaderboardsIcon },
+  { id: 'promotions', label: 'Promotions', Icon: PromotionsIcon },
 ];
 
 export default function Sidebar() {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useGameState, useGameDispatch } from '../context/GameContext';
-import { WEIGHT_CLASSES, GYM_LEVELS, rosterLimitForGym } from '../game/constants';
+import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
+import { WEIGHT_CLASSES, rosterLimitForGym } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -20,23 +20,30 @@ function statusInfo(f) {
 export default function Roster() {
   const state = useGameState();
   const dispatch = useGameDispatch();
+  const { goTo } = useGameActions();
   const [scoutClass, setScoutClass] = useState(WEIGHT_CLASSES[0].id);
   const [candidates, setCandidates] = useState([]);
 
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
   const rosterFull = state.roster.length >= rosterLimit;
-  const nextGym = GYM_LEVELS.find(g => g.level === state.meta.gymLevel + 1);
 
   const scout = () => setCandidates(makeScoutCandidates(scoutClass, 3));
   const signCandidate = fighter => {
     dispatch({ type: 'SIGN_SCOUTED_PROSPECT', fighter });
     setCandidates(prev => prev.filter(f => f.id !== fighter.id));
   };
-  const upgradeGym = () => dispatch({ type: 'UPGRADE_GYM' });
+  const retire = fighter => {
+    if (window.confirm(`Retire ${fighter.name}? This can't be undone.`)) {
+      dispatch({ type: 'RETIRE_FIGHTER', fighterId: fighter.id });
+    }
+  };
 
   return (
     <div className="fe-roster">
-      <Panel title={`ROSTER (${state.roster.length}/${rosterLimit})`}>
+      <Panel
+        title={`ROSTER (${state.roster.length}/${rosterLimit})`}
+        right={<button className="fe-link" onClick={() => goTo('gyms')}>Gym</button>}
+      >
         <div className="fe-roster-table">
           <div className="fe-roster-head">
             <span>Fighter</span>
@@ -51,6 +58,7 @@ export default function Roster() {
             <span>Status</span>
             <span>Followers</span>
             <span>Purse</span>
+            <span></span>
           </div>
           {state.roster.map(f => {
             const status = statusInfo(f);
@@ -72,32 +80,21 @@ export default function Roster() {
                 <span className={`fe-status fe-status-${status.cls}`}>{status.text}</span>
                 <Followers count={f.followers} />
                 <span>${f.purseFloor.toLocaleString()}</span>
+                <button className="fe-retire-btn" onClick={() => retire(f)} title={`Retire ${f.name}`}>Retire</button>
               </div>
             );
           })}
         </div>
       </Panel>
 
-      <Panel title="YOUR GYM" className="fe-gym-panel">
-        <p className="fe-hint">
-          Level {state.meta.gymLevel} facility — active roster capped at {rosterLimit} fighters.
-          {nextGym ? ' Upgrade to sign more.' : ' This is the top tier.'}
-        </p>
-        {nextGym && (
-          <div className="fe-row-actions">
-            <Button variant="advance" onClick={upgradeGym} disabled={state.funds < nextGym.upgradeCost}>
-              Upgrade to Level {nextGym.level} (${nextGym.upgradeCost.toLocaleString()}) — {nextGym.rosterLimit} fighters
-            </Button>
-          </div>
-        )}
-      </Panel>
-
       <Panel title="SCOUT A NEW PROSPECT" className="fe-scout-panel">
         {rosterFull ? (
-          <p className="fe-hint fe-hint-warn">Your roster is full ({rosterLimit}/{rosterLimit}). Upgrade your gym to sign more fighters.</p>
+          <p className="fe-hint fe-hint-warn">
+            Your roster is full ({rosterLimit}/{rosterLimit}). <button className="fe-link" onClick={() => goTo('gyms')}>Upgrade your gym</button> to sign more fighters.
+          </p>
         ) : (
           <>
-            <p className="fe-hint">Send scouts to a weight class and see who they find — signing a prospect costs $1,500. Looking for proven, ranked talent instead? Check Free Agency under Promotions.</p>
+            <p className="fe-hint">Send scouts to a weight class and see who they find — signing a prospect costs $1,500. Looking for proven, ranked talent instead? Check Free Agency under Promotions, or grow your own through Amateurs.</p>
             <div className="fe-row-actions">
               <select value={scoutClass} onChange={e => { setScoutClass(e.target.value); setCandidates([]); }}>
                 {WEIGHT_CLASSES.map(wc => (

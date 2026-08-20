@@ -1,5 +1,5 @@
 import { gameReducer, newCareerState, drawMultiplier } from './gameReducer';
-import { FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym } from './constants';
+import { FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR } from './constants';
 
 function baseState() {
   const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville' });
@@ -214,4 +214,77 @@ test('upgrading the gym without enough funds does nothing', () => {
   const next = gameReducer(state, { type: 'UPGRADE_GYM' });
   expect(next.meta.gymLevel).toBe(1);
   expect(next.funds).toBe(state.funds);
+});
+
+test('retiring a champion vacates the belt and removes them from the roster', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(state.titles.FLW.holderId).toBe('champ1');
+
+  const next = gameReducer(state, { type: 'RETIRE_FIGHTER', fighterId: 'champ1' });
+  expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
+  expect(next.titles.FLW).toBeNull();
+});
+
+test('a retiring fighter with a great record is inducted into the Hall of Fame', () => {
+  const state = baseState();
+  const stateWithLegend = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, record: { ...f.record, wins: 25 } } : f)) };
+  const next = gameReducer(stateWithLegend, { type: 'RETIRE_FIGHTER', fighterId: 'champ1' });
+  expect(next.hallOfFame.some(f => f.id === 'champ1')).toBe(true);
+});
+
+test('a retiring journeyman with an unremarkable record is not inducted', () => {
+  const state = baseState();
+  const stateWithJourneyman = {
+    ...state,
+    roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, overall: 8, title: null, record: { wins: 5, losses: 5, draws: 0, kos: 1, subs: 1 } } : f)),
+  };
+  const next = gameReducer(stateWithJourneyman, { type: 'RETIRE_FIGHTER', fighterId: 'champ1' });
+  expect(next.hallOfFame.some(f => f.id === 'champ1')).toBe(false);
+});
+
+test('fighters age a year and retire once they cross the retirement age', () => {
+  const state = baseState();
+  const oldTimer = { ...state.roster[1], id: 'old1', age: RETIREMENT_AGE - 1 };
+  const stateWithElder = { ...state, week: WEEKS_PER_YEAR - 1, roster: [...state.roster, oldTimer] };
+  const next = gameReducer(stateWithElder, { type: 'ADVANCE_WEEK' });
+  expect(next.week).toBe(WEEKS_PER_YEAR);
+  expect(next.roster.some(f => f.id === 'old1')).toBe(false);
+  expect(next.news.some(n => n.category === 'retirement')).toBe(true);
+});
+
+test('signing an amateur adds them to the amateur pool and spends funds', () => {
+  const state = baseState();
+  const candidate = { id: 'am1', name: 'Raw Prospect', weightClass: 'FLW', overall: 6, stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0 };
+  const next = gameReducer(state, { type: 'SIGN_AMATEUR', fighter: candidate });
+  expect(next.amateurs.some(a => a.id === 'am1')).toBe(true);
+  expect(next.funds).toBe(state.funds - AMATEUR_SIGN_COST);
+});
+
+test('a full amateur pool cannot sign another amateur', () => {
+  const state = baseState();
+  const amateurs = Array.from({ length: AMATEUR_POOL_LIMIT }, (_, i) => ({ id: `pad${i}`, name: `Pad ${i}`, weightClass: 'FLW', amateurRecord: { wins: 0, losses: 0 } }));
+  const fullState = { ...state, amateurs };
+  const candidate = { id: 'overflow', name: 'Overflow', weightClass: 'FLW', overall: 6, stats: {}, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, followers: 0 };
+  const next = gameReducer(fullState, { type: 'SIGN_AMATEUR', fighter: candidate });
+  expect(next.amateurs.length).toBe(AMATEUR_POOL_LIMIT);
+});
+
+test('promoting an eligible amateur moves them to the pro roster', () => {
+  const state = baseState();
+  const amateur = { id: 'am2', name: 'Ready Prospect', weightClass: 'FLW', overall: 6, stats: {}, followers: 0, amateurRecord: { wins: AMATEUR_PROMOTION_WINS, losses: 1 } };
+  const stateWithAmateur = { ...state, amateurs: [amateur] };
+  const next = gameReducer(stateWithAmateur, { type: 'PROMOTE_AMATEUR', fighterId: 'am2' });
+  expect(next.roster.some(f => f.id === 'am2')).toBe(true);
+  expect(next.amateurs.length).toBe(0);
+});
+
+test('promoting an amateur who has not hit the win threshold does nothing', () => {
+  const state = baseState();
+  const amateur = { id: 'am3', name: 'Not Ready', weightClass: 'FLW', overall: 6, stats: {}, followers: 0, amateurRecord: { wins: AMATEUR_PROMOTION_WINS - 1, losses: 0 } };
+  const stateWithAmateur = { ...state, amateurs: [amateur] };
+  const next = gameReducer(stateWithAmateur, { type: 'PROMOTE_AMATEUR', fighterId: 'am3' });
+  expect(next.roster.some(f => f.id === 'am3')).toBe(false);
+  expect(next.amateurs.length).toBe(1);
 });

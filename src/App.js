@@ -12,6 +12,12 @@ import Promotions from './screens/Promotions';
 import News from './screens/News';
 import FightSim from './screens/FightSim';
 import FightResult from './screens/FightResult';
+import Gyms from './screens/Gyms';
+import Titles from './screens/Titles';
+import Bouts from './screens/Bouts';
+import HallOfFame from './screens/HallOfFame';
+import Amateurs from './screens/Amateurs';
+import Leaderboards from './screens/Leaderboards';
 import './styles/fightEmpire.css';
 
 function Router() {
@@ -40,6 +46,12 @@ function Router() {
           {screen === 'news' && <News />}
           {screen === 'fightSim' && <FightSim />}
           {screen === 'fightResult' && <FightResult />}
+          {screen === 'gyms' && <Gyms />}
+          {screen === 'titles' && <Titles />}
+          {screen === 'bouts' && <Bouts />}
+          {screen === 'hallOfFame' && <HallOfFame />}
+          {screen === 'amateurs' && <Amateurs />}
+          {screen === 'leaderboards' && <Leaderboards />}
         </div>
       </div>
     </div>

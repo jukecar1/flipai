@@ -1,6 +1,6 @@
-import { WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS, GYM_LEVELS, rosterLimitForGym } from './constants';
+import { WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
-import { CITIES } from './namePool';
+import { CITIES, randomFighterName } from './namePool';
 import { simulateFight } from './engine';
 
 function randInt(min, max) {
@@ -12,6 +12,25 @@ function pick(arr) {
 }
 
 const TITLE_ELIGIBLE_OVERALL = 11;
+
+// A retiring fighter earns a Hall of Fame plaque for a genuinely great
+// career — a long list of wins, elite skill, or having worn a belt.
+function isHallOfFameWorthy(fighter) {
+  return fighter.record.wins >= 20 || fighter.overall >= 15 || !!fighter.title;
+}
+
+function hallOfFameEntry(fighter, week) {
+  return {
+    id: fighter.id,
+    name: fighter.name,
+    nationality: fighter.nationality,
+    weightClass: fighter.weightClass,
+    record: fighter.record,
+    followers: fighter.followers,
+    finalTitle: fighter.title || null,
+    retiredWeek: week,
+  };
+}
 
 // A booked Main Event is for your promotion's own belt when the fighter is
 // good enough to be a credible titleholder and either the division's belt
@@ -78,6 +97,7 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
       promotionName: promotionName || `${managerName}'s MMA`,
       hq: hq || pick(CITIES).city,
       gymLevel: 1,
+      coachName: randomFighterName().name,
       createdAt: Date.now(),
     },
     week: 1,
@@ -88,6 +108,8 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
     rivals: RIVAL_PROMOTIONS.map(p => ({ ...p, prestige: p.basePrestige })),
     freeAgents: [makeFreeAgent(), makeFreeAgent()],
     roster,
+    amateurs: [],
+    hallOfFame: [],
     worldPool: buildWorldPool(),
     scheduledFights: [],
     fightHistory: [],
@@ -132,7 +154,16 @@ function costForFight(type, venue) {
 export function gameReducer(state, action) {
   switch (action.type) {
     case 'LOAD_STATE':
-      return action.state;
+      // Backfill fields added after some saves were created, so an old
+      // save doesn't crash on screens that expect them to exist.
+      return {
+        ...action.state,
+        amateurs: action.state.amateurs || [],
+        hallOfFame: action.state.hallOfFame || [],
+        meta: action.state.meta
+          ? { gymLevel: 1, coachName: randomFighterName().name, ...action.state.meta }
+          : action.state.meta,
+      };
 
     case 'SET_SCREEN':
       return { ...state, ui: { ...state.ui, screen: action.screen, params: action.params || null } };
@@ -178,6 +209,59 @@ export function gameReducer(state, action) {
       };
     }
 
+    case 'SIGN_AMATEUR': {
+      const amateurs = state.amateurs || [];
+      if (!action.fighter || state.funds < AMATEUR_SIGN_COST || amateurs.length >= AMATEUR_POOL_LIMIT) return state;
+      const signed = { ...action.fighter, signed: true, amateurRecord: { wins: 0, losses: 0 } };
+      return {
+        ...state,
+        funds: state.funds - AMATEUR_SIGN_COST,
+        amateurs: [...amateurs, signed],
+      };
+    }
+
+    case 'PROMOTE_AMATEUR': {
+      const amateurs = state.amateurs || [];
+      const amateur = amateurs.find(a => a.id === action.fighterId);
+      const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
+      if (!amateur || amateur.amateurRecord.wins < AMATEUR_PROMOTION_WINS || state.roster.length >= rosterLimit) return state;
+      const { amateurRecord, ...base } = amateur;
+      // A strong amateur run carries a little polish into the pro debut.
+      const overall = Math.min(20, base.overall + Math.min(3, amateurRecord.wins - AMATEUR_PROMOTION_WINS + 1));
+      const prospect = { ...base, overall, signed: true, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 } };
+      return {
+        ...state,
+        roster: [...state.roster, prospect],
+        amateurs: amateurs.filter(a => a.id !== amateur.id),
+        news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${prospect.name} turns pro`, body: `${prospect.name} joins the pro roster after a ${amateurRecord.wins}-${amateurRecord.losses} amateur run.` }, ...state.news],
+      };
+    }
+
+    case 'RETIRE_FIGHTER': {
+      const fighter = state.roster.find(f => f.id === action.fighterId);
+      if (!fighter) return state;
+      const worthy = isHallOfFameWorthy(fighter);
+      let titles = state.titles;
+      if (titles[fighter.weightClass]?.holderId === fighter.id) {
+        titles = { ...titles, [fighter.weightClass]: null };
+      }
+      const hallOfFame = worthy ? [hallOfFameEntry(fighter, state.week), ...(state.hallOfFame || [])] : (state.hallOfFame || []);
+      const news = [{
+        id: `n${Date.now()}_retire`,
+        week: state.week,
+        category: 'retirement',
+        title: worthy ? `${fighter.name} retires — Hall of Fame` : `${fighter.name} retires`,
+        body: `${fighter.name} steps away from competition, finishing ${fighter.record.wins}-${fighter.record.losses}-${fighter.record.draws}.${worthy ? ' A career worthy of the Fight Empire Hall of Fame.' : ''}`,
+      }, ...state.news];
+      return {
+        ...state,
+        roster: state.roster.filter(f => f.id !== fighter.id),
+        titles,
+        hallOfFame,
+        news,
+      };
+    }
+
     case 'SCHEDULE_FIGHT': {
       const { fighterId, opponent, fightType, venue } = action;
       const fighter = state.roster.find(f => f.id === fighterId);
@@ -214,18 +298,56 @@ export function gameReducer(state, action) {
       const scheduledFights = state.scheduledFights.map(f => ({ ...f, weeksOut: Math.max(0, f.weeksOut - 1) }));
       const upkeep = 25 * state.roster.length;
       const funds = Math.max(0, state.funds - upkeep);
-      const roster = state.roster.map(f => ({
+      const agedRoster = state.roster.map(f => ({
         ...f,
         fatigue: Math.max(0, f.fatigue - 15),
         injuryWeeks: Math.max(0, f.injuryWeeks - 1),
+        age: week % WEEKS_PER_YEAR === 0 ? f.age + 1 : f.age,
       }));
+
+      // Anyone who's aged into retirement leaves the roster — a genuinely
+      // great career earns a Hall of Fame plaque, and a vacated belt goes
+      // back on the table for someone else to win.
+      const news = [...state.news];
+      let titles = state.titles;
+      let hallOfFame = state.hallOfFame || [];
+      const roster = [];
+      agedRoster.forEach(f => {
+        if (f.age < RETIREMENT_AGE) {
+          roster.push(f);
+          return;
+        }
+        if (titles[f.weightClass]?.holderId === f.id) {
+          titles = { ...titles, [f.weightClass]: null };
+        }
+        const worthy = isHallOfFameWorthy(f);
+        if (worthy) hallOfFame = [hallOfFameEntry(f, week), ...hallOfFame];
+        news.unshift({
+          id: `n${Date.now()}_retire_${f.id}`,
+          week,
+          category: 'retirement',
+          title: worthy ? `${f.name} retires — Hall of Fame` : `${f.name} retires`,
+          body: `${f.name} hangs up the gloves at ${f.age}, finishing ${f.record.wins}-${f.record.losses}-${f.record.draws}.${worthy ? ' A career worthy of the Fight Empire Hall of Fame.' : ''}`,
+        });
+      });
 
       const rivals = state.rivals.map(rv => ({ ...rv, prestige: rv.prestige + randInt(rv.weeklyGrowth[0], rv.weeklyGrowth[1]) }));
       const avgOverall = roster.length ? roster.reduce((s, f) => s + f.overall, 0) / roster.length : 0;
       const prestige = state.prestige + Math.round(avgOverall / 4) + Math.min(5, Math.floor(funds / 15000));
 
+      // Amateurs quietly pick up bouts on their own schedule, building
+      // toward a pro promotion — no news noise, just their record ticking.
+      const amateurs = (state.amateurs || []).map(a => {
+        if (Math.random() >= 0.35) return a;
+        const opponentStrength = randInt(3, 9);
+        const won = a.overall + randInt(-3, 3) >= opponentStrength;
+        const amateurRecord = { ...a.amateurRecord };
+        if (won) amateurRecord.wins += 1;
+        else amateurRecord.losses += 1;
+        return { ...a, amateurRecord };
+      });
+
       // free agents age; if their window closes, a rival scoops them up
-      const news = [...state.news];
       const stillFree = [];
       let worldPool = state.worldPool;
       state.freeAgents.forEach(agent => {
@@ -252,7 +374,7 @@ export function gameReducer(state, action) {
         news.unshift({ id: `n${Date.now()}_flavor`, week, category: 'rival', title: `${promo.name} announces a new card`, body: `${promo.name} continues to expand its reach as a ${promo.tier.toLowerCase()} organization.` });
       }
 
-      return { ...state, week, scheduledFights, funds, roster, rivals, prestige, freeAgents, worldPool, news };
+      return { ...state, week, scheduledFights, funds, roster, amateurs, hallOfFame, titles, rivals, prestige, freeAgents, worldPool, news };
     }
 
     case 'PREPARE_FIGHT_SIM': {
@@ -434,7 +556,19 @@ export function gameReducer(state, action) {
         prestige,
         titles,
         scheduledFights: state.scheduledFights.filter(f => f.id !== active.fightId),
-        fightHistory: [{ id: active.fightId, week: state.week, fighterId: active.fighterId, opponentId: active.opponentId, result, isTitle: !!fight?.isTitle, fighterFollowerDelta, opponentFollowerDelta }, ...state.fightHistory],
+        fightHistory: [{
+          id: active.fightId,
+          week: state.week,
+          fighterId: active.fighterId,
+          opponentId: active.opponentId,
+          fighterName: fighterRef?.name,
+          opponentName: oppRef?.name,
+          fighterWeightClass: fighterRef?.weightClass,
+          result,
+          isTitle: !!fight?.isTitle,
+          fighterFollowerDelta,
+          opponentFollowerDelta,
+        }, ...state.fightHistory],
         news: [...news, ...state.news],
         activeFight: null,
         ui: { ...state.ui, screen: 'fightResult' },

@@ -75,3 +75,62 @@ export function NewsIcon() {
     </svg>
   );
 }
+
+export function GymsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M2.5 12h2M19.5 12h2" />
+      <rect x="4.5" y="9" width="2.5" height="6" rx="0.8" />
+      <rect x="17" y="9" width="2.5" height="6" rx="0.8" />
+      <path d="M7 12h10" strokeWidth="2.6" />
+    </svg>
+  );
+}
+
+export function TitlesIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="12" cy="8.5" r="5.5" />
+      <path d="M9.2 13.2 7.5 21l4.5-2.3 4.5 2.3-1.7-7.8" />
+    </svg>
+  );
+}
+
+export function BoutsIcon() {
+  return (
+    <svg {...base}>
+      <rect x="4" y="4.5" width="16" height="16" rx="2" />
+      <path d="M4 9.5h16" />
+      <path d="M8 4.5v-1.5M16 4.5v-1.5" />
+      <path d="M7.5 13.5h3M7.5 17h6" />
+    </svg>
+  );
+}
+
+export function HallOfFameIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 3.5 14.2 9l5.8.5-4.4 3.8 1.4 5.7L12 15.9l-5 3.1 1.4-5.7L4 9.5 9.8 9z" />
+    </svg>
+  );
+}
+
+export function AmateursIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 20V11" />
+      <path d="M12 11c0-3.5-2.5-6-6.5-6.5C5.8 8.5 8.2 11 12 11Z" />
+      <path d="M12 11c0-3.5 2.5-6 6.5-6.5C18.2 8.5 15.8 11 12 11Z" />
+    </svg>
+  );
+}
+
+export function LeaderboardsIcon() {
+  return (
+    <svg {...base}>
+      <rect x="4" y="14" width="4.5" height="6" />
+      <rect x="9.75" y="9.5" width="4.5" height="10.5" />
+      <rect x="15.5" y="12" width="4.5" height="8" />
+    </svg>
+  );
+}

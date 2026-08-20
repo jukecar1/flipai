@@ -15,13 +15,14 @@ export function Panel({ title, children, className = '', right }) {
   );
 }
 
-export function Button({ children, variant = 'primary', onClick, disabled, className = '', type = 'button' }) {
+export function Button({ children, variant = 'primary', onClick, disabled, className = '', type = 'button', title }) {
   return (
     <button
       type={type}
       className={`fe-btn fe-btn-${variant} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      title={title}
     >
       {children}
     </button>
@@ -47,6 +48,7 @@ const NEWS_ICONS = {
   title: '🏆',
   trending: '📈',
   facility: '🏋️',
+  retirement: '🎗️',
 };
 
 export function NewsCategoryIcon({ category }) {

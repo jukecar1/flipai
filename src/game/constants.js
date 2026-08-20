@@ -71,3 +71,13 @@ export function rosterLimitForGym(level) {
 // How many prospects you're shown to draft your starting roster from at
 // career creation — you pick GYM_LEVELS[0].rosterLimit of them.
 export const STARTING_ROSTER_POOL_SIZE = 20;
+
+// Fighters retire once they hit this age — either into the Hall of Fame
+// (if their career earns it) or just a quiet exit.
+export const RETIREMENT_AGE = 39;
+
+// The amateur feeder tier: cheap, unproven signings you can promote to
+// the real roster once they've built a small amateur record.
+export const AMATEUR_SIGN_COST = 400;
+export const AMATEUR_PROMOTION_WINS = 3;
+export const AMATEUR_POOL_LIMIT = 6;

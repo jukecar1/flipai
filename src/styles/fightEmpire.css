@@ -647,6 +647,53 @@ button, select, input {
   gap: 16px;
 }
 
+.fe-hub-gym-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* A slim scrolling headline strip along the bottom of the Hub — the
+   content repeats back-to-back so the loop has no visible seam. */
+.fe-ticker {
+  margin-top: 16px;
+  overflow: hidden;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: var(--fe-radius);
+  padding: 9px 0;
+}
+
+.fe-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: fe-ticker-scroll 38s linear infinite;
+}
+
+.fe-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--fe-text-dim);
+  padding: 0 28px;
+  border-right: 1px solid var(--fe-border);
+}
+
+@keyframes fe-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fe-ticker-track {
+    animation: none;
+    overflow-x: auto;
+  }
+}
+
 .fe-boxer-list, .fe-fight-list, .fe-opponent-list {
   display: flex;
   flex-direction: column;
@@ -788,12 +835,28 @@ button, select, input {
 
 .fe-roster-head, .fe-roster-row {
   display: grid;
-  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 1fr 0.9fr 0.9fr;
+  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 1fr 0.9fr 0.9fr 0.7fr;
   gap: 8px;
   padding: 8px 6px;
   align-items: center;
   font-size: 12.5px;
-  min-width: 860px;
+  min-width: 950px;
+}
+
+.fe-retire-btn {
+  background: none;
+  border: 1px solid var(--fe-border-light);
+  color: var(--fe-text-dim);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.fe-retire-btn:hover {
+  border-color: var(--fe-red);
+  color: var(--fe-red);
 }
 
 .fe-roster-head {
@@ -840,6 +903,98 @@ button, select, input {
 .fe-belt-badge {
   margin-left: 6px;
   font-size: 12px;
+}
+
+/* ---------- Gyms ---------- */
+
+.fe-gym-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.fe-gym-tier {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.fe-gym-tier-level {
+  font-family: var(--fe-font-display);
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+
+.fe-gym-tier-limit {
+  color: var(--fe-gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fe-gym-tier-cost {
+  color: var(--fe-text-dim);
+  font-size: 11px;
+}
+
+.fe-gym-tier-current {
+  border-color: var(--fe-red);
+  background: rgba(226, 38, 58, 0.12);
+}
+
+.fe-gym-tier-done {
+  border-color: var(--fe-teal);
+}
+
+.fe-gym-tier-done .fe-gym-tier-level::after {
+  content: ' ✓';
+  color: var(--fe-teal);
+}
+
+.fe-gym-tier-locked {
+  opacity: 0.55;
+}
+
+/* ---------- Bouts (fight history) ---------- */
+
+.fe-bouts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fe-bout-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: var(--fe-panel-alt);
+  font-size: 13px;
+}
+
+.fe-bout-result {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.fe-bout-win {
+  color: var(--fe-teal);
+}
+
+.fe-bout-loss {
+  color: var(--fe-red);
+}
+
+.fe-bout-draw {
+  color: var(--fe-gold);
 }
 
 .fe-scout-candidates {
@@ -1655,7 +1810,7 @@ button, select, input {
     min-width: 0;
   }
   .fe-roster-head, .fe-roster-row {
-    min-width: 780px;
+    min-width: 860px;
   }
   .fe-fs-body {
     grid-template-columns: 1fr;

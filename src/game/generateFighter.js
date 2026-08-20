@@ -22,8 +22,8 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
 
   const { name, nationality } = randomFighterName();
 
-  const baseFloor = level === 'contender' ? 12 : level === 'gatekeeper' ? 9 : 5;
-  const baseCeil = level === 'contender' ? 19 : level === 'gatekeeper' ? 15 : 12;
+  const baseFloor = level === 'contender' ? 12 : level === 'gatekeeper' ? 9 : level === 'amateur' ? 3 : 5;
+  const baseCeil = level === 'contender' ? 19 : level === 'gatekeeper' ? 15 : level === 'amateur' ? 9 : 12;
   const archetype = ARCHETYPES[randInt(0, ARCHETYPES.length - 1)];
 
   const roll = () => randInt(baseFloor, baseCeil);
@@ -45,17 +45,18 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
     (stats.striking + stats.wrestling + stats.submission + stats.chin + stats.cardio) / 5
   );
 
-  const age = randInt(19, 36);
-  const wins = level === 'prospect' ? randInt(0, 3) : level === 'gatekeeper' ? randInt(8, 18) : randInt(15, 30);
-  const losses = level === 'prospect' ? (Math.random() < 0.15 ? 1 : 0) : randInt(0, 6);
-  const draws = Math.random() < 0.05 ? 1 : 0;
+  const age = level === 'amateur' ? randInt(18, 23) : randInt(19, 36);
+  const wins = level === 'amateur' ? 0 : level === 'prospect' ? randInt(0, 3) : level === 'gatekeeper' ? randInt(8, 18) : randInt(15, 30);
+  const losses = level === 'amateur' ? 0 : level === 'prospect' ? (Math.random() < 0.15 ? 1 : 0) : randInt(0, 6);
+  const draws = level === 'amateur' ? 0 : (Math.random() < 0.05 ? 1 : 0);
   const finishes = Math.round(wins * (0.35 + Math.random() * 0.4));
   const kos = Math.round(finishes * (archetype === 'wrestler' ? 0.3 : 0.6));
   const subs = finishes - kos;
 
-  // A fresh prospect has no following yet — a proven gatekeeper or
-  // contender has already built an audience through their record.
-  const followers = level === 'prospect' ? 0 : level === 'gatekeeper' ? randInt(500, 3000) : randInt(3000, 15000);
+  // A fresh prospect (or an unproven amateur) has no following yet — a
+  // proven gatekeeper or contender has already built an audience through
+  // their record.
+  const followers = level === 'prospect' || level === 'amateur' ? 0 : level === 'gatekeeper' ? randInt(500, 3000) : randInt(3000, 15000);
 
   return {
     id: seedId || `fx_${fighterCounter++}_${Date.now().toString(36)}`,
@@ -99,6 +100,12 @@ export function makeRosterCandidates(count = STARTING_ROSTER_POOL_SIZE) {
 // class to choose between, instead of silently handing you one.
 export function makeScoutCandidates(weightClassId, count = 3) {
   return Array.from({ length: count }, () => makeFighter({ weightClassId, level: 'prospect' }));
+}
+
+// Raw, unproven amateur talent — cheap to sign, no record or following
+// yet. A few of these turn up whenever you go looking for amateurs.
+export function makeAmateurCandidates(weightClassId, count = 3) {
+  return Array.from({ length: count }, () => makeFighter({ weightClassId, level: 'amateur' }));
 }
 
 export function makeOpponentPool(weightClassId, count = 12) {
