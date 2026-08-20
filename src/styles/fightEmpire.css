@@ -281,6 +281,7 @@ button, select, input {
   border-radius: var(--fe-radius);
   margin-bottom: 16px;
   overflow: hidden;
+  min-width: 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
 
@@ -730,6 +731,8 @@ button, select, input {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 16px;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .fe-hub-gym-snapshot {
@@ -1232,6 +1235,11 @@ button, select, input {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: start;
+  min-width: 0;
+  /* Safety net: if a column's contents ever refuse to shrink to their
+     track width, scroll instead of silently clipping — never let this
+     grid force the page itself wider than the viewport. */
+  overflow-x: auto;
 }
 
 .fe-matchup {
@@ -1478,6 +1486,8 @@ button, select, input {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   align-items: start;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .fe-leaderboard, .fe-champ-list, .fe-free-agent-list {
@@ -1611,6 +1621,8 @@ button, select, input {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 16px;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 /* ---------- Fight result ---------- */
@@ -1696,6 +1708,7 @@ button, select, input {
   display: grid;
   grid-template-columns: 110px 1fr 320px;
   gap: 14px;
+  min-width: 0;
 }
 
 .fe-fs-controls {
@@ -1797,6 +1810,28 @@ button, select, input {
   border-color: var(--fe-gold);
 }
 
+.fe-round-break-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(226, 38, 58, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 4px 14px;
+  font-family: var(--fe-font-display);
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  color: #fff;
+  text-transform: uppercase;
+  animation: fe-round-break-in 0.3s ease;
+}
+
+@keyframes fe-round-break-in {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .fe-fighter-dot {
   position: absolute;
   width: 34px;
@@ -1875,6 +1910,16 @@ button, select, input {
   background: var(--fe-gold);
 }
 
+.fe-pip-current {
+  box-shadow: 0 0 0 2px rgba(244, 185, 66, 0.5);
+  animation: fe-pip-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fe-pip-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+}
+
 .fe-beat-caption {
   position: absolute;
   bottom: 10px;
@@ -1909,6 +1954,17 @@ button, select, input {
   font-family: var(--fe-font-display);
   font-size: 24px;
   color: var(--fe-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.fe-clock-urgent {
+  color: var(--fe-red);
+  animation: fe-clock-pulse 1s ease-in-out infinite;
+}
+
+@keyframes fe-clock-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .fe-condition-row {
@@ -1921,6 +1977,25 @@ button, select, input {
   flex: 1;
   font-size: 11px;
   color: var(--fe-text-dim);
+  min-width: 0;
+}
+
+.fe-condition-label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fe-condition-label-row span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fe-condition-pct {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }
 
 .fe-condition-bar-track {
@@ -1933,7 +2008,25 @@ button, select, input {
 
 .fe-condition-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--fe-gold), var(--fe-red));
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.fe-condition-healthy {
+  background: linear-gradient(90deg, var(--fe-teal), var(--fe-gold));
+}
+
+.fe-condition-warning {
+  background: linear-gradient(90deg, var(--fe-gold), var(--fe-orange));
+}
+
+.fe-condition-critical {
+  background: linear-gradient(90deg, var(--fe-orange), var(--fe-red));
+  animation: fe-condition-throb 1s ease-in-out infinite;
+}
+
+@keyframes fe-condition-throb {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
 }
 
 .fe-fs-side {
@@ -1980,13 +2073,56 @@ button, select, input {
 }
 
 .fe-commentary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   color: var(--fe-text-dim);
   border-bottom: 1px dashed var(--fe-border);
-  padding-bottom: 6px;
+  border-left: 2px solid transparent;
+  padding: 0 0 6px 6px;
+  animation: fe-commentary-in 0.25s ease;
+}
+
+@keyframes fe-commentary-in {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .fe-commentary-item:first-child {
   color: var(--fe-text);
+}
+
+.fe-commentary-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.fe-commentary-time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--fe-text-dim);
+  font-size: 11px;
+}
+
+.fe-commentary-text {
+  min-width: 0;
+}
+
+.fe-ct-knockdown, .fe-ct-submission {
+  border-left-color: var(--fe-red);
+}
+
+.fe-ct-knockdown .fe-commentary-text, .fe-ct-submission .fe-commentary-text {
+  color: var(--fe-text);
+  font-weight: 700;
+}
+
+.fe-ct-takedown {
+  border-left-color: var(--fe-teal);
+}
+
+.fe-ct-miss {
+  opacity: 0.7;
 }
 
 .fe-stats-toggle {
@@ -2026,7 +2162,7 @@ button, select, input {
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .fe-hub, .fe-make-fights, .fe-news-screen, .fe-promotions {
     grid-template-columns: 1fr;
   }

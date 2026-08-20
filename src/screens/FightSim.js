@@ -23,6 +23,15 @@ const CATEGORY_LABEL = {
   submission: 'Sub. Attempts',
 };
 
+const BEAT_ICON = {
+  knockdown: '💥',
+  submission: '🔒',
+  takedown: '⬇️',
+  landed: '🥊',
+  miss: '·',
+  scramble: '↻',
+};
+
 export default function FightSim() {
   const state = useGameState();
   const dispatch = useGameDispatch();
@@ -80,15 +89,19 @@ export default function FightSim() {
     );
   }
 
-  let currentTick = ticks[Math.max(0, index - 1)] || ticks[0];
-  if (currentTick?.kind === 'fightEnd') {
-    // The sentinel end-of-fight tick carries no beat/round data — freeze
-    // the display on the last real moment instead of snapping back to
-    // Round 1 / 5:00 defaults.
-    for (let i = ticks.length - 1; i >= 0; i--) {
+  const rawIndex = Math.max(0, index - 1);
+  let currentTick = ticks[rawIndex] || ticks[0];
+  const rawTickKind = currentTick?.kind;
+  if (currentTick && rawTickKind !== 'beat') {
+    // The 'roundEnd' pause and the sentinel 'fightEnd' tick carry no
+    // beat/position data — freeze the display on the last real moment
+    // instead of snapping back to neutral/Round-1 defaults between
+    // rounds (or at the very end of the fight).
+    for (let i = rawIndex; i >= 0; i--) {
       if (ticks[i].kind === 'beat') { currentTick = ticks[i]; break; }
     }
   }
+  const isRoundBreak = rawTickKind === 'roundEnd';
   const currentRoundNum = currentTick?.roundNum || 1;
   const currentBeat = currentTick?.kind === 'beat' ? currentTick.beat : null;
   const isFinishMoment = currentBeat?.type === 'knockdown' || currentBeat?.type === 'submission';
@@ -156,7 +169,11 @@ export default function FightSim() {
           <div className={`fe-cage ${isFinishMoment ? 'fe-cage-flash' : ''}`}>
             <div className="fe-cage-fence" />
             <div className="fe-cage-badge">FIGHT<br />EMPIRE</div>
-            <div className={`fe-position-tag fe-position-${position}`}>{position === 'ground' ? 'On the ground' : 'Standing'}</div>
+            {isRoundBreak ? (
+              <div className="fe-round-break-banner">End of Round {currentRoundNum}</div>
+            ) : (
+              <div className={`fe-position-tag fe-position-${position}`}>{position === 'ground' ? 'On the ground' : 'Standing'}</div>
+            )}
             <div
               className={`fe-fighter-dot fe-fighter-a ${currentBeat?.actor === 'A' ? 'fe-fighter-acting' : ''}`}
               style={{ left: `${posA.x}%`, top: `${posA.y}%`, filter: `saturate(${1 - damageA / 200})` }}
@@ -169,14 +186,16 @@ export default function FightSim() {
             >
               <span>{opponent.name.split(' ').slice(-1)[0]}</span>
             </div>
-            {currentBeat && (
+            {currentBeat && !isRoundBreak && (
               <div className="fe-beat-caption">{currentBeat.text}</div>
             )}
           </div>
           <div className="fe-round-indicator">
             <div>FIGHT EMPIRE</div>
             <div>Round {currentRoundNum} of {activeFight.sim.rounds}</div>
-            <div className="fe-clock">{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</div>
+            <div className={`fe-clock ${secondsLeft <= 15 && !isFightOver ? 'fe-clock-urgent' : ''}`}>
+              {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+            </div>
             <div className="fe-scorecard-pips">
               {Array.from({ length: activeFight.sim.rounds }, (_, i) => {
                 const rd = completedRounds.find(r => r.roundNum === i + 1);
@@ -185,7 +204,8 @@ export default function FightSim() {
                   if (rd.scoreA === rd.scoreB) cls = 'draw';
                   else cls = rd.scoreA > rd.scoreB ? 'a' : 'b';
                 }
-                return <span key={i} className={`fe-pip fe-pip-${cls}`} />;
+                const isCurrent = !rd && i + 1 === currentRoundNum && !isFightOver;
+                return <span key={i} className={`fe-pip fe-pip-${cls} ${isCurrent ? 'fe-pip-current' : ''}`} />;
               })}
             </div>
           </div>
@@ -201,8 +221,10 @@ export default function FightSim() {
           </div>
           <div className="fe-commentary-log">
             {log.map(item => (
-              <div key={item.id} className="fe-commentary-item">
-                R{item.roundNum} {Math.floor(item.t / 60)}:{String(item.t % 60).padStart(2, '0')} — {item.text}
+              <div key={item.id} className={`fe-commentary-item fe-ct-${item.type}`}>
+                <span className="fe-commentary-icon">{BEAT_ICON[item.type] || '·'}</span>
+                <span className="fe-commentary-time">R{item.roundNum} {Math.floor(item.t / 60)}:{String(item.t % 60).padStart(2, '0')}</span>
+                <span className="fe-commentary-text">{item.text}</span>
               </div>
             ))}
           </div>
@@ -241,11 +263,16 @@ export default function FightSim() {
 }
 
 function ConditionBar({ label, damage, side }) {
+  const pct = Math.min(100, Math.max(0, damage));
+  const tier = pct >= 70 ? 'critical' : pct >= 40 ? 'warning' : 'healthy';
   return (
     <div className={`fe-condition fe-condition-${side}`}>
-      <span>{label}</span>
+      <div className="fe-condition-label-row">
+        <span>{label}</span>
+        <span className="fe-condition-pct">{Math.round(pct)}%</span>
+      </div>
       <div className="fe-condition-bar-track">
-        <div className="fe-condition-bar-fill" style={{ width: `${Math.min(100, damage)}%` }} />
+        <div className={`fe-condition-bar-fill fe-condition-${tier}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
