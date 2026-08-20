@@ -1973,6 +1973,27 @@ button, select, input {
   gap: 10px;
 }
 
+.fe-corner-panel {
+  background: var(--fe-panel);
+  border: 1px solid var(--fe-gold);
+  border-radius: var(--fe-radius);
+  padding: 14px 16px;
+  animation: fe-corner-in 0.25s ease;
+}
+
+@keyframes fe-corner-in {
+  0% { opacity: 0; transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.fe-corner-header {
+  font-family: var(--fe-font-display);
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: var(--fe-gold);
+  margin-bottom: 4px;
+}
+
 .fe-condition {
   flex: 1;
   font-size: 11px;

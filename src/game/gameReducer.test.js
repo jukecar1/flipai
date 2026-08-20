@@ -51,6 +51,14 @@ function bookMainEvent(state, fighterId) {
   return gameReducer(state, { type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
 }
 
+// PREPARE_FIGHT_SIM (and the round-by-round actions built on it) look the
+// opponent up live via findFighterAnywhere(state, opponentId), so tests
+// that actually simulate a fight need the fixture present in the world
+// pool — real bookings always source their opponent from there already.
+function withLiveOpponent(state) {
+  return { ...state, worldPool: { ...state.worldPool, FLW: [...(state.worldPool.FLW || []), opponent] } };
+}
+
 function resolveWithResult(state, fightId, fighterId, oppId, method, winnerId) {
   const activeState = {
     ...state,
@@ -84,7 +92,7 @@ test('a high-overall fighter booking a Main Event against a vacant division gets
 });
 
 test('winning a title fight crowns the fighter and flags them on the roster', () => {
-  let state = bookMainEvent(baseState(), 'champ1');
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
 
@@ -95,7 +103,7 @@ test('winning a title fight crowns the fighter and flags them on the roster', ()
 });
 
 test('a successful defense increments the defense count', () => {
-  let state = bookMainEvent(baseState(), 'champ1');
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
   let fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.roster.find(f => f.id === 'champ1').injuryWeeks).toBe(0); // no injury with 0 damage taken
@@ -109,7 +117,7 @@ test('a successful defense increments the defense count', () => {
 });
 
 test('losing a title fight vacates the belt', () => {
-  let state = bookMainEvent(baseState(), 'champ1');
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
   let fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.titles.FLW.holderId).toBe('champ1');
@@ -151,7 +159,7 @@ test('drawMultiplier scales purse potential with combined followers, capped', ()
 });
 
 test('a big follower spike (title win by finish) generates a trending news item', () => {
-  let state = bookMainEvent(baseState(), 'champ1');
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'champ1');
   expect(state.news.some(n => n.category === 'trending')).toBe(true);
@@ -220,7 +228,7 @@ test('upgrading the gym without enough funds does nothing', () => {
 });
 
 test('retiring a champion vacates the belt and removes them from the roster', () => {
-  let state = bookMainEvent(baseState(), 'champ1');
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.titles.FLW.holderId).toBe('champ1');
@@ -445,4 +453,64 @@ test('starting a career with a chosen champion crowns them and boosts starting p
 test('starting a career with no champion leaves every title vacant', () => {
   const state = baseState();
   expect(Object.keys(state.titles).length).toBe(0);
+});
+
+test('PREPARE_FIGHT_SIM simulates only Round 1 and pauses for a between-rounds gameplan', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  const active = state.activeFight;
+  expect(active.sim.roundsData).toHaveLength(1);
+  expect(active.session).toBeTruthy();
+  if (!active.finished) {
+    expect(active.sim.result).toBeNull();
+  } else {
+    // the fight can still end in Round 1 via KO/TKO/SUB
+    expect(active.sim.result).toBeTruthy();
+  }
+});
+
+test('ADVANCE_FIGHT_ROUND simulates the next round and can change gameplan mid-fight', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  const wasFinished = state.activeFight.finished;
+  state = gameReducer(state, { type: 'ADVANCE_FIGHT_ROUND', gameplan: 'pressure' });
+  if (wasFinished) {
+    expect(state.activeFight.sim.roundsData).toHaveLength(1);
+  } else {
+    expect(state.activeFight.sim.roundsData).toHaveLength(2);
+    expect(state.activeFight.gameplan).toBe('pressure');
+  }
+});
+
+test('ADVANCE_FIGHT_ROUND is a no-op once the fight is already finished', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  state = gameReducer(state, { type: 'SKIP_FIGHT_TO_END' });
+  const finishedState = state;
+  state = gameReducer(state, { type: 'ADVANCE_FIGHT_ROUND', gameplan: 'finish' });
+  expect(state).toBe(finishedState);
+});
+
+test('SKIP_FIGHT_TO_END resolves every remaining round into a final result', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  state = gameReducer(state, { type: 'SKIP_FIGHT_TO_END' });
+  const active = state.activeFight;
+  expect(active.finished).toBe(true);
+  expect(active.sim.roundsData.length).toBeGreaterThanOrEqual(1);
+  expect(active.sim.roundsData.length).toBeLessThanOrEqual(5);
+  expect(['KO', 'TKO', 'SUB', 'UD', 'SD', 'MD', 'DRAW']).toContain(active.sim.result.method);
+});
+
+test('PREPARE_FIGHT_SIM resolves the whole fight at once when autoSkipFights is on', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  state = { ...state, meta: { ...state.meta, autoSkipFights: true } };
+  const fight = state.scheduledFights[0];
+  state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  expect(state.activeFight.finished).toBe(true);
+  expect(state.activeFight.sim.result).toBeTruthy();
 });

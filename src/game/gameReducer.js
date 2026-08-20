@@ -7,7 +7,7 @@ import {
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, randomFighterName } from './namePool';
-import { simulateFight } from './engine';
+import { simulateFight, initFightSession, simulateFightRound, computeFightResult } from './engine';
 
 const COACH_SPECIALTIES = STAT_KEYS;
 
@@ -43,6 +43,28 @@ function applyGameplan(fighter, gameplanId) {
     return { ...fighter, stats: { ...stats, submission: clampStat(stats.submission + 2), striking: clampStat(stats.striking + 1), chin: clampStat(stats.chin - 2) } };
   }
   return fighter;
+}
+
+// Simulates one round (mode 'one', used when the player is watching and
+// gets a between-rounds gameplan check-in) or every remaining round back
+// to back (mode 'all', used for "Skip to Result" and for a fully-resolved
+// fight when autoSkipFights is on). Returns the newly-simulated round(s),
+// the final stoppage descriptor if the fight ended, and the carried-over
+// session state for whatever rounds remain after that.
+function runFightRounds(fighter, opponent, gameplanId, session, fromRound, totalRounds, mode) {
+  const gameplanFighter = applyGameplan(fighter, gameplanId);
+  const roundsOut = [];
+  let stoppedOut = null;
+  let s = session;
+  let r = fromRound;
+  do {
+    const { roundData, stopped, session: next } = simulateFightRound(s, gameplanFighter, opponent, r);
+    s = next;
+    roundsOut.push(roundData);
+    stoppedOut = stopped;
+    r++;
+  } while (mode === 'all' && !stoppedOut && r <= totalRounds);
+  return { roundsData: roundsOut, stopped: stoppedOut, session: s };
 }
 
 function randomContractLength() {
@@ -702,20 +724,84 @@ export function gameReducer(state, action) {
       if (!fight) return state;
       const fighter = findFighterAnywhere(state, fight.fighterId);
       const opponent = findFighterAnywhere(state, fight.opponentId);
-      // The gameplan only reshapes your own fighter's effective stats for
-      // this sim — the engine itself is untouched.
-      const gameplanFighter = applyGameplan(fighter, fight.gameplan);
-      const sim = simulateFight(gameplanFighter, opponent, { rounds: fight.rounds || 3 });
+      const rounds = fight.rounds || 3;
+
+      // With "auto-skip fights" on, the player never watches — resolve the
+      // whole thing at once with the pre-fight gameplan locked in, same as
+      // the game always worked before between-rounds adjustments existed.
+      if (state.meta.autoSkipFights) {
+        const gameplanFighter = applyGameplan(fighter, fight.gameplan);
+        const sim = simulateFight(gameplanFighter, opponent, { rounds });
+        return {
+          ...state,
+          activeFight: { fightId: fight.id, fighterId: fighter.id, opponentId: opponent.id, gameplan: fight.gameplan, finished: true, sim },
+          ui: { ...state.ui, screen: 'fightSim' },
+        };
+      }
+
+      // Otherwise simulate just Round 1 — the reducer pauses here and
+      // waits for ADVANCE_FIGHT_ROUND (or SKIP_FIGHT_TO_END) so the player
+      // can adjust their gameplan between rounds, corner-style.
+      const session = initFightSession(fighter, opponent);
+      const { roundsData, stopped, session: nextSession } = runFightRounds(fighter, opponent, fight.gameplan, session, 1, rounds, 'one');
+      const finished = !!stopped || rounds <= 1;
+      const totalStats = { A: nextSession.A.stats, B: nextSession.B.stats };
+      const result = finished ? computeFightResult(fighter.id, opponent.id, roundsData, stopped, rounds, totalStats) : null;
       return {
         ...state,
-        activeFight: { fightId: fight.id, sim, fighterId: fighter.id, opponentId: opponent.id },
+        activeFight: {
+          fightId: fight.id,
+          fighterId: fighter.id,
+          opponentId: opponent.id,
+          gameplan: fight.gameplan,
+          session: nextSession,
+          stoppedAt: stopped,
+          finished,
+          sim: { fighterAId: fighter.id, fighterBId: opponent.id, rounds, roundsData, result },
+        },
         ui: { ...state.ui, screen: 'fightSim' },
+      };
+    }
+
+    case 'ADVANCE_FIGHT_ROUND': {
+      const active = state.activeFight;
+      if (!active || active.finished || !active.session) return state;
+      const fighter = findFighterAnywhere(state, active.fighterId);
+      const opponent = findFighterAnywhere(state, active.opponentId);
+      const gameplan = action.gameplan || active.gameplan;
+      const nextRoundNum = active.sim.roundsData.length + 1;
+      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, gameplan, active.session, nextRoundNum, active.sim.rounds, 'one');
+      const roundsData = [...active.sim.roundsData, ...newRounds];
+      const stoppedAt = stopped || active.stoppedAt;
+      const finished = !!stopped || nextRoundNum >= active.sim.rounds;
+      const totalStats = { A: session.A.stats, B: session.B.stats };
+      const result = finished ? computeFightResult(active.fighterId, active.opponentId, roundsData, stoppedAt, active.sim.rounds, totalStats) : null;
+      return {
+        ...state,
+        activeFight: { ...active, gameplan, session, stoppedAt, finished, sim: { ...active.sim, roundsData, result } },
+      };
+    }
+
+    case 'SKIP_FIGHT_TO_END': {
+      const active = state.activeFight;
+      if (!active || active.finished || !active.session) return state;
+      const fighter = findFighterAnywhere(state, active.fighterId);
+      const opponent = findFighterAnywhere(state, active.opponentId);
+      const nextRoundNum = active.sim.roundsData.length + 1;
+      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, active.gameplan, active.session, nextRoundNum, active.sim.rounds, 'all');
+      const roundsData = [...active.sim.roundsData, ...newRounds];
+      const stoppedAt = stopped || active.stoppedAt;
+      const totalStats = { A: session.A.stats, B: session.B.stats };
+      const result = computeFightResult(active.fighterId, active.opponentId, roundsData, stoppedAt, active.sim.rounds, totalStats);
+      return {
+        ...state,
+        activeFight: { ...active, session, stoppedAt, finished: true, sim: { ...active.sim, roundsData, result } },
       };
     }
 
     case 'RESOLVE_FIGHT': {
       const active = state.activeFight;
-      if (!active) return state;
+      if (!active || !active.sim.result) return state;
       const fight = state.scheduledFights.find(f => f.id === active.fightId);
       const { result } = active.sim;
 

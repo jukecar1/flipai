@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { WEIGHT_CLASS_MAP } from '../game/constants';
+import { WEIGHT_CLASS_MAP, GAMEPLANS } from '../game/constants';
 import { Panel, Button, Flag } from '../components/UI';
 
 const SPEEDS = [1, 2, 4, 8];
 const LANDED_TYPES = new Set(['landed', 'knockdown', 'takedown', 'submission']);
 
-function buildTicks(sim) {
+// Only append the sentinel "fight's truly over" tick once the fight is
+// actually finished — while a between-rounds gameplan check-in is pending,
+// ticks just end at the last completed round's roundEnd, and playback
+// pauses there naturally (see the autoplay effect below).
+function buildTicks(sim, finished) {
   const ticks = [];
   sim.roundsData.forEach(rd => {
     rd.beats.forEach(beat => ticks.push({ kind: 'beat', roundNum: rd.roundNum, beat }));
     ticks.push({ kind: 'roundEnd', roundNum: rd.roundNum, round: rd });
   });
-  ticks.push({ kind: 'fightEnd' });
+  if (finished) ticks.push({ kind: 'fightEnd' });
   return ticks;
 }
 
@@ -41,13 +45,16 @@ export default function FightSim() {
   const opponent = useMemo(() => Object.values(worldPool).flat().find(f => f.id === activeFight?.opponentId), [worldPool, activeFight]);
   const fightMeta = state.scheduledFights.find(f => f.id === activeFight?.fightId);
 
-  const ticks = useMemo(() => (activeFight ? buildTicks(activeFight.sim) : []), [activeFight]);
+  const finished = !!activeFight?.finished;
+  const ticks = useMemo(() => (activeFight ? buildTicks(activeFight.sim, finished) : []), [activeFight, finished]);
 
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [statsView, setStatsView] = useState('round'); // 'round' | 'fight'
   const [log, setLog] = useState([]);
+  const [pendingGameplan, setPendingGameplan] = useState(null);
+  const [skipPending, setSkipPending] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -66,18 +73,45 @@ export default function FightSim() {
     }
   }, [index, ticks]);
 
-  const skipToEnd = () => {
-    setPlaying(false);
+  const snapToEnd = () => {
     setIndex(ticks.length);
     const allBeats = ticks.filter(t => t.kind === 'beat' && t.beat.actor).map((t, i) => ({ ...t.beat, roundNum: t.roundNum, id: `end-${i}` }));
     setLog(allBeats.slice(-40).reverse());
   };
+
+  const skipToEnd = () => {
+    setPlaying(false);
+    if (!finished) {
+      dispatch({ type: 'SKIP_FIGHT_TO_END' });
+      setSkipPending(true);
+      return;
+    }
+    snapToEnd();
+  };
+
+  // A "Skip to Result" click mid-fight dispatches SKIP_FIGHT_TO_END, which
+  // resolves asynchronously (next render) — once it lands, snap the local
+  // playback cursor straight to the now-complete tick list.
+  useEffect(() => {
+    if (skipPending && finished) {
+      snapToEnd();
+      setSkipPending(false);
+    }
+    // snapToEnd reads ticks/log fresh each call; only re-run on the signals above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipPending, finished, ticks]);
 
   useEffect(() => {
     if (state.meta.autoSkipFights) skipToEnd();
     // Only re-run when a new fight starts, not on every skipToEnd/setting change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFight?.fightId]);
+
+  const continueRound = () => {
+    dispatch({ type: 'ADVANCE_FIGHT_ROUND', gameplan: pendingGameplan || activeFight.gameplan });
+    setPendingGameplan(null);
+    setPlaying(true);
+  };
 
   if (!activeFight || !fighter || !opponent) {
     return (
@@ -113,7 +147,11 @@ export default function FightSim() {
   const damageB = currentBeat?.damageB ?? 0;
   const secondsLeft = currentBeat?.t ?? 300;
   const position = currentBeat?.position || 'standing';
-  const isFightOver = index >= ticks.length;
+  const reachedEnd = index >= ticks.length;
+  const isFightOver = reachedEnd && finished;
+  // Playback caught up to the last simulated round but the fight itself
+  // isn't over — pause for a corner/gameplan check-in before Round N+1.
+  const awaitingGameplan = reachedEnd && !finished && !skipPending;
 
   const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
 
@@ -137,6 +175,8 @@ export default function FightSim() {
   const tallyB = tallyByCategory('B');
   const sumThrown = t => Object.values(t).reduce((s, c) => s + c.thrown, 0);
   const sumLanded = t => Object.values(t).reduce((s, c) => s + c.landed, 0);
+
+  const activeGameplanId = pendingGameplan || activeFight.gameplan;
 
   return (
     <div className="fe-fight-sim">
@@ -213,6 +253,29 @@ export default function FightSim() {
             <ConditionBar label={fighter.name} damage={damageA} side="left" />
             <ConditionBar label={opponent.name} damage={damageB} side="right" />
           </div>
+
+          {awaitingGameplan && (
+            <div className="fe-corner-panel">
+              <div className="fe-corner-header">🥊 Corner — Round {currentRoundNum + 1} Coming Up</div>
+              <p className="fe-hint">Stick with the gameplan or adjust it based on how that round went.</p>
+              <div className="fe-wc-tabs">
+                {GAMEPLANS.map(g => (
+                  <button
+                    key={g.id}
+                    className={`fe-wc-tab ${activeGameplanId === g.id ? 'active' : ''}`}
+                    onClick={() => setPendingGameplan(g.id)}
+                    title={g.description}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+              <p className="fe-hint">{GAMEPLANS.find(g => g.id === activeGameplanId)?.description}</p>
+              <Button variant="advance" onClick={continueRound} className="fe-confirm-btn">
+                Continue to Round {currentRoundNum + 1}
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="fe-fs-side">
