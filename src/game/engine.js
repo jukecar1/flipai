@@ -1,9 +1,6 @@
-// Fight Empire — fight simulation engine.
-// Produces a full, deterministic-per-call simulation up front (round by round,
-// beat by beat) which the FightSim screen then "plays back" for the animated view.
-
-const PUNCH_TYPES = ['jab', 'cross', 'leadHook', 'rearHook', 'leadUppercut', 'rearUppercut'];
-const POWER_PUNCHES = new Set(['cross', 'leadHook', 'rearHook', 'leadUppercut', 'rearUppercut']);
+// Fight Empire — MMA fight simulation engine.
+// Produces a full simulation up front (round by round, beat by beat) which
+// the FightSim screen then "plays back" for the animated cage view.
 
 function rand() {
   return Math.random();
@@ -21,46 +18,35 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-function emptyPunchStats() {
-  const s = {};
-  PUNCH_TYPES.forEach(p => (s[p] = { thrown: 0, landed: 0 }));
-  return s;
+const STRIKE_FLAVORS = ['jab', 'cross', 'hook', 'head kick', 'leg kick', 'body kick'];
+const GROUND_STRIKE_FLAVORS = ['ground-and-pound', 'elbow'];
+const SUB_FLAVORS = ['rear-naked choke', 'armbar', 'triangle choke', 'guillotine', 'kimura', 'D\'Arce choke'];
+
+function emptyActionStats() {
+  return {
+    strikes: { thrown: 0, landed: 0 },
+    groundStrikes: { thrown: 0, landed: 0 },
+    takedowns: { thrown: 0, landed: 0 },
+    submissions: { thrown: 0, landed: 0 },
+    controlBeats: 0,
+  };
 }
 
-function totalThrown(stats) {
-  return PUNCH_TYPES.reduce((sum, p) => sum + stats[p].thrown, 0);
-}
-function totalLanded(stats) {
-  return PUNCH_TYPES.reduce((sum, p) => sum + stats[p].landed, 0);
-}
-
-const PUNCH_LABEL = {
-  jab: 'jab',
-  cross: 'straight right',
-  leadHook: 'lead hook',
-  rearHook: 'rear hook',
-  leadUppercut: 'lead uppercut',
-  rearUppercut: 'rear uppercut',
-};
-
-function commentaryFor(actorName, oppName, punch, landed, isBody) {
-  const label = PUNCH_LABEL[punch] + (isBody ? ' to the body' : '');
+function commentaryStrike(actorName, oppName, flavor, landed) {
   if (landed) {
-    const templates = [
-      `${actorName} lands a sharp ${label}`,
-      `${actorName} finds the mark with the ${label}`,
-      `Clean ${label} from ${actorName}`,
-      `${actorName} scores with the ${label} — ${oppName} feels that one`,
-    ];
-    return pick(templates);
+    return pick([
+      `${actorName} lands a sharp ${flavor}`,
+      `${actorName} finds the mark with the ${flavor}`,
+      `Clean ${flavor} from ${actorName}`,
+      `${actorName} scores with the ${flavor} — ${oppName} feels that one`,
+    ]);
   }
-  const templates = [
-    `${actorName} throws the ${label} but it's blocked`,
-    `${oppName} slips the ${label}`,
-    `${actorName} reaches with the ${label} but it's wide`,
-    `${oppName} evades — ${actorName}'s ${label} misses`,
-  ];
-  return pick(templates);
+  return pick([
+    `${actorName} throws the ${flavor} but it's blocked`,
+    `${oppName} slips the ${flavor}`,
+    `${actorName} reaches with the ${flavor} but it's short`,
+    `${oppName} avoids — ${actorName}'s ${flavor} misses`,
+  ]);
 }
 
 function walk(pos) {
@@ -70,34 +56,41 @@ function walk(pos) {
 }
 
 /**
- * Simulate a full fight between two boxers.
- * @param {object} boxerA
- * @param {object} boxerB
+ * Simulate a full MMA fight between two fighters.
+ * @param {object} fighterA
+ * @param {object} fighterB
  * @param {object} opts { rounds }
  */
-export function simulateFight(boxerA, boxerB, opts = {}) {
-  const rounds = opts.rounds || 8;
-  const beatsPerRound = 14;
+export function simulateFight(fighterA, fighterB, opts = {}) {
+  const rounds = opts.rounds || 3;
+  const beatsPerRound = 16;
 
   const fighters = {
-    A: { ref: boxerA, damage: 0, energy: 100, punches: emptyPunchStats(), knockdowns: 0, pos: { x: 35, y: 50 } },
-    B: { ref: boxerB, damage: 0, energy: 100, punches: emptyPunchStats(), knockdowns: 0, pos: { x: 65, y: 50 } },
+    A: { ref: fighterA, damage: 0, cardio: 100, stats: emptyActionStats(), pos: { x: 35, y: 50 } },
+    B: { ref: fighterB, damage: 0, cardio: 100, stats: emptyActionStats(), pos: { x: 65, y: 50 } },
   };
 
   const roundsData = [];
-  let stoppedAt = null; // { roundNum, method }
+  let stoppedAt = null; // { roundNum, method, loserKey }
 
   outer: for (let r = 1; r <= rounds; r++) {
     const beats = [];
-    const roundLanded = { A: 0, B: 0 };
+    const roundScore = { A: 0, B: 0 };
+    let position = 'standing';
+    let topKey = null;
 
-    // energy recovers a bit between rounds
-    fighters.A.energy = clamp(fighters.A.energy + 12, 0, 100);
-    fighters.B.energy = clamp(fighters.B.energy + 12, 0, 100);
+    fighters.A.cardio = clamp(fighters.A.cardio + 15, 0, 100);
+    fighters.B.cardio = clamp(fighters.B.cardio + 15, 0, 100);
 
     for (let b = 0; b < beatsPerRound; b++) {
-      const secondsRemaining = Math.round(180 - (b / beatsPerRound) * 180);
-      const actorKey = rand() < 0.5 ? 'A' : 'B';
+      const secondsRemaining = Math.round(300 - (b / beatsPerRound) * 300);
+
+      let actorKey;
+      if (position === 'standing') {
+        actorKey = rand() < 0.5 ? 'A' : 'B';
+      } else {
+        actorKey = rand() < 0.7 ? topKey : (topKey === 'A' ? 'B' : 'A');
+      }
       const oppKey = actorKey === 'A' ? 'B' : 'A';
       const actor = fighters[actorKey];
       const opp = fighters[oppKey];
@@ -105,123 +98,197 @@ export function simulateFight(boxerA, boxerB, opts = {}) {
       actor.pos = walk(actor.pos);
       opp.pos = walk(opp.pos);
 
-      // idle/movement beat sometimes, more likely when both fresh
-      if (rand() < 0.18) {
+      if (position === 'ground' && actorKey === topKey) {
+        fighters[topKey].stats.controlBeats++;
+        roundScore[topKey] += 0.4;
+      }
+
+      const staminaFactor = actor.cardio / 100;
+
+      // idle/positioning beat, more common when both are fresh
+      if (rand() < (position === 'standing' ? 0.16 : 0.1)) {
         beats.push({
           t: secondsRemaining,
           actor: null,
           type: 'move',
-          text: pick(['on the move', 'circling', 'feeling it out', 'resets in the center', 'working the jab from range']),
+          text: position === 'standing'
+            ? pick(['circling', 'feeling it out', 'resets in the center', 'working behind the jab', 'measures distance'])
+            : pick(['working for position', 'posturing up', 'controlling from top', 'looking for an opening']),
           posA: { ...fighters.A.pos },
           posB: { ...fighters.B.pos },
           damageA: fighters.A.damage,
           damageB: fighters.B.damage,
+          position,
         });
         continue;
       }
 
-      const isBody = rand() < 0.22;
-      const punchWeights = actor.energy > 40 ? [0.4, 0.14, 0.14, 0.14, 0.09, 0.09] : [0.6, 0.1, 0.1, 0.1, 0.05, 0.05];
-      let roll = rand();
-      let punch = 'jab';
-      let acc = 0;
-      for (let i = 0; i < PUNCH_TYPES.length; i++) {
-        acc += punchWeights[i];
-        if (roll <= acc) {
-          punch = PUNCH_TYPES[i];
-          break;
+      let event = null;
+
+      if (position === 'standing') {
+        const pTakedown = clamp(0.14 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.012, 0.04, 0.45);
+        if (rand() < pTakedown) {
+          actor.stats.takedowns.thrown++;
+          const successChance = clamp(0.32 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.025, 0.08, 0.85);
+          const landed = rand() < successChance;
+          actor.cardio = clamp(actor.cardio - 5, 0, 100);
+          if (landed) {
+            actor.stats.takedowns.landed++;
+            position = 'ground';
+            topKey = actorKey;
+            roundScore[actorKey] += 3;
+            event = { type: 'takedown', category: 'takedown', text: `${actor.ref.name} scores a takedown on ${opp.ref.name}!` };
+          } else {
+            event = { type: 'miss', category: 'takedown', text: `${opp.ref.name} stuffs the takedown attempt` };
+          }
+        } else {
+          const flavor = pick(STRIKE_FLAVORS);
+          actor.stats.strikes.thrown++;
+          const landChance = clamp(0.44 + (actor.ref.stats.striking - opp.ref.stats.striking) * 0.014 * staminaFactor, 0.1, 0.85);
+          const landed = rand() < landChance;
+          actor.cardio = clamp(actor.cardio - 2, 0, 100);
+          let knockdown = false;
+          if (landed) {
+            actor.stats.strikes.landed++;
+            roundScore[actorKey] += 1;
+            const power = actor.ref.stats.striking;
+            const rawDamage = (power / opp.ref.stats.chin) * (flavor.includes('kick') ? 3.2 : 2.4) * (0.7 + rand() * 0.6);
+            const damageDelt = clamp(rawDamage, 0.3, 9);
+            opp.damage = clamp(opp.damage + damageDelt, 0, 100);
+            const kdChance = clamp((damageDelt / 100) * 1.5 + (opp.damage / 100) * 0.25, 0, 0.5);
+            if (rand() < kdChance) knockdown = true;
+          }
+          event = {
+            type: knockdown ? 'knockdown' : landed ? 'landed' : 'miss',
+            category: 'strike',
+            text: knockdown
+              ? `${opp.ref.name} is HURT and DOWN! Huge ${flavor} from ${actor.ref.name}!`
+              : commentaryStrike(actor.ref.name, opp.ref.name, flavor, landed),
+          };
+          if (knockdown) {
+            const surviveChance = clamp(1 - opp.damage / 100 - (0.5 - opp.ref.stats.chin / 40), 0.05, 0.95);
+            if (rand() > surviveChance || opp.damage >= 96) {
+              beats.push({ t: secondsRemaining, actor: actorKey, ...event, posA: { ...fighters.A.pos }, posB: { ...fighters.B.pos }, damageA: fighters.A.damage, damageB: fighters.B.damage, position });
+              stoppedAt = { roundNum: r, method: opp.damage >= 98 ? 'KO' : 'TKO', loserKey: oppKey };
+              roundsData.push(finishRound(r, beats, roundScore, fighters));
+              break outer;
+            }
+            opp.damage = clamp(opp.damage - 15, 0, 100);
+          }
         }
-      }
-
-      actor.punches[punch].thrown++;
-
-      const speedDiff = actor.ref.stats.speed - opp.ref.stats.defense;
-      const staminaFactor = actor.energy / 100;
-      const baseChance = punch === 'jab' ? 0.42 : 0.3;
-      const landChance = clamp(baseChance + speedDiff * 0.015 * staminaFactor, 0.08, 0.85);
-      const landed = rand() < landChance;
-
-      const energyCost = punch === 'jab' ? 1.5 : 3.2;
-      actor.energy = clamp(actor.energy - energyCost, 0, 100);
-
-      let damageDelt = 0;
-      let knockdown = false;
-
-      if (landed) {
-        actor.punches[punch].landed++;
-        roundLanded[actorKey]++;
-
-        const power = POWER_PUNCHES.has(punch) ? actor.ref.stats.power : actor.ref.stats.power * 0.4;
-        const chin = opp.ref.stats.chin;
-        const rawDamage = (power / chin) * (isBody ? 3.5 : 2.6) * (0.7 + rand() * 0.6);
-        damageDelt = clamp(rawDamage, 0.3, 9);
-        opp.damage = clamp(opp.damage + damageDelt, 0, 100);
-
-        // knockdown chance scales with damage dealt and how hurt opponent already is
-        if (POWER_PUNCHES.has(punch)) {
-          const kdChance = clamp((damageDelt / 100) * 1.4 + (opp.damage / 100) * 0.25, 0, 0.5);
-          if (rand() < kdChance) {
-            knockdown = true;
-            opp.knockdowns++;
+      } else {
+        // ground position
+        const isTop = actorKey === topKey;
+        if (isTop) {
+          const roll = rand();
+          if (roll < 0.22) {
+            // submission attempt
+            actor.stats.submissions.thrown++;
+            const flavor = pick(SUB_FLAVORS);
+            const subChance = clamp(0.1 + (actor.ref.stats.submission - (opp.ref.stats.chin + opp.ref.stats.wrestling) / 2) * 0.02, 0.02, 0.4);
+            if (rand() < subChance) {
+              actor.stats.submissions.landed++;
+              event = { type: 'submission', category: 'submission', text: `${actor.ref.name} locks in a ${flavor}! ${opp.ref.name} has nowhere to go!` };
+              beats.push({ t: secondsRemaining, actor: actorKey, ...event, posA: { ...fighters.A.pos }, posB: { ...fighters.B.pos }, damageA: fighters.A.damage, damageB: fighters.B.damage, position });
+              stoppedAt = { roundNum: r, method: 'SUB', loserKey: oppKey };
+              roundsData.push(finishRound(r, beats, roundScore, fighters));
+              break outer;
+            }
+            event = { type: 'miss', category: 'submission', text: `${actor.ref.name} hunts for the ${flavor} — ${opp.ref.name} defends` };
+          } else {
+            const flavor = pick(GROUND_STRIKE_FLAVORS);
+            actor.stats.groundStrikes.thrown++;
+            const landChance = clamp(0.55 + (actor.ref.stats.striking - opp.ref.stats.wrestling) * 0.01, 0.2, 0.9);
+            const landed = rand() < landChance;
+            let knockdown = false;
+            if (landed) {
+              actor.stats.groundStrikes.landed++;
+              roundScore[actorKey] += 0.8;
+              const rawDamage = clamp((actor.ref.stats.striking / opp.ref.stats.chin) * 1.9 * (0.7 + rand() * 0.6), 0.2, 7);
+              opp.damage = clamp(opp.damage + rawDamage, 0, 100);
+              const kdChance = clamp((rawDamage / 100) * 1.4 + (opp.damage / 100) * 0.3, 0, 0.5);
+              if (rand() < kdChance) knockdown = true;
+            }
+            event = {
+              type: knockdown ? 'knockdown' : landed ? 'landed' : 'miss',
+              category: 'groundStrike',
+              text: knockdown
+                ? `${opp.ref.name} is covering up — ${actor.ref.name} is unloading!`
+                : commentaryStrike(actor.ref.name, opp.ref.name, flavor, landed),
+            };
+            if (knockdown) {
+              const surviveChance = clamp(1 - opp.damage / 100 - (0.5 - opp.ref.stats.chin / 40), 0.05, 0.95);
+              if (rand() > surviveChance || opp.damage >= 96) {
+                beats.push({ t: secondsRemaining, actor: actorKey, ...event, posA: { ...fighters.A.pos }, posB: { ...fighters.B.pos }, damageA: fighters.A.damage, damageB: fighters.B.damage, position });
+                stoppedAt = { roundNum: r, method: opp.damage >= 98 ? 'KO' : 'TKO', loserKey: oppKey };
+                roundsData.push(finishRound(r, beats, roundScore, fighters));
+                break outer;
+              }
+              opp.damage = clamp(opp.damage - 12, 0, 100);
+            }
+          }
+        } else {
+          // bottom fighter: submission attempt or scramble
+          if (rand() < 0.45) {
+            actor.stats.submissions.thrown++;
+            const flavor = pick(SUB_FLAVORS);
+            const subChance = clamp(0.06 + (actor.ref.stats.submission - opp.ref.stats.wrestling) * 0.015, 0.01, 0.3);
+            if (rand() < subChance) {
+              actor.stats.submissions.landed++;
+              event = { type: 'submission', category: 'submission', text: `${actor.ref.name} catches a ${flavor} off the bottom! ${opp.ref.name} taps!` };
+              beats.push({ t: secondsRemaining, actor: actorKey, ...event, posA: { ...fighters.A.pos }, posB: { ...fighters.B.pos }, damageA: fighters.A.damage, damageB: fighters.B.damage, position });
+              stoppedAt = { roundNum: r, method: 'SUB', loserKey: oppKey };
+              roundsData.push(finishRound(r, beats, roundScore, fighters));
+              break outer;
+            }
+            event = { type: 'miss', category: 'submission', text: `${actor.ref.name} looks for a ${flavor} from the bottom — ${opp.ref.name} postures out` };
+          } else {
+            const scrambleChance = clamp(0.28 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.02, 0.05, 0.7);
+            if (rand() < scrambleChance) {
+              position = 'standing';
+              topKey = null;
+              event = { type: 'scramble', category: 'scramble', text: `${actor.ref.name} scrambles back up to their feet!` };
+            } else {
+              event = { type: 'move', category: 'scramble', text: `${actor.ref.name} looks to create space but stays trapped underneath` };
+            }
           }
         }
       }
 
-      const text = knockdown
-        ? `${opp.ref.name} is DOWN! Huge ${PUNCH_LABEL[punch]} from ${actor.ref.name}!`
-        : commentaryFor(actor.ref.name, opp.ref.name, punch, landed, isBody);
-
       beats.push({
         t: secondsRemaining,
         actor: actorKey,
-        type: knockdown ? 'knockdown' : landed ? 'landed' : 'miss',
-        punch,
-        isBody,
-        text,
+        ...event,
         posA: { ...fighters.A.pos },
         posB: { ...fighters.B.pos },
         damageA: fighters.A.damage,
         damageB: fighters.B.damage,
+        position,
       });
-
-      if (knockdown) {
-        // recovery roll: chin vs accumulated damage
-        const surviveChance = clamp(1 - opp.damage / 100 - (0.5 - opp.ref.stats.chin / 40), 0.05, 0.95);
-        if (rand() > surviveChance || opp.damage >= 96) {
-          stoppedAt = { roundNum: r, method: opp.damage >= 98 ? 'KO' : 'TKO', loserKey: oppKey };
-          roundsData.push(finishRound(r, beats, roundLanded, fighters));
-          break outer;
-        }
-        opp.damage = clamp(opp.damage - 15, 0, 100); // stands back up, hurt but in it
-      }
     }
 
-    roundsData.push(finishRound(r, beats, roundLanded, fighters));
+    roundsData.push(finishRound(r, beats, roundScore, fighters));
   }
 
-  const totalStats = {
-    A: { ...fighters.A.punches, thrown: totalThrown(fighters.A.punches), landed: totalLanded(fighters.A.punches) },
-    B: { ...fighters.B.punches, thrown: totalThrown(fighters.B.punches), landed: totalLanded(fighters.B.punches) },
-  };
+  const totalStats = { A: fighters.A.stats, B: fighters.B.stats };
 
   let result;
   if (stoppedAt) {
     result = {
-      winnerId: stoppedAt.loserKey === 'A' ? boxerB.id : boxerA.id,
-      loserId: stoppedAt.loserKey === 'A' ? boxerA.id : boxerB.id,
+      winnerId: stoppedAt.loserKey === 'A' ? fighterB.id : fighterA.id,
+      loserId: stoppedAt.loserKey === 'A' ? fighterA.id : fighterB.id,
       method: stoppedAt.method,
       roundEnded: stoppedAt.roundNum,
       totalStats,
     };
   } else {
-    // decision — score cards from round winners with slight judge variance
     const cardsA = [0, 0, 0];
     const cardsB = [0, 0, 0];
     roundsData.forEach(rd => {
       for (let j = 0; j < 3; j++) {
-        const wobble = rand() < 0.12; // occasional judge disagreement
+        const wobble = rand() < 0.1;
         const aWon = wobble ? rd.scoreB > rd.scoreA : rd.scoreA >= rd.scoreB;
-        if (rd.scoreA === rd.scoreB) {
+        if (Math.abs(rd.scoreA - rd.scoreB) < 0.15) {
           cardsA[j] += 10;
           cardsB[j] += 10;
         } else if (aWon) {
@@ -241,13 +308,13 @@ export function simulateFight(boxerA, boxerB, opts = {}) {
     else if (judgesForA === 0 && judgesForB === 0) method = 'DRAW';
     else method = 'SD';
 
-    if (judgesForA > judgesForB) winnerId = boxerA.id;
-    else if (judgesForB > judgesForA) winnerId = boxerB.id;
+    if (judgesForA > judgesForB) winnerId = fighterA.id;
+    else if (judgesForB > judgesForA) winnerId = fighterB.id;
     else method = 'DRAW';
 
     result = {
       winnerId,
-      loserId: winnerId ? (winnerId === boxerA.id ? boxerB.id : boxerA.id) : null,
+      loserId: winnerId ? (winnerId === fighterA.id ? fighterB.id : fighterA.id) : null,
       method,
       roundEnded: rounds,
       cards: { A: cardsA, B: cardsB },
@@ -255,22 +322,22 @@ export function simulateFight(boxerA, boxerB, opts = {}) {
     };
   }
 
-  return { boxerAId: boxerA.id, boxerBId: boxerB.id, rounds, roundsData, result };
+  return { fighterAId: fighterA.id, fighterBId: fighterB.id, rounds, roundsData, result };
 }
 
-function finishRound(roundNum, beats, roundLanded, fighters) {
-  const scoreA = roundLanded.A >= roundLanded.B ? 10 : 9;
-  const scoreB = roundLanded.B >= roundLanded.A ? 10 : 9;
+function finishRound(roundNum, beats, roundScore, fighters) {
+  const scoreA = roundScore.A >= roundScore.B ? 10 : 9;
+  const scoreB = roundScore.B >= roundScore.A ? 10 : 9;
   return {
     roundNum,
     beats,
-    landedA: roundLanded.A,
-    landedB: roundLanded.B,
-    scoreA: roundLanded.A === roundLanded.B ? 10 : scoreA,
-    scoreB: roundLanded.A === roundLanded.B ? 10 : scoreB,
+    landedA: roundScore.A,
+    landedB: roundScore.B,
+    scoreA: Math.abs(roundScore.A - roundScore.B) < 0.15 ? 10 : scoreA,
+    scoreB: Math.abs(roundScore.A - roundScore.B) < 0.15 ? 10 : scoreB,
     endDamageA: fighters.A.damage,
     endDamageB: fighters.B.damage,
   };
 }
 
-export { PUNCH_TYPES, PUNCH_LABEL };
+export { STRIKE_FLAVORS, GROUND_STRIKE_FLAVORS, SUB_FLAVORS };

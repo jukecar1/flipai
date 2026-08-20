@@ -8,6 +8,7 @@ import Hub from './screens/Hub';
 import Roster from './screens/Roster';
 import MakeFights from './screens/MakeFights';
 import Rankings from './screens/Rankings';
+import Promotions from './screens/Promotions';
 import News from './screens/News';
 import FightSim from './screens/FightSim';
 import FightResult from './screens/FightResult';
@@ -35,6 +36,7 @@ function Router() {
           {screen === 'roster' && <Roster />}
           {screen === 'makeFights' && <MakeFights />}
           {screen === 'rankings' && <Rankings />}
+          {screen === 'promotions' && <Promotions />}
           {screen === 'news' && <News />}
           {screen === 'fightSim' && <FightSim />}
           {screen === 'fightResult' && <FightResult />}
@@ -44,9 +46,23 @@ function Router() {
   );
 }
 
+function RotateOverlay() {
+  // Fight Empire is designed to be played in landscape (the native iOS
+  // build is locked to it). On a touch device held in portrait, this
+  // overlay covers the game with a "rotate" prompt — pure CSS driven, see
+  // .fe-rotate-overlay in styles/fightEmpire.css.
+  return (
+    <div className="fe-rotate-overlay">
+      <div className="fe-rotate-icon">📱</div>
+      <div className="fe-rotate-text">Rotate your device to play Fight Empire</div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <GameProvider>
+      <RotateOverlay />
       <Router />
     </GameProvider>
   );

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASS_MAP } from '../game/constants';
 import { Panel, Button, WeightPill, Flag } from '../components/UI';
 
 export default function Hub() {
@@ -16,13 +15,13 @@ export default function Hub() {
       <div className="fe-hub-col fe-hub-main">
         <Panel title={`MY ROSTER (${roster.length})`} right={<button className="fe-link" onClick={() => goTo('roster')}>View all</button>}>
           <div className="fe-boxer-list">
-            {roster.map(b => (
-              <div key={b.id} className="fe-boxer-row">
-                <WeightPill id={b.weightClass} />
-                <Flag nationality={b.nationality} />
-                <span className="fe-boxer-name">{b.name}</span>
-                <span className="fe-boxer-record">{b.record.wins}-{b.record.losses}-{b.record.draws} ({b.record.kos})</span>
-                <span className="fe-boxer-overall">OVR {b.overall}</span>
+            {roster.map(f => (
+              <div key={f.id} className="fe-boxer-row">
+                <WeightPill id={f.weightClass} />
+                <Flag nationality={f.nationality} />
+                <span className="fe-boxer-name">{f.name}</span>
+                <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO, {f.record.subs}SUB)</span>
+                <span className="fe-boxer-overall">OVR {f.overall}</span>
               </div>
             ))}
           </div>
@@ -32,11 +31,11 @@ export default function Hub() {
           {scheduledFights.length === 0 && <div className="fe-empty">No fights booked. Head to Make Fights.</div>}
           <div className="fe-fight-list">
             {scheduledFights.map(f => {
-              const boxer = roster.find(b => b.id === f.boxerId);
+              const fighter = roster.find(x => x.id === f.fighterId);
               return (
                 <div key={f.id} className="fe-fight-row">
-                  <WeightPill id={boxer?.weightClass} />
-                  <span className="fe-fight-title">{boxer?.name} v {f.opponentName || 'TBD'}</span>
+                  <WeightPill id={fighter?.weightClass} />
+                  <span className="fe-fight-title">{fighter?.name} v {f.opponentName || 'TBD'}</span>
                   <span className="fe-fight-venue">{f.venue.name}, {f.venue.city}</span>
                   {f.weeksOut > 0 ? (
                     <span className="fe-weeks-out">{f.weeksOut}w</span>
@@ -65,5 +64,3 @@ export default function Hub() {
     </div>
   );
 }
-
-export { WEIGHT_CLASS_MAP };

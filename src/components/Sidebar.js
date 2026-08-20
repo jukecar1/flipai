@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { id: 'roster', label: 'Roster' },
   { id: 'makeFights', label: 'Make Fights' },
   { id: 'rankings', label: 'Rankings' },
+  { id: 'promotions', label: 'Promotions' },
   { id: 'news', label: 'News' },
 ];
 

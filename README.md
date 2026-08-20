@@ -1,9 +1,9 @@
 # Fight Empire
 
-A boxing-promoter career sim: sign prospects, book fights, watch them
-play out round-by-round in an animated ring, and chase your roster up
-the rankings. Built as a React web app and wrapped natively for iOS
-with [Capacitor](https://capacitorjs.com/).
+An MMA-promoter career sim: sign prospects, book fights, watch them
+play out round-by-round in an animated cage, and build your promotion
+into a rival for the sport's biggest organizations. Built as a React
+web app and wrapped natively for iOS with [Capacitor](https://capacitorjs.com/).
 
 ## Playing / developing
 
@@ -23,20 +23,30 @@ promotion slots — nothing leaves the device.
 ```
 src/
   game/         data + pure logic: constants, name/venue generation,
-                boxer generation, the fight-simulation engine, the
+                fighter generation, the fight-simulation engine, the
                 central reducer, and localStorage save/load
   context/      React context wiring the reducer + persistence to screens
   screens/      one component per screen (Hub, Roster, Make Fights,
-                Rankings, News, the animated Fight Sim, Fight Result)
+                Rankings, Promotions, News, the animated Fight Sim,
+                Fight Result)
   components/   shared UI chrome (top bar, sidebar, buttons/panels)
   styles/       the "Fight Empire" visual theme
 ```
 
-The fight engine (`src/game/engine.js`) simulates a full bout up front —
-round by round, punch by punch, with knockdown/decision logic and full
-punch-type stat tracking — and the Fight Sim screen plays that back as
-an animated ring view with live commentary and stats, at adjustable
-speed, with a skip-to-result option.
+The fight engine (`src/game/engine.js`) simulates a full MMA bout up
+front — standing striking, takedowns, ground-and-pound, submission
+attempts, with knockdown/decision logic and full stat tracking (sig.
+strikes, ground strikes, takedowns, submission attempts) — and the
+Fight Sim screen plays that back as an animated cage view with live
+commentary and stats, at adjustable speed, with a skip-to-result
+option.
+
+Your promotion also competes against four fictional rival
+organizations (`RIVAL_PROMOTIONS` in `src/game/constants.js`) standing
+in for the sport's real top tiers, without naming any real company —
+they hold divisional belts, grow their own prestige over time, and
+race you for free-agent talent. See the Promotions screen for the
+industry leaderboard and free agency market.
 
 ## Shipping to the App Store
 

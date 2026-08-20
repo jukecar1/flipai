@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASS_MAP } from '../game/constants';
-import { PUNCH_LABEL } from '../game/engine';
 import { Panel, Button, Flag } from '../components/UI';
 
 const SPEEDS = [1, 2, 4, 8];
+const LANDED_TYPES = new Set(['landed', 'knockdown', 'takedown', 'submission']);
 
 function buildTicks(sim) {
   const ticks = [];
@@ -16,13 +16,20 @@ function buildTicks(sim) {
   return ticks;
 }
 
+const CATEGORY_LABEL = {
+  strike: 'Sig. Strikes',
+  groundStrike: 'Ground Strikes',
+  takedown: 'Takedowns',
+  submission: 'Sub. Attempts',
+};
+
 export default function FightSim() {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { activeFight, roster, worldPool } = state;
 
-  const boxer = roster.find(b => b.id === activeFight?.boxerId);
-  const opponent = useMemo(() => Object.values(worldPool).flat().find(b => b.id === activeFight?.opponentId), [worldPool, activeFight]);
+  const fighter = roster.find(f => f.id === activeFight?.fighterId);
+  const opponent = useMemo(() => Object.values(worldPool).flat().find(f => f.id === activeFight?.opponentId), [worldPool, activeFight]);
   const fightMeta = state.scheduledFights.find(f => f.id === activeFight?.fightId);
 
   const ticks = useMemo(() => (activeFight ? buildTicks(activeFight.sim) : []), [activeFight]);
@@ -50,7 +57,7 @@ export default function FightSim() {
     }
   }, [index, ticks]);
 
-  if (!activeFight || !boxer || !opponent) {
+  if (!activeFight || !fighter || !opponent) {
     return (
       <div className="fe-fight-sim">
         <Panel title="No active fight">
@@ -68,10 +75,11 @@ export default function FightSim() {
   const posB = currentBeat?.posB || { x: 65, y: 50 };
   const damageA = currentBeat?.damageA ?? 0;
   const damageB = currentBeat?.damageB ?? 0;
-  const secondsLeft = currentBeat?.t ?? 180;
+  const secondsLeft = currentBeat?.t ?? 300;
+  const position = currentBeat?.position || 'standing';
   const isFightOver = index >= ticks.length;
 
-  const wc = WEIGHT_CLASS_MAP[boxer.weightClass];
+  const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
 
   const skipToEnd = () => {
     setPlaying(false);
@@ -82,30 +90,31 @@ export default function FightSim() {
 
   const finish = () => dispatch({ type: 'RESOLVE_FIGHT' });
 
-  // running round-scoped stats vs full-fight stats, derived from log up to current point
   const beatsSoFar = ticks.slice(0, index).filter(t => t.kind === 'beat');
   const roundBeats = beatsSoFar.filter(t => t.roundNum === currentRoundNum);
   const relevantBeats = statsView === 'round' ? roundBeats : beatsSoFar;
 
-  const tally = (key) => {
-    let landed = 0, thrown = 0;
+  const tallyByCategory = key => {
+    const totals = { strike: { landed: 0, thrown: 0 }, groundStrike: { landed: 0, thrown: 0 }, takedown: { landed: 0, thrown: 0 }, submission: { landed: 0, thrown: 0 } };
     relevantBeats.forEach(t => {
-      if (t.beat.actor === key && t.beat.type !== 'move') {
-        thrown++;
-        if (t.beat.type === 'landed' || t.beat.type === 'knockdown') landed++;
-      }
+      const { beat } = t;
+      if (beat.actor !== key || !beat.category || !totals[beat.category]) return;
+      totals[beat.category].thrown++;
+      if (LANDED_TYPES.has(beat.type)) totals[beat.category].landed++;
     });
-    return { landed, thrown };
+    return totals;
   };
-  const tallyA = tally('A');
-  const tallyB = tally('B');
+  const tallyA = tallyByCategory('A');
+  const tallyB = tallyByCategory('B');
+  const sumThrown = t => Object.values(t).reduce((s, c) => s + c.thrown, 0);
+  const sumLanded = t => Object.values(t).reduce((s, c) => s + c.landed, 0);
 
   return (
     <div className="fe-fight-sim">
       <div className="fe-fs-header">
         <div>
           <strong>{fightMeta ? `${activeFight.sim.rounds} rounds @ ${wc.name}` : wc.name}</strong>
-          <div>{boxer.name} <Flag nationality={boxer.nationality} /> {boxer.record.wins}-{boxer.record.losses}-{boxer.record.draws}</div>
+          <div>{fighter.name} <Flag nationality={fighter.nationality} /> {fighter.record.wins}-{fighter.record.losses}-{fighter.record.draws}</div>
           <div>vs</div>
           <div>{opponent.name} <Flag nationality={opponent.nationality} /> {opponent.record.wins}-{opponent.record.losses}-{opponent.record.draws}</div>
         </div>
@@ -127,11 +136,12 @@ export default function FightSim() {
         </div>
 
         <div className="fe-fs-ring-col">
-          <div className="fe-ring">
-            <div className="fe-ring-ropes" />
-            <div className="fe-ring-badge">FIGHT<br />EMPIRE</div>
+          <div className="fe-cage">
+            <div className="fe-cage-fence" />
+            <div className="fe-cage-badge">FIGHT<br />EMPIRE</div>
+            <div className={`fe-position-tag fe-position-${position}`}>{position === 'ground' ? 'On the ground' : 'Standing'}</div>
             <div className="fe-fighter-dot fe-fighter-a" style={{ left: `${posA.x}%`, top: `${posA.y}%` }}>
-              <span>{boxer.name.split(' ').slice(-1)[0]}</span>
+              <span>{fighter.name.split(' ').slice(-1)[0]}</span>
             </div>
             <div className="fe-fighter-dot fe-fighter-b" style={{ left: `${posB.x}%`, top: `${posB.y}%` }}>
               <span>{opponent.name.split(' ').slice(-1)[0]}</span>
@@ -146,7 +156,7 @@ export default function FightSim() {
             <div className="fe-clock">{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</div>
           </div>
           <div className="fe-condition-row">
-            <ConditionBar label={boxer.name} damage={damageA} side="left" />
+            <ConditionBar label={fighter.name} damage={damageA} side="left" />
             <ConditionBar label={opponent.name} damage={damageB} side="right" />
           </div>
         </div>
@@ -169,15 +179,22 @@ export default function FightSim() {
           </div>
           <div className="fe-live-stats">
             <div className="fe-live-stats-row fe-live-stats-head">
-              <span>{boxer.name.split(' ').slice(-1)[0]}</span>
+              <span>{fighter.name.split(' ').slice(-1)[0]}</span>
               <span>Output</span>
               <span>{opponent.name.split(' ').slice(-1)[0]}</span>
             </div>
             <div className="fe-live-stats-row">
-              <span>{tallyA.landed}/{tallyA.thrown}</span>
+              <span>{sumLanded(tallyA)}/{sumThrown(tallyA)}</span>
               <span>Total</span>
-              <span>{tallyB.landed}/{tallyB.thrown}</span>
+              <span>{sumLanded(tallyB)}/{sumThrown(tallyB)}</span>
             </div>
+            {Object.keys(CATEGORY_LABEL).map(cat => (
+              <div className="fe-live-stats-row" key={cat}>
+                <span>{tallyA[cat].landed}/{tallyA[cat].thrown}</span>
+                <span>{CATEGORY_LABEL[cat]}</span>
+                <span>{tallyB[cat].landed}/{tallyB[cat].thrown}</span>
+              </div>
+            ))}
           </div>
 
           {isFightOver && (
@@ -199,5 +216,3 @@ function ConditionBar({ label, damage, side }) {
     </div>
   );
 }
-
-export { PUNCH_LABEL };

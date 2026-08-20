@@ -1,4 +1,4 @@
-// Fight Empire — procedural boxer name / nationality generation
+// Fight Empire — procedural fighter name / nationality generation
 
 const FLAVORS = [
   {
@@ -74,7 +74,7 @@ export function randomNationality() {
   return pick(flavor.countries);
 }
 
-export function randomBoxerName() {
+export function randomFighterName() {
   const flavor = pick(FLAVORS);
   const country = pick(flavor.countries);
   const first = pick(flavor.first);

@@ -1,14 +1,15 @@
-// Fight Empire — core game constants
+// Fight Empire — core game constants (MMA)
 
 export const WEIGHT_CLASSES = [
-  { id: 'H', name: 'Heavyweight', limit: null, color: '#e11d2e' },
-  { id: 'LH', name: 'Light Heavyweight', limit: 175, color: '#f2622e' },
-  { id: 'M', name: 'Middleweight', limit: 160, color: '#f4b942' },
-  { id: 'W', name: 'Welterweight', limit: 147, color: '#2ec4b6' },
-  { id: 'L', name: 'Lightweight', limit: 135, color: '#3a86ff' },
-  { id: 'F', name: 'Featherweight', limit: 126, color: '#8338ec' },
-  { id: 'B', name: 'Bantamweight', limit: 118, color: '#ff5fa2' },
-  { id: 'FL', name: 'Flyweight', limit: 112, color: '#4ade80' },
+  { id: 'HW', name: 'Heavyweight', limit: null, color: '#e11d2e' },
+  { id: 'LHW', name: 'Light Heavyweight', limit: 205, color: '#f2622e' },
+  { id: 'MW', name: 'Middleweight', limit: 185, color: '#f4b942' },
+  { id: 'WW', name: 'Welterweight', limit: 170, color: '#2ec4b6' },
+  { id: 'LW', name: 'Lightweight', limit: 155, color: '#3a86ff' },
+  { id: 'FW', name: 'Featherweight', limit: 145, color: '#8338ec' },
+  { id: 'BW', name: 'Bantamweight', limit: 135, color: '#ff5fa2' },
+  { id: 'FLW', name: 'Flyweight', limit: 125, color: '#4ade80' },
+  { id: 'STW', name: 'Strawweight', limit: 115, color: '#22c1c3' },
 ];
 
 export const WEIGHT_CLASS_MAP = Object.fromEntries(WEIGHT_CLASSES.map(w => [w.id, w]));
@@ -31,3 +32,22 @@ export const SAVE_SLOT_COUNT = 3;
 export const STARTING_FUNDS = 25000;
 
 export const WEEKS_PER_YEAR = 52;
+
+// Fictional rival organizations the player's promotion competes against.
+// Standing in for the real top-tier / #2 / tournament-format / global-strikers
+// tiers of the sport, without naming any real company.
+export const RIVAL_PROMOTIONS = [
+  { id: 'apex', name: 'Apex FC', tier: 'Global #1', color: '#e2263a', basePrestige: 9600, weeklyGrowth: [8, 22] },
+  { id: 'vantage', name: 'Vantage MMA', tier: 'Global #2', color: '#3a86ff', basePrestige: 6200, weeklyGrowth: [5, 16] },
+  { id: 'forge', name: 'Forge League', tier: 'Tournament Circuit', color: '#f4b942', basePrestige: 3400, weeklyGrowth: [3, 12] },
+  { id: 'crown', name: 'Crown Championship', tier: 'Global Strikers', color: '#2ec4b6', basePrestige: 2600, weeklyGrowth: [2, 10] },
+];
+
+export const PRESTIGE_TIERS = [
+  { min: 0, label: 'Regional Promotion' },
+  { min: 500, label: 'National Promotion' },
+  { min: 1500, label: 'Rising Contender' },
+  { min: 3500, label: 'Major Promotion' },
+  { min: 6000, label: 'Global Contender' },
+  { min: 9000, label: 'Industry Leader' },
+];

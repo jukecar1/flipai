@@ -1,7 +1,7 @@
 {
   "name": "fight-empire",
   "version": "0.1.0",
-  "description": "Fight Empire — build a boxing promotion, sign prospects, book fights, and chase titles.",
+  "description": "Fight Empire — build an MMA promotion, sign fighters, book cards, and compete with the sport's biggest organizations.",
   "private": true,
   "dependencies": {
     "@capacitor/core": "^8.5.0",

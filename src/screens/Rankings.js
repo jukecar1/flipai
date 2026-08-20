@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState } from '../context/GameContext';
-import { WEIGHT_CLASSES } from '../game/constants';
+import { WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
 import { Panel, WeightPill, Flag } from '../components/UI';
 
 export default function Rankings() {
@@ -9,10 +9,10 @@ export default function Rankings() {
   const wc = WEIGHT_CLASSES.find(w => w.id === wcId);
 
   const list = useMemo(() => {
-    const own = state.roster.filter(b => b.weightClass === wcId).map(b => ({ ...b, mine: true }));
-    const others = (state.worldPool[wcId] || []).map(b => ({ ...b, mine: false }));
+    const own = state.roster.filter(f => f.weightClass === wcId).map(f => ({ ...f, mine: true }));
+    const others = (state.worldPool[wcId] || []).map(f => ({ ...f, mine: false }));
     return [...own, ...others]
-      .sort((a, b) => (b.overall * 10 + b.record.wins * 2) - (a.overall * 10 + a.record.wins * 2))
+      .sort((a, b) => (b.overall * 10 + b.record.wins * 2 + (b.champion ? 50 : 0)) - (a.overall * 10 + a.record.wins * 2 + (a.champion ? 50 : 0)))
       .slice(0, 10);
   }, [state.roster, state.worldPool, wcId]);
 
@@ -28,15 +28,19 @@ export default function Rankings() {
         </div>
         <h3 className="fe-rankings-title">Global {wc.name} Rankings</h3>
         <div className="fe-rankings-list">
-          {list.map((b, i) => (
-            <div key={b.id} className={`fe-ranking-row ${b.mine ? 'mine' : ''}`}>
-              <span className="fe-rank-num">{i + 1}</span>
-              <Flag nationality={b.nationality} />
-              <span className="fe-boxer-name">{b.name}{b.mine && <span className="fe-mine-badge">YOU</span>}</span>
-              <span className="fe-boxer-record">{b.record.wins}-{b.record.losses}-{b.record.draws} ({b.record.kos})</span>
-              <span className="fe-boxer-overall">OVR {b.overall}</span>
-            </div>
-          ))}
+          {list.map((f, i) => {
+            const promo = f.promotionId ? RIVAL_PROMOTIONS.find(p => p.id === f.promotionId) : null;
+            return (
+              <div key={f.id} className={`fe-ranking-row ${f.mine ? 'mine' : ''}`}>
+                <span className="fe-rank-num">{f.champion ? '👑' : i + 1}</span>
+                <Flag nationality={f.nationality} />
+                <span className="fe-boxer-name">{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
+                <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
+                {promo && <span className="fe-champ-promo" style={{ color: promo.color }}>{promo.name}</span>}
+                <span className="fe-boxer-overall">OVR {f.overall}</span>
+              </div>
+            );
+          })}
         </div>
       </Panel>
     </div>

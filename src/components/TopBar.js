@@ -1,11 +1,12 @@
 import React from 'react';
 import { useGameState, useGameDispatch, persistCurrentState } from '../context/GameContext';
+import { prestigeTierLabel } from '../game/gameReducer';
 import { Button } from './UI';
 
 export default function TopBar({ showAdvance = true }) {
   const state = useGameState();
   const dispatch = useGameDispatch();
-  const { meta, week, funds, record } = state;
+  const { meta, week, funds, record, prestige } = state;
 
   const advance = () => {
     dispatch({ type: 'ADVANCE_WEEK' });
@@ -36,6 +37,10 @@ export default function TopBar({ showAdvance = true }) {
         <div>
           <span className="fe-label">Record</span>
           <span className="fe-value">{record.wins}-{record.losses}-{record.draws}</span>
+        </div>
+        <div>
+          <span className="fe-label">{prestigeTierLabel(prestige)}</span>
+          <span className="fe-value fe-gold">{prestige} pts</span>
         </div>
       </div>
       {showAdvance && (

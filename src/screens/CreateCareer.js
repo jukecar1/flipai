@@ -15,7 +15,7 @@ export default function CreateCareer({ slot }) {
     if (!canStart) return;
     startNewCareer(slot, {
       managerName: managerName.trim(),
-      promotionName: (promotionName.trim() || `${managerName.trim()} Boxing`),
+      promotionName: (promotionName.trim() || `${managerName.trim()} MMA`),
       hq,
     });
   };
@@ -29,7 +29,7 @@ export default function CreateCareer({ slot }) {
         </label>
         <label className="fe-field">
           <span>Promotion name</span>
-          <input value={promotionName} onChange={e => setPromotionName(e.target.value)} placeholder="e.g. Reyes Boxing Promotions" maxLength={40} />
+          <input value={promotionName} onChange={e => setPromotionName(e.target.value)} placeholder="e.g. Reyes Fighting Championship" maxLength={40} />
         </label>
         <label className="fe-field">
           <span>Headquarters city</span>

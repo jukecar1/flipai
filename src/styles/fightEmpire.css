@@ -273,23 +273,24 @@ button, select, input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
+  min-width: 30px;
   height: 20px;
-  padding: 0 4px;
+  padding: 0 5px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #0b0c0f;
 }
 
-.fe-wc-H { background: #e2263a; color: #fff; }
-.fe-wc-LH { background: #f2622e; color: #fff; }
-.fe-wc-M { background: #f4b942; }
-.fe-wc-W { background: #2ec4b6; }
-.fe-wc-L { background: #3a86ff; color: #fff; }
-.fe-wc-F { background: #8338ec; color: #fff; }
-.fe-wc-B { background: #ff5fa2; }
-.fe-wc-FL { background: #4ade80; }
+.fe-wc-HW { background: #e2263a; color: #fff; }
+.fe-wc-LHW { background: #f2622e; color: #fff; }
+.fe-wc-MW { background: #f4b942; }
+.fe-wc-WW { background: #2ec4b6; }
+.fe-wc-LW { background: #3a86ff; color: #fff; }
+.fe-wc-FW { background: #8338ec; color: #fff; }
+.fe-wc-BW { background: #ff5fa2; }
+.fe-wc-FLW { background: #4ade80; }
+.fe-wc-STW { background: #22c1c3; }
 
 .fe-flag {
   font-size: 14px;
@@ -705,6 +706,84 @@ button, select, input {
   font-weight: 800;
 }
 
+/* ---------- Promotions screen ---------- */
+
+.fe-promotions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.fe-leaderboard, .fe-champ-list, .fe-free-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.fe-leaderboard-row, .fe-champ-row, .fe-free-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: var(--fe-panel-alt);
+  font-size: 13px;
+}
+
+.fe-leaderboard-row.mine {
+  border: 1px solid var(--fe-gold);
+  background: rgba(244, 185, 66, 0.08);
+}
+
+.fe-promo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fe-promo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.fe-promo-info span {
+  font-size: 11px;
+  color: var(--fe-text-dim);
+}
+
+.fe-promo-prestige {
+  font-weight: 700;
+  color: var(--fe-gold);
+  font-size: 12px;
+}
+
+.fe-champ-record {
+  color: var(--fe-text-dim);
+  font-size: 12px;
+}
+
+.fe-champ-promo {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fe-free-agent-row {
+  flex-wrap: wrap;
+}
+
+.fe-free-agent-row .fe-boxer-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
 /* ---------- News screen ---------- */
 
 .fe-news-screen {
@@ -812,44 +891,70 @@ button, select, input {
   gap: 10px;
 }
 
-.fe-ring {
+.fe-cage {
   position: relative;
   aspect-ratio: 1.4 / 1;
-  background: radial-gradient(circle at 50% 40%, #2b4f8c, #1b3560 70%);
-  border: 6px solid #5b3320;
+  background: radial-gradient(circle at 50% 40%, #2b2f3a, #14161c 70%);
+  border: 6px solid #3a3f4c;
   border-radius: 6px;
   overflow: hidden;
 }
 
-.fe-ring-ropes {
-  position: absolute;
-  inset: 6%;
-  border: 3px solid rgba(226, 38, 58, 0.55);
-  border-radius: 4px;
-}
-
-.fe-ring-ropes::before, .fe-ring-ropes::after {
+.fe-cage::before {
+  /* faint fence/mesh texture to read as "caged" without copying any
+     specific real promotion's exact cage design */
   content: '';
   position: absolute;
-  inset: 8px;
-  border: 2px solid rgba(244, 185, 66, 0.4);
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0, rgba(255, 255, 255, 0.035) 1px, transparent 1px, transparent 14px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 0, rgba(255, 255, 255, 0.035) 1px, transparent 1px, transparent 14px);
+  pointer-events: none;
 }
 
-.fe-ring-badge {
+.fe-cage-fence {
+  position: absolute;
+  inset: 5%;
+  border: 3px solid rgba(226, 38, 58, 0.5);
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+}
+
+.fe-cage-badge {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(140, 40, 130, 0.5);
-  border: 2px solid rgba(200, 240, 235, 0.4);
+  background: rgba(60, 30, 30, 0.5);
+  border: 2px solid rgba(244, 185, 66, 0.35);
   border-radius: 40px;
   padding: 10px 24px;
   font-weight: 900;
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.5);
   text-align: center;
   line-height: 1.1;
   letter-spacing: 1px;
+}
+
+.fe-position-tag {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 16, 0.75);
+  border: 1px solid var(--fe-border-light);
+  border-radius: 12px;
+  padding: 3px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fe-text-dim);
+}
+
+.fe-position-ground {
+  color: var(--fe-gold);
+  border-color: var(--fe-gold);
 }
 
 .fe-fighter-dot {
@@ -1035,7 +1140,7 @@ button, select, input {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 960px) {
-  .fe-hub, .fe-make-fights, .fe-news-screen {
+  .fe-hub, .fe-make-fights, .fe-news-screen, .fe-promotions {
     grid-template-columns: 1fr;
   }
   .fe-fs-body {
@@ -1115,5 +1220,46 @@ button, select, input {
   }
   .fe-speed-group {
     flex: 1 1 100%;
+  }
+}
+
+/* ---------- Rotate-to-landscape overlay ---------- */
+
+.fe-rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--fe-bg);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 32px;
+}
+
+.fe-rotate-icon {
+  font-size: 56px;
+  animation: fe-rotate-hint 1.6s ease-in-out infinite;
+}
+
+.fe-rotate-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fe-text);
+  max-width: 320px;
+}
+
+@keyframes fe-rotate-hint {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+/* Only touch devices (phones/tablets) get the lock — a narrow desktop
+   window should never be blocked by this. */
+@media (orientation: portrait) and (pointer: coarse) {
+  .fe-rotate-overlay {
+    display: flex;
   }
 }
