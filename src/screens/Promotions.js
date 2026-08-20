@@ -78,7 +78,7 @@ export default function Promotions() {
                     <span className="fe-boxer-name" title={champ.name}>{champ.name}</span>
                     <span className="fe-champ-record">{champ.record.wins}-{champ.record.losses}-{champ.record.draws}</span>
                     <Followers count={champ.followers} />
-                    <span className="fe-champ-promo" style={{ color: promo?.color }}>{promo?.name}</span>
+                    <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
                     <Button
                       variant="secondary"
                       className="fe-scout-sign-btn"

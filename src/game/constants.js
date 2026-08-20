@@ -31,6 +31,24 @@ export const SAVE_SLOT_COUNT = 3;
 
 export const STARTING_FUNDS = 25000;
 
+// Your home city's size scales your starting resources — a promotion
+// launched out of a small town starts scrappier, a megacity launch starts
+// flush. Looked up by population against CITIES in namePool.js.
+export const CITY_SIZE_TIERS = [
+  { id: 'town', label: 'Small Town', maxPop: 100000, fundsMultiplier: 0.8 },
+  { id: 'city', label: 'City', maxPop: 500000, fundsMultiplier: 1 },
+  { id: 'metro', label: 'Metro', maxPop: 2000000, fundsMultiplier: 1.3 },
+  { id: 'megacity', label: 'Megacity', maxPop: Infinity, fundsMultiplier: 1.75 },
+];
+
+export function cityTierForPopulation(pop) {
+  return CITY_SIZE_TIERS.find(t => pop <= t.maxPop) || CITY_SIZE_TIERS[CITY_SIZE_TIERS.length - 1];
+}
+
+export function startingFundsForPopulation(pop) {
+  return Math.round((STARTING_FUNDS * cityTierForPopulation(pop).fundsMultiplier) / 100) * 100;
+}
+
 export const WEEKS_PER_YEAR = 52;
 
 // Fictional rival organizations the player's promotion competes against.

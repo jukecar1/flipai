@@ -1,12 +1,13 @@
 import {
-  WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS,
+  WEIGHT_CLASSES, WEIGHT_CLASS_MAP, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS,
   GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT,
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
   CONTRACT_LENGTH_RANGE, CONTRACT_RENEWAL_MULTIPLIER, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
+  cityTierForPopulation, startingFundsForPopulation,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
-import { CITIES, randomFighterName } from './namePool';
+import { CITIES, cityLabel, randomFighterName } from './namePool';
 import { simulateFight, initFightSession, simulateFightRound, computeFightResult } from './engine';
 
 const COACH_SPECIALTIES = STAT_KEYS;
@@ -148,6 +149,17 @@ function makeFreeAgent() {
   return { ...f, weeksLeft: randInt(4, 8) };
 }
 
+// `hq` is the id of a CITIES entry (Create Career passes the id the player
+// picked). Falls back to a matching city name, then a random city if
+// nothing was passed, then — for callers that hand in an arbitrary label
+// that doesn't match any real city (e.g. test fixtures) — keeps that label
+// as-is with the default (unscaled) resource tier.
+function resolveHq(hq) {
+  const entry = hq ? (CITIES.find(c => c.id === hq) || CITIES.find(c => c.city === hq)) : pick(CITIES);
+  if (entry) return { label: cityLabel(entry), pop: entry.pop };
+  return { label: hq, pop: 500000 }; // unrecognized label (e.g. test fixtures) — default, unscaled tier
+}
+
 export function newCareerState({ managerName, promotionName, hq, selectedFighters, championFighterId }) {
   let roster = (selectedFighters && selectedFighters.length ? selectedFighters : makeStartingRoster(3))
     .map(f => ({ ...f, signed: true, contractWeeksLeft: randomContractLength() }));
@@ -162,11 +174,17 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
     roster = roster.map(f => (f.id === champ.id ? { ...f, title: wcName } : f));
   }
 
+  // A bigger home city means a bigger local market — more funds to launch
+  // with, scaled by the HQ's population tier (see cityTierForPopulation).
+  const { label: hqLabel, pop: hqPop } = resolveHq(hq);
+  const funds = startingFundsForPopulation(hqPop);
+
   return {
     meta: {
       managerName: managerName || 'Player',
       promotionName: promotionName || `${managerName}'s MMA`,
-      hq: hq || pick(CITIES).city,
+      hq: hqLabel,
+      hqTier: cityTierForPopulation(hqPop).id,
       gymLevel: 1,
       coachName: randomFighterName().name,
       coachSpecialty: pick(COACH_SPECIALTIES),
@@ -177,7 +195,7 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
       createdAt: Date.now(),
     },
     week: 1,
-    funds: STARTING_FUNDS,
+    funds,
     record: { wins: 0, losses: 0, draws: 0 },
     prestige: champ ? 90 : 50,
     titles, // weightClassId -> { holderId, holderName, defenses } | null (vacant until a Main Event is booked)
@@ -197,8 +215,8 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
         category: 'welcome',
         title: 'Welcome to Fight Empire',
         body: champ
-          ? `${promotionName || 'Your promotion'} opens its doors in ${hq || 'your hometown'} with ${champ.name} already champion at ${WEIGHT_CLASS_MAP[champ.weightClass]?.name}. Sign fighters, book cards, and climb past the sport's giants.`
-          : `${promotionName || 'Your promotion'} opens its doors in ${hq || 'your hometown'}. Sign fighters, book cards, and climb past the sport's giants.`,
+          ? `${promotionName || 'Your promotion'} opens its doors in ${hqLabel} with ${champ.name} already champion at ${WEIGHT_CLASS_MAP[champ.weightClass]?.name}. Sign fighters, book cards, and climb past the sport's giants.`
+          : `${promotionName || 'Your promotion'} opens its doors in ${hqLabel}. Sign fighters, book cards, and climb past the sport's giants.`,
       },
     ],
     activeFight: null,

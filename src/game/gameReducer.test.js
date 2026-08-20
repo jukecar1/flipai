@@ -2,7 +2,9 @@ import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUp
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, CONTRACT_RENEWAL_MULTIPLIER,
+  STARTING_FUNDS,
 } from './constants';
+import { CITIES } from './namePool';
 
 function baseState() {
   const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Testville' });
@@ -513,4 +515,28 @@ test('PREPARE_FIGHT_SIM resolves the whole fight at once when autoSkipFights is 
   state = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
   expect(state.activeFight.finished).toBe(true);
   expect(state.activeFight.sim.result).toBeTruthy();
+});
+
+test('a megacity HQ starts with meaningfully more funds than a small-town HQ', () => {
+  const bigCity = CITIES.find(c => c.id === 'new-york-ny');
+  const smallTown = CITIES.find(c => c.id === 'hanford-ca');
+  const bigState = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: bigCity.id });
+  const smallState = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: smallTown.id });
+  expect(bigState.meta.hqTier).toBe('megacity');
+  expect(smallState.meta.hqTier).toBe('town');
+  expect(bigState.funds).toBeGreaterThan(smallState.funds);
+  expect(bigState.meta.hq).toBe('New York, NY');
+  expect(smallState.meta.hq).toBe('Hanford, CA');
+});
+
+test('an unrecognized HQ label falls back to the default (unscaled) funds tier', () => {
+  const state = newCareerState({ managerName: 'Test', promotionName: 'Test FC', hq: 'Nowhereville' });
+  expect(state.funds).toBe(STARTING_FUNDS);
+  expect(state.meta.hq).toBe('Nowhereville');
+  expect(state.meta.hqTier).toBe('city');
+});
+
+test('every CITIES entry has a unique id', () => {
+  const ids = CITIES.map(c => c.id);
+  expect(new Set(ids).size).toBe(ids.length);
 });

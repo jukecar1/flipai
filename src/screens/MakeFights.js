@@ -80,7 +80,7 @@ function OpponentList({ opponents, crossoverOpponents, opponentId, onSelect }) {
                   <WeightPill id={o.weightClass} />
                   <Flag nationality={o.nationality} />
                   <span className="fe-boxer-name" title={o.name}>{o.name}{o.champion ? ' 👑' : ''}</span>
-                  <span className="fe-champ-promo" style={{ color: promo?.color }}>{promo?.name}</span>
+                  <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
                   <Followers count={o.followers} />
                   <span className="fe-boxer-overall">OVR {o.overall}</span>
                 </div>

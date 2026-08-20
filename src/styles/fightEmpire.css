@@ -507,6 +507,46 @@ button, select, input {
   margin: -6px 0 14px;
 }
 
+.fe-hq-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-teal);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.fe-hq-selected-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.fe-hq-selected > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fe-hq-funds {
+  flex-shrink: 0;
+  color: var(--fe-gold);
+  font-weight: 700;
+  text-align: right;
+  font-size: 14px;
+}
+
+.fe-hq-search {
+  margin-bottom: 8px;
+}
+
+.fe-hq-list {
+  max-height: 220px;
+}
+
 .fe-chip {
   background: var(--fe-panel-alt);
   border: 1px solid var(--fe-border-light);
@@ -947,7 +987,11 @@ button, select, input {
   padding: 8px 6px;
   align-items: center;
   font-size: 12.5px;
-  min-width: 1080px;
+  /* Just under a full 8-fighter roster's natural content width at common
+     desktop sizes, so the action buttons (move weight class, retire) don't
+     force an avoidable horizontal scrollbar there — still scrolls on truly
+     narrow viewports via .fe-roster-table's overflow-x below. */
+  min-width: 960px;
 }
 
 .fe-roster-actions {
@@ -1499,13 +1543,22 @@ button, select, input {
 
 .fe-leaderboard-row, .fe-champ-row, .fe-free-agent-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   padding: 9px 10px;
   border-radius: 7px;
   background: var(--fe-panel-alt);
   font-size: 13px;
   transition: background 0.15s ease;
+}
+
+/* In a narrow column (Promotions' 3-up grid) this row packs weight class,
+   avatar, flag, name, record, followers, promo, and a buy button — more
+   than fits on one line. Let the trailing action fall onto its own line
+   and take the full row width, rather than getting clipped by the panel. */
+.fe-champ-row .fe-scout-sign-btn {
+  margin-left: auto;
 }
 
 .fe-leaderboard-row:hover, .fe-champ-row:hover, .fe-free-agent-row:hover {
@@ -1560,6 +1613,13 @@ button, select, input {
   text-align: right;
 }
 
+/* Titles/Promotions rows have far more breathing room than the narrow
+   Make Fights opponent-list this class was originally clamped for — give
+   the promotion name more space there so it doesn't truncate needlessly. */
+.fe-champ-row .fe-champ-promo {
+  max-width: 220px;
+}
+
 .fe-subheading {
   font-size: 11px;
   font-weight: 700;
@@ -1597,6 +1657,12 @@ button, select, input {
   gap: 2px;
   flex: 1 1 130px;
   min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.fe-free-agent-row .fe-boxer-record {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;

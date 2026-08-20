@@ -46,7 +46,7 @@ export default function Titles() {
                       <span className="fe-champ-promo fe-gold">Your belt · {defenses} defense{defenses === 1 ? '' : 's'}</span>
                     ) : (
                       <>
-                        <span className="fe-champ-promo" style={{ color: promo?.color }}>{promo?.name}</span>
+                        <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
                         <Button
                           variant="secondary"
                           className="fe-scout-sign-btn"

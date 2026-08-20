@@ -37,7 +37,7 @@ export default function Rankings() {
                 <Flag nationality={f.nationality} />
                 <span className="fe-boxer-name" title={f.name}>{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
                 <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
-                {promo && <span className="fe-champ-promo" style={{ color: promo.color }}>{promo.name}</span>}
+                {promo && <span className="fe-champ-promo" style={{ color: promo.color }} title={promo.name}>{promo.name}</span>}
                 <Followers count={f.followers} />
                 <span className="fe-boxer-overall">OVR {f.overall}</span>
               </div>
