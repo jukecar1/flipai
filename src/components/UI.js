@@ -45,6 +45,7 @@ const NEWS_ICONS = {
   fight: '🥊',
   injury: '🏥',
   title: '🏆',
+  trending: '📈',
 };
 
 export function NewsCategoryIcon({ category }) {

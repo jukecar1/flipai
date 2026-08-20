@@ -376,6 +376,9 @@ export function gameReducer(state, action) {
       if (opponentInjuryWeeks > 0) {
         news.unshift({ id: `n${Date.now()}_injb`, week: state.week, category: 'injury', title: `${oppRef?.name} injured, out ${opponentInjuryWeeks} weeks`, body: `${oppRef?.name} picked up an injury in the fight and will be sidelined for ${opponentInjuryWeeks} weeks.` });
       }
+      if (fighterFollowerDelta >= 220) {
+        news.unshift({ id: `n${Date.now()}_trend`, week: state.week, category: 'trending', title: `${fighterRef?.name} is trending`, body: `That performance is going viral — ${fighterRef?.name} picked up ${fighterFollowerDelta.toLocaleString()} followers overnight.` });
+      }
 
       // Home promotion title fight: win it (or defend it) to hold the belt;
       // a losing champion vacates it rather than handing it to an outside

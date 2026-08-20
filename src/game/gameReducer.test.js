@@ -147,6 +147,13 @@ test('drawMultiplier scales purse potential with combined followers, capped', ()
   expect(drawMultiplier(1000000, 1000000)).toBeCloseTo(2.5, 5); // capped at +1.5x
 });
 
+test('a big follower spike (title win by finish) generates a trending news item', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  const fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'champ1');
+  expect(state.news.some(n => n.category === 'trending')).toBe(true);
+});
+
 test('a bigger combined following books a bigger purse for the same card', () => {
   let state = baseState();
   const bigFollowerState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 30000 } : f)) };
