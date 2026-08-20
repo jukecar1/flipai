@@ -479,7 +479,7 @@ export function gameReducer(state, action) {
       if (!STAT_KEYS.includes(stat)) return state;
       const fighter = state.roster.find(f => f.id === fighterId);
       if (!fighter || fighter.stats[stat] >= MAX_STAT) return state;
-      const cost = trainingCost(fighter.stats[stat], state.meta.coachSpecialty === stat);
+      const cost = trainingCost(fighter.stats[stat], state.meta.coachSpecialty === stat, fighter.age);
       if ((fighter.xp || 0) < cost) return state;
       const stats = { ...fighter.stats, [stat]: fighter.stats[stat] + 1 };
       return {

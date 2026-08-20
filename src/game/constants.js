@@ -120,18 +120,30 @@ export function ageCurveMultiplier(age) {
   return 0.9 - t * 0.22; // sharper drop-off, down to ~0.68 near retirement
 }
 
-export function careerStage(age) {
-  if (age < PRIME_START_AGE) return { id: 'rookie', label: 'Rookie' };
-  if (age <= PRIME_END_AGE) return { id: 'prime', label: 'Prime' };
-  if (age <= VETERAN_AGE) return { id: 'veteran', label: 'Veteran' };
-  return { id: 'declining', label: 'Declining' };
+// The badge shown right on a fighter's profile — exactly where they sit
+// on the age curve above, in plain language.
+export function primeStatus(age) {
+  if (age < PRIME_START_AGE) return { id: 'pre-prime', label: 'Pre-Prime' };
+  if (age <= PRIME_END_AGE) return { id: 'prime', label: 'In Prime' };
+  return { id: 'past-prime', label: 'Past Prime' };
 }
 
-// The single source of truth for a fighter's OVR — always their trained
-// stats scaled by their current age curve, so it reflects both how much
-// they've trained AND how much of that they can still bring on fight night.
+// A flat average of the 5 stats would let a specialist (18 striking / 8
+// submission) land on the exact same OVR as a fighter who's an even 13
+// across the board — even though the fight engine treats those two very
+// differently in a real matchup. Weighting a fighter's stats by rank (best
+// stat counts most, worst counts least) means a real standout skill — or a
+// glaring hole — actually shows up in the summary number instead of
+// washing out in the average.
+const OVR_STAT_WEIGHTS = [0.30, 0.25, 0.20, 0.15, 0.10];
+
+// The single source of truth for a fighter's OVR — their trained stats,
+// rank-weighted, then scaled by their current age curve. Reflects how much
+// they've trained, how that training is distributed, AND how much of it
+// they can still bring on fight night.
 export function effectiveOverall(stats, age) {
-  const raw = (stats.striking + stats.wrestling + stats.submission + stats.chin + stats.cardio) / 5;
+  const sorted = [stats.striking, stats.wrestling, stats.submission, stats.chin, stats.cardio].sort((a, b) => b - a);
+  const raw = sorted.reduce((sum, v, i) => sum + v * OVR_STAT_WEIGHTS[i], 0);
   return Math.max(1, Math.min(20, Math.round(raw * ageCurveMultiplier(age))));
 }
 
@@ -157,9 +169,25 @@ export const MAX_STAT = 20;
 // A coach specializing in a stat discounts training it.
 export const COACH_SPECIALTY_DISCOUNT = 0.25;
 
-export function trainingCost(statValue, isSpecialty) {
+// Training gets harder to convert into real gains as a fighter ages — the
+// same rep counts for less once you're past your prime, so a veteran pays
+// more XP for the same stat point a fighter in their 20s buys cheaper.
+// Mirrors the same age-curve shape as ageCurveMultiplier, inverted.
+export function trainingAgeMultiplier(age) {
+  if (age < PRIME_START_AGE) return 0.92; // a young body adapts fast
+  if (age <= PRIME_END_AGE) return 1;
+  if (age <= VETERAN_AGE) {
+    const t = (age - PRIME_END_AGE) / (VETERAN_AGE - PRIME_END_AGE);
+    return 1 + t * 0.35; // up to 1.35x by 34
+  }
+  const t = Math.max(0, Math.min(1, (age - VETERAN_AGE) / (RETIREMENT_AGE - VETERAN_AGE)));
+  return 1.35 + t * 0.65; // up to 2x heading into retirement
+}
+
+export function trainingCost(statValue, isSpecialty, age) {
   const discount = isSpecialty ? 1 - COACH_SPECIALTY_DISCOUNT : 1;
-  return Math.round(statValue * TRAINING_XP_PER_STAT_POINT * discount);
+  const ageMult = age === undefined ? 1 : trainingAgeMultiplier(age);
+  return Math.round(statValue * TRAINING_XP_PER_STAT_POINT * discount * ageMult);
 }
 
 // Contracts: every signed fighter (starting roster, scouted, free agent,

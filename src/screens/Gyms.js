@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { GYM_LEVELS, rosterLimitForGym, STAT_KEYS, STAT_LABELS, MAX_STAT, trainingCost } from '../game/constants';
+import { GYM_LEVELS, rosterLimitForGym, STAT_KEYS, STAT_LABELS, MAX_STAT, trainingCost, primeStatus } from '../game/constants';
 import { Panel, Button } from '../components/UI';
 
 export default function Gyms() {
@@ -56,31 +56,38 @@ export default function Gyms() {
               ))}
             </select>
             {fighter && (
-              <div className="fe-training-grid">
-                {STAT_KEYS.map(stat => {
-                  const value = fighter.stats[stat];
-                  const maxed = value >= MAX_STAT;
-                  const isSpecialty = state.meta.coachSpecialty === stat;
-                  const cost = trainingCost(value, isSpecialty);
-                  const canAfford = (fighter.xp || 0) >= cost;
-                  return (
-                    <div key={stat} className="fe-training-row">
-                      <span className="fe-training-label">
-                        {STAT_LABELS[stat]} {isSpecialty && <span className="fe-coach-badge" title="Your coach's specialty — discounted training">Coach's specialty</span>}
-                      </span>
-                      <span className="fe-training-value">{value}/{MAX_STAT}</span>
-                      <Button
-                        variant="secondary"
-                        className="fe-scout-sign-btn"
-                        onClick={() => train(stat)}
-                        disabled={maxed || !canAfford}
-                      >
-                        {maxed ? 'Maxed' : `Train (+1) — ${cost.toLocaleString()} XP`}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
+              <>
+                {primeStatus(fighter.age).id === 'past-prime' && (
+                  <p className="fe-hint fe-hint-warn">
+                    {fighter.name} is past their prime at {fighter.age} — training still works, it just costs more XP per point than it used to.
+                  </p>
+                )}
+                <div className="fe-training-grid">
+                  {STAT_KEYS.map(stat => {
+                    const value = fighter.stats[stat];
+                    const maxed = value >= MAX_STAT;
+                    const isSpecialty = state.meta.coachSpecialty === stat;
+                    const cost = trainingCost(value, isSpecialty, fighter.age);
+                    const canAfford = (fighter.xp || 0) >= cost;
+                    return (
+                      <div key={stat} className="fe-training-row">
+                        <span className="fe-training-label">
+                          {STAT_LABELS[stat]} {isSpecialty && <span className="fe-coach-badge" title="Your coach's specialty — discounted training">Coach's specialty</span>}
+                        </span>
+                        <span className="fe-training-value">{value}/{MAX_STAT}</span>
+                        <Button
+                          variant="secondary"
+                          className="fe-scout-sign-btn"
+                          onClick={() => train(stat)}
+                          disabled={maxed || !canAfford}
+                        >
+                          {maxed ? 'Maxed' : `Train (+1) — ${cost.toLocaleString()} XP`}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </>
         )}

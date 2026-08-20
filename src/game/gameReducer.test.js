@@ -2,7 +2,7 @@ import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUp
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, CONTRACT_RENEWAL_MULTIPLIER,
-  STARTING_FUNDS, ageCurveMultiplier, effectiveOverall,
+  STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost,
 } from './constants';
 import { CITIES } from './namePool';
 
@@ -14,6 +14,7 @@ function baseState() {
     name: 'Test Champion',
     weightClass: 'FLW',
     overall: 15,
+    age: 28, // pinned squarely in-prime so age-curve math never flakes these tests
     injuryWeeks: 0,
     fatigue: 0,
     title: null,
@@ -282,6 +283,20 @@ test('effectiveOverall scales the same stats down for an older fighter', () => {
   const veteranOverall = effectiveOverall(stats, 37);
   expect(primeOverall).toBe(16);
   expect(veteranOverall).toBeLessThan(primeOverall);
+});
+
+test('effectiveOverall rewards a coherent standout skill over a flat spread with the same total', () => {
+  const specialist = { striking: 18, wrestling: 13, submission: 13, chin: 13, cardio: 8 };
+  const balanced = { striking: 13, wrestling: 13, submission: 13, chin: 13, cardio: 13 };
+  expect(specialist.striking + specialist.wrestling + specialist.submission + specialist.chin + specialist.cardio)
+    .toBe(balanced.striking + balanced.wrestling + balanced.submission + balanced.chin + balanced.cardio);
+  expect(effectiveOverall(specialist, 28)).toBeGreaterThan(effectiveOverall(balanced, 28));
+});
+
+test('trainingCost charges more XP for the same stat point on a past-prime fighter', () => {
+  const primeCost = trainingCost(10, false, 28);
+  const pastPrimeCost = trainingCost(10, false, 37);
+  expect(pastPrimeCost).toBeGreaterThan(primeCost);
 });
 
 test('a birthday recomputes OVR from the age curve, not just the stat total', () => {

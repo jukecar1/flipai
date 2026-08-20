@@ -1080,6 +1080,25 @@ button, select, input {
   font-weight: 600;
 }
 
+.fe-roster-name-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.fe-roster-name-btn:hover {
+  color: var(--fe-teal);
+}
+
+.fe-roster-name-btn:hover .fe-boxer-name-text {
+  text-decoration: underline;
+}
+
 .fe-ovr {
   color: var(--fe-gold);
   font-weight: 700;
@@ -1103,14 +1122,14 @@ button, select, input {
 }
 
 /* Career stage — a quick visual read on where a fighter sits on the age
-   curve (see careerStage/effectiveOverall in constants.js); OVR already
+   curve (see primeStatus/effectiveOverall in constants.js); OVR already
    bakes this in, this is just the "why". */
 .fe-age {
   font-weight: 700;
   cursor: help;
 }
 
-.fe-age-rookie {
+.fe-age-pre-prime {
   color: var(--fe-blue);
 }
 
@@ -1118,12 +1137,159 @@ button, select, input {
   color: var(--fe-teal);
 }
 
-.fe-age-veteran {
-  color: var(--fe-gold);
+.fe-age-past-prime {
+  color: var(--fe-red);
 }
 
-.fe-age-declining {
+/* ---------- Modal (fighter profile) ---------- */
+
+.fe-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(8, 9, 12, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fe-modal-backdrop-in 0.15s ease;
+}
+
+@keyframes fe-modal-backdrop-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.fe-modal {
+  position: relative;
+  background: var(--fe-panel);
+  border: 1px solid var(--fe-border-light);
+  border-radius: var(--fe-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: fe-modal-in 0.2s ease;
+}
+
+@keyframes fe-modal-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fe-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  color: var(--fe-text-dim);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.fe-modal-close:hover {
+  color: var(--fe-text);
+  border-color: var(--fe-border-light);
+}
+
+.fe-profile-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-right: 24px;
+}
+
+.fe-profile-head-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.fe-profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fe-profile-name {
+  font-family: var(--fe-font-display);
+  font-size: 20px;
+  letter-spacing: 0.3px;
+}
+
+.fe-profile-sub {
+  color: var(--fe-text-dim);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.fe-prime-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.fe-prime-badge-pre-prime {
+  color: var(--fe-blue);
+  background: rgba(58, 134, 255, 0.12);
+}
+
+.fe-prime-badge-prime {
+  color: var(--fe-teal);
+  background: rgba(46, 196, 182, 0.12);
+}
+
+.fe-prime-badge-past-prime {
   color: var(--fe-red);
+  background: rgba(226, 38, 58, 0.12);
+}
+
+.fe-profile-ovr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.fe-profile-ovr {
+  font-family: var(--fe-font-display);
+  font-size: 28px;
+  color: var(--fe-gold);
+  flex-shrink: 0;
+}
+
+.fe-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.fe-profile-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fe-profile-retire {
+  width: 100%;
 }
 
 .fe-belt-badge {

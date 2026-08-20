@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST, careerStage } from '../game/constants';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -23,6 +23,8 @@ export default function Roster() {
   const { goTo } = useGameActions();
   const [scoutClass, setScoutClass] = useState(WEIGHT_CLASSES[0].id);
   const [candidates, setCandidates] = useState([]);
+  const [profileFighterId, setProfileFighterId] = useState(null);
+  const profileFighter = state.roster.find(f => f.id === profileFighterId) || null;
 
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
   const rosterFull = state.roster.length >= rosterLimit;
@@ -73,12 +75,12 @@ export default function Roster() {
             const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_WEEKS;
             return (
               <div key={f.id} className="fe-roster-row">
-                <span className="fe-roster-name">
+                <button className="fe-roster-name fe-roster-name-btn" onClick={() => setProfileFighterId(f.id)} title={`View ${f.name}'s profile`}>
                   <Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
                   <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
-                </span>
-                <span className={`fe-age fe-age-${careerStage(f.age).id}`} title={`${careerStage(f.age).label} — OVR already reflects this`}>
+                </button>
+                <span className={`fe-age fe-age-${primeStatus(f.age).id}`} title={`${primeStatus(f.age).label} — OVR already reflects this`}>
                   {f.age}
                 </span>
                 <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
@@ -149,6 +151,77 @@ export default function Roster() {
           </>
         )}
       </Panel>
+
+      {profileFighter && (
+        <FighterProfileModal
+          fighter={profileFighter}
+          onClose={() => setProfileFighterId(null)}
+          onRenew={() => renew(profileFighter)}
+          onRetire={() => { setProfileFighterId(null); retire(profileFighter); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function FighterProfileModal({ fighter: f, onClose, onRenew, onRetire }) {
+  const stage = primeStatus(f.age);
+  const contractLeft = f.contractWeeksLeft ?? '—';
+  const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_WEEKS;
+  return (
+    <div className="fe-modal-backdrop" onClick={onClose}>
+      <div className="fe-modal fe-profile-modal" onClick={e => e.stopPropagation()}>
+        <button className="fe-modal-close" onClick={onClose} title="Close">✕</button>
+        <div className="fe-profile-head">
+          <Avatar fighter={f} size={56} champion={!!f.title} />
+          <div className="fe-profile-head-text">
+            <div className="fe-profile-name-row">
+              <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
+              <span className="fe-profile-name">{f.name}</span>
+              {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
+            </div>
+            <div className="fe-profile-sub">
+              {ARCHETYPE_LABELS[f.archetype]} · Age {f.age} · {f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)
+            </div>
+          </div>
+          <span className={`fe-prime-badge fe-prime-badge-${stage.id}`}>{stage.label}</span>
+        </div>
+
+        <div className="fe-profile-ovr-row">
+          <span className="fe-profile-ovr">{f.overall}</span>
+          <span className="fe-hint">
+            OVR — weighted toward {f.name.split(' ')[0]}'s strongest stats, scaled by age. Raw training numbers below never change on their own.
+          </span>
+        </div>
+
+        <div className="fe-training-grid">
+          {STAT_KEYS.map(stat => (
+            <div key={stat} className="fe-training-row">
+              <span className="fe-training-label">{STAT_LABELS[stat]}</span>
+              <span className="fe-training-value">{f.stats[stat]}/{MAX_STAT}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="fe-profile-facts">
+          <div>
+            <span className="fe-hint">Contract</span>
+            <button className={`fe-contract-badge ${contractWarn ? 'warn' : ''}`} onClick={onRenew} title={`Renew for $${Math.round(f.purseFloor * 1.5).toLocaleString()}`}>
+              {contractLeft}w — renew
+            </button>
+          </div>
+          <div>
+            <span className="fe-hint">Purse floor</span>
+            <span>${f.purseFloor.toLocaleString()}</span>
+          </div>
+          <div>
+            <span className="fe-hint">Followers</span>
+            <Followers count={f.followers} />
+          </div>
+        </div>
+
+        <Button variant="secondary" className="fe-retire-btn fe-profile-retire" onClick={onRetire}>Retire {f.name.split(' ')[0]}</Button>
+      </div>
     </div>
   );
 }
