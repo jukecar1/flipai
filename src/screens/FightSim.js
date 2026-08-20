@@ -115,6 +115,7 @@ export default function FightSim() {
     <div className="fe-fight-sim">
       <div className="fe-fs-header">
         <div>
+          {fightMeta?.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
           <strong>{fightMeta ? `${activeFight.sim.rounds} rounds @ ${wc.name}` : wc.name}</strong>
           <div>{fighter.name} <Flag nationality={fighter.nationality} /> {fighter.record.wins}-{fighter.record.losses}-{fighter.record.draws}</div>
           <div>vs</div>

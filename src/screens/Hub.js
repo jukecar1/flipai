@@ -20,8 +20,9 @@ export default function Hub() {
                 <Avatar fighter={f} size={28} />
                 <WeightPill id={f.weightClass} />
                 <Flag nationality={f.nationality} />
-                <span className="fe-boxer-name">{f.name}</span>
+                <span className="fe-boxer-name">{f.name}{f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}</span>
                 <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO, {f.record.subs}SUB)</span>
+                {f.injuryWeeks > 0 && <span className="fe-status fe-status-injured">Injured · {f.injuryWeeks}w</span>}
                 <span className="fe-boxer-overall">OVR {f.overall}</span>
               </div>
             ))}

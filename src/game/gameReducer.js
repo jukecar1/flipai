@@ -1,4 +1,4 @@
-import { WEIGHT_CLASSES, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS } from './constants';
+import { WEIGHT_CLASSES, WEIGHT_CLASS_MAP, STARTING_FUNDS, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
 import { simulateFight } from './engine';
@@ -9,6 +9,18 @@ function randInt(min, max) {
 
 function pick(arr) {
   return arr[randInt(0, arr.length - 1)];
+}
+
+const TITLE_ELIGIBLE_OVERALL = 11;
+
+// A booked Main Event is for your promotion's own belt when the fighter is
+// good enough to be a credible titleholder and either the division's belt
+// is vacant or they're already your champion defending it. (Rival-held
+// belts are a separate, unrelated thing — see RIVAL_PROMOTIONS.)
+export function isTitleFight(state, fighter) {
+  if (!fighter || fighter.overall < TITLE_ELIGIBLE_OVERALL) return false;
+  const holder = state.titles?.[fighter.weightClass];
+  return !holder || holder.holderId === fighter.id;
 }
 
 export function prestigeTierLabel(prestige) {
@@ -68,6 +80,7 @@ export function newCareerState({ managerName, promotionName, hq }) {
     funds: STARTING_FUNDS,
     record: { wins: 0, losses: 0, draws: 0 },
     prestige: 50,
+    titles: {}, // weightClassId -> { holderId, holderName, defenses } | null (vacant until a Main Event is booked)
     rivals: RIVAL_PROMOTIONS.map(p => ({ ...p, prestige: p.basePrestige })),
     freeAgents: [makeFreeAgent(), makeFreeAgent()],
     roster,
@@ -143,10 +156,11 @@ export function gameReducer(state, action) {
     case 'SCHEDULE_FIGHT': {
       const { fighterId, opponent, fightType, venue } = action;
       const fighter = state.roster.find(f => f.id === fighterId);
-      if (!fighter || !opponent) return state;
+      if (!fighter || !opponent || fighter.injuryWeeks > 0) return state;
       const cost = costForFight(fightType, venue);
       if (state.funds < cost) return state;
       const weeksOut = randInt(2, 6);
+      const titleFight = fightType === FIGHT_TYPES.MAIN_EVENT && isTitleFight(state, fighter);
       const fight = {
         id: `f${Date.now()}_${randInt(0, 9999)}`,
         fighterId,
@@ -156,7 +170,8 @@ export function gameReducer(state, action) {
         venue,
         weeksOut,
         rounds: fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3,
-        purse: purseForFight(fighter, fightType, venue),
+        purse: Math.round(purseForFight(fighter, fightType, venue) * (titleFight ? 1.6 : 1)),
+        isTitle: titleFight,
         createdWeek: state.week,
       };
       return {
@@ -234,7 +249,23 @@ export function gameReducer(state, action) {
       const fight = state.scheduledFights.find(f => f.id === active.fightId);
       const { result } = active.sim;
 
-      const updateRecord = (fighter, won, drew, finishType) => {
+      const draw = result.method === 'DRAW';
+      const isFinish = result.method === 'KO' || result.method === 'TKO' || result.method === 'SUB';
+      const fighterWon = !draw && result.winnerId === active.fighterId;
+
+      // final damage taken, for injury odds — A is always the booked
+      // fighter and B the opponent (see PREPARE_FIGHT_SIM below)
+      const lastRound = active.sim.roundsData[active.sim.roundsData.length - 1];
+      const damageTakenA = lastRound?.endDamageA ?? 0;
+      const damageTakenB = lastRound?.endDamageB ?? 0;
+
+      const rollInjuryWeeks = (damageTaken, lostByFinish) => {
+        const chance = Math.min(0.6, (damageTaken / 100) * 0.35 + (lostByFinish ? 0.15 : 0));
+        if (Math.random() >= chance) return 0;
+        return lostByFinish ? randInt(4, 10) : randInt(2, 6);
+      };
+
+      const updateRecord = (fighter, won, drew, finishType, damageTaken) => {
         if (!fighter) return fighter;
         const record = { ...fighter.record };
         if (drew) record.draws += 1;
@@ -245,15 +276,26 @@ export function gameReducer(state, action) {
         } else {
           record.losses += 1;
         }
-        return { ...fighter, record, xp: fighter.xp + randInt(400, 900), fatigue: Math.min(100, fighter.fatigue + 40) };
+        const lostByFinish = !drew && !won && isFinish;
+        const injuryWeeks = rollInjuryWeeks(damageTaken, lostByFinish);
+        return {
+          ...fighter,
+          record,
+          xp: fighter.xp + randInt(400, 900),
+          fatigue: Math.min(100, fighter.fatigue + 40),
+          injuryWeeks: Math.max(fighter.injuryWeeks || 0, injuryWeeks),
+        };
       };
 
-      const draw = result.method === 'DRAW';
-      const isFinish = result.method === 'KO' || result.method === 'TKO' || result.method === 'SUB';
-      const fighterWon = !draw && result.winnerId === active.fighterId;
+      let fighterInjuryWeeks = 0;
+      let opponentInjuryWeeks = 0;
 
       const roster = state.roster.map(f => {
-        if (f.id === active.fighterId) return updateRecord(f, fighterWon, draw, isFinish ? result.method : null);
+        if (f.id === active.fighterId) {
+          const updated = updateRecord(f, fighterWon, draw, isFinish ? result.method : null, damageTakenA);
+          fighterInjuryWeeks = updated.injuryWeeks;
+          return updated;
+        }
         return f;
       });
 
@@ -262,7 +304,9 @@ export function gameReducer(state, action) {
         worldPool[wc] = worldPool[wc].map(f => {
           if (f.id === active.opponentId) {
             const oppWon = !draw && result.winnerId === active.opponentId;
-            return updateRecord(f, oppWon, draw, isFinish ? result.method : null);
+            const updated = updateRecord(f, oppWon, draw, isFinish ? result.method : null, damageTakenB);
+            opponentInjuryWeeks = updated.injuryWeeks;
+            return updated;
           }
           return f;
         });
@@ -276,8 +320,7 @@ export function gameReducer(state, action) {
       else if (fighterWon) record.wins += 1;
       else record.losses += 1;
 
-      const prestigeDelta = draw ? 2 : fighterWon ? (isFinish ? 20 : 12) : -6;
-      const prestige = Math.max(0, state.prestige + prestigeDelta);
+      let prestigeDelta = draw ? 2 : fighterWon ? (isFinish ? 20 : 12) : -6;
 
       const fighterRef = findFighterAnywhere(state, active.fighterId);
       const oppRef = findFighterAnywhere(state, active.opponentId);
@@ -286,16 +329,55 @@ export function gameReducer(state, action) {
         ? `${fighterRef?.name} and ${oppRef?.name} battle ${methodText}`
         : `${fighterWon ? fighterRef?.name : oppRef?.name} defeats ${fighterWon ? oppRef?.name : fighterRef?.name} ${methodText}`;
 
+      const news = [{ id: `n${Date.now()}`, week: state.week, title: headline, body: 'A fight for the ages in front of the crowd.' }];
+      if (fighterInjuryWeeks > 0) {
+        news.unshift({ id: `n${Date.now()}_inja`, week: state.week, title: `${fighterRef?.name} injured, out ${fighterInjuryWeeks} weeks`, body: `${fighterRef?.name} picked up an injury in the fight and won't be bookable for ${fighterInjuryWeeks} weeks.` });
+      }
+      if (opponentInjuryWeeks > 0) {
+        news.unshift({ id: `n${Date.now()}_injb`, week: state.week, title: `${oppRef?.name} injured, out ${opponentInjuryWeeks} weeks`, body: `${oppRef?.name} picked up an injury in the fight and will be sidelined for ${opponentInjuryWeeks} weeks.` });
+      }
+
+      // Home promotion title fight: win it (or defend it) to hold the belt;
+      // a losing champion vacates it rather than handing it to an outside
+      // free agent — your promotion's belt only ever sits with your roster.
+      let titles = state.titles;
+      let roster2 = roster;
+      if (fight?.isTitle && fighterRef) {
+        const wcId = fighterRef.weightClass;
+        const wcName = WEIGHT_CLASS_MAP[wcId]?.name;
+        const currentHolder = titles[wcId];
+        const wasDefense = currentHolder && currentHolder.holderId === active.fighterId;
+        if (fighterWon) {
+          const defenses = wasDefense ? currentHolder.defenses + 1 : 0;
+          titles = { ...titles, [wcId]: { holderId: active.fighterId, holderName: fighterRef.name, defenses } };
+          roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: wcName } : f));
+          prestigeDelta += defenses > 0 ? 15 : 40;
+          news.unshift({
+            id: `n${Date.now()}_title`,
+            week: state.week,
+            title: defenses > 0 ? `${fighterRef.name} retains the ${wcName} title` : `${fighterRef.name} becomes ${state.meta.promotionName}'s ${wcName} Champion`,
+            body: defenses > 0 ? `${fighterRef.name} makes the ${defenses === 1 ? '1st' : `${defenses}th`} defense of the belt.` : `${fighterRef.name} wins the newly created ${wcName} Championship.`,
+          });
+        } else if (wasDefense && !draw) {
+          titles = { ...titles, [wcId]: null };
+          roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: null } : f));
+          news.unshift({ id: `n${Date.now()}_titlevacant`, week: state.week, title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
+        }
+      }
+
+      const prestige = Math.max(0, state.prestige + prestigeDelta);
+
       return {
         ...state,
-        roster,
+        roster: roster2,
         worldPool,
         funds,
         record,
         prestige,
+        titles,
         scheduledFights: state.scheduledFights.filter(f => f.id !== active.fightId),
-        fightHistory: [{ id: active.fightId, week: state.week, fighterId: active.fighterId, opponentId: active.opponentId, result }, ...state.fightHistory],
-        news: [{ id: `n${Date.now()}`, week: state.week, title: headline, body: 'A fight for the ages in front of the crowd.' }, ...state.news],
+        fightHistory: [{ id: active.fightId, week: state.week, fighterId: active.fighterId, opponentId: active.opponentId, result, isTitle: !!fight?.isTitle }, ...state.fightHistory],
+        news: [...news, ...state.news],
         activeFight: null,
         ui: { ...state.ui, screen: 'fightResult' },
       };

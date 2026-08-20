@@ -484,6 +484,28 @@ button, select, input {
   line-height: 1.5;
 }
 
+.fe-hint-warn {
+  color: var(--fe-red);
+  font-weight: 600;
+}
+
+.fe-hint-title {
+  color: var(--fe-gold);
+  font-weight: 700;
+}
+
+.fe-title-fight-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--fe-gold), #d99b1f);
+  color: #1a1200;
+  font-family: var(--fe-font-display);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  margin-bottom: 6px;
+}
+
 .fe-row-actions {
   display: flex;
   gap: 10px;
@@ -615,12 +637,12 @@ button, select, input {
 
 .fe-roster-head, .fe-roster-row {
   display: grid;
-  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 0.9fr;
+  grid-template-columns: 2fr 0.5fr 1.3fr repeat(5, 0.5fr) 0.5fr 1fr 0.9fr;
   gap: 8px;
   padding: 8px 6px;
   align-items: center;
   font-size: 12.5px;
-  min-width: 640px;
+  min-width: 760px;
 }
 
 .fe-roster-head {
@@ -645,6 +667,28 @@ button, select, input {
 .fe-ovr {
   color: var(--fe-gold);
   font-weight: 700;
+}
+
+.fe-status {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.fe-status-fresh {
+  color: var(--fe-teal);
+}
+
+.fe-status-tired {
+  color: var(--fe-gold);
+}
+
+.fe-status-exhausted, .fe-status-injured {
+  color: var(--fe-red);
+}
+
+.fe-belt-badge {
+  margin-left: 6px;
+  font-size: 12px;
 }
 
 .fe-scout-panel select {
@@ -876,6 +920,33 @@ button, select, input {
   margin-left: auto;
   font-size: 11px;
   font-weight: 700;
+}
+
+.fe-subheading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--fe-text-dim);
+  margin: 4px 0 8px;
+}
+
+.fe-your-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.fe-your-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(244, 185, 66, 0.1);
+  border: 1px solid rgba(244, 185, 66, 0.3);
+  font-size: 13px;
 }
 
 .fe-free-agent-row {
@@ -1361,7 +1432,7 @@ button, select, input {
     min-width: 0;
   }
   .fe-roster-head, .fe-roster-row {
-    min-width: 560px;
+    min-width: 680px;
   }
   .fe-fs-body {
     grid-template-columns: 1fr;

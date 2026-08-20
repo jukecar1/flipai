@@ -12,7 +12,7 @@ export default function Rankings() {
     const own = state.roster.filter(f => f.weightClass === wcId).map(f => ({ ...f, mine: true }));
     const others = (state.worldPool[wcId] || []).map(f => ({ ...f, mine: false }));
     return [...own, ...others]
-      .sort((a, b) => (b.overall * 10 + b.record.wins * 2 + (b.champion ? 50 : 0)) - (a.overall * 10 + a.record.wins * 2 + (a.champion ? 50 : 0)))
+      .sort((a, b) => (b.overall * 10 + b.record.wins * 2 + (b.champion || b.title ? 50 : 0)) - (a.overall * 10 + a.record.wins * 2 + (a.champion || a.title ? 50 : 0)))
       .slice(0, 10);
   }, [state.roster, state.worldPool, wcId]);
 
@@ -32,8 +32,8 @@ export default function Rankings() {
             const promo = f.promotionId ? RIVAL_PROMOTIONS.find(p => p.id === f.promotionId) : null;
             return (
               <div key={f.id} className={`fe-ranking-row ${f.mine ? 'mine' : ''}`}>
-                <span className="fe-rank-num">{f.champion ? '👑' : i + 1}</span>
-                <Avatar fighter={f} size={28} champion={f.champion} />
+                <span className="fe-rank-num">{f.champion ? '👑' : f.title ? '🏆' : i + 1}</span>
+                <Avatar fighter={f} size={28} champion={f.champion || !!f.title} />
                 <Flag nationality={f.nationality} />
                 <span className="fe-boxer-name">{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
                 <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>

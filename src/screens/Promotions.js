@@ -22,9 +22,29 @@ export default function Promotions() {
     return { wc, champ, promo };
   });
 
+  const yourTitles = WEIGHT_CLASSES
+    .map(wc => ({ wc, title: state.titles[wc.id] }))
+    .filter(t => t.title);
+
   return (
     <div className="fe-promotions">
       <Panel title="INDUSTRY LEADERBOARD" className="fe-promo-col">
+        <div className="fe-subheading">Your Titles</div>
+        <div className="fe-your-titles">
+          {yourTitles.length === 0 ? (
+            <p className="fe-hint">No belts yet — book a Main Event with a top contender (OVR 11+) for a division's vacant title.</p>
+          ) : (
+            yourTitles.map(({ wc, title }) => (
+              <div key={wc.id} className="fe-your-title-row">
+                <span>🏆</span>
+                <WeightPill id={wc.id} />
+                <span className="fe-boxer-name">{title.holderName}</span>
+                <span className="fe-hint">{title.defenses} defense{title.defenses === 1 ? '' : 's'}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="fe-subheading">Leaderboard</div>
         <div className="fe-leaderboard">
           {board.map((p, i) => (
             <div key={p.id} className={`fe-leaderboard-row ${p.mine ? 'mine' : ''}`}>

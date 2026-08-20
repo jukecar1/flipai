@@ -65,9 +65,15 @@ export function simulateFight(fighterA, fighterB, opts = {}) {
   const rounds = opts.rounds || 3;
   const beatsPerRound = 16;
 
+  // A fighter who hasn't fully recovered from their last camp starts with
+  // less in the tank — fatigue accumulates after a fight and decays weekly
+  // (see ADVANCE_WEEK in gameReducer.js), so booking too aggressively costs
+  // real in-fight performance.
+  const startCardio = fighter => clamp(100 - (fighter.fatigue || 0) * 0.4, 55, 100);
+
   const fighters = {
-    A: { ref: fighterA, damage: 0, cardio: 100, stats: emptyActionStats(), pos: { x: 35, y: 50 } },
-    B: { ref: fighterB, damage: 0, cardio: 100, stats: emptyActionStats(), pos: { x: 65, y: 50 } },
+    A: { ref: fighterA, damage: 0, cardio: startCardio(fighterA), stats: emptyActionStats(), pos: { x: 35, y: 50 } },
+    B: { ref: fighterB, damage: 0, cardio: startCardio(fighterB), stats: emptyActionStats(), pos: { x: 65, y: 50 } },
   };
 
   const roundsData = [];

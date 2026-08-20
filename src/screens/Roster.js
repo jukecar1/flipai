@@ -3,6 +3,13 @@ import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES } from '../game/constants';
 import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
 
+function statusInfo(f) {
+  if (f.injuryWeeks > 0) return { text: `Injured · ${f.injuryWeeks}w`, cls: 'injured' };
+  if (f.fatigue >= 50) return { text: 'Exhausted', cls: 'exhausted' };
+  if (f.fatigue >= 20) return { text: 'Tired', cls: 'tired' };
+  return { text: 'Fresh', cls: 'fresh' };
+}
+
 export default function Roster() {
   const state = useGameState();
   const dispatch = useGameDispatch();
@@ -24,22 +31,30 @@ export default function Roster() {
             <span>CHIN</span>
             <span>CAR</span>
             <span>OVR</span>
+            <span>Status</span>
             <span>Purse</span>
           </div>
-          {state.roster.map(f => (
-            <div key={f.id} className="fe-roster-row">
-              <span className="fe-roster-name"><Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} /> {f.name}</span>
-              <span>{f.age}</span>
-              <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
-              <span>{f.stats.striking}</span>
-              <span>{f.stats.wrestling}</span>
-              <span>{f.stats.submission}</span>
-              <span>{f.stats.chin}</span>
-              <span>{f.stats.cardio}</span>
-              <span className="fe-ovr">{f.overall}</span>
-              <span>${f.purseFloor.toLocaleString()}</span>
-            </div>
-          ))}
+          {state.roster.map(f => {
+            const status = statusInfo(f);
+            return (
+              <div key={f.id} className="fe-roster-row">
+                <span className="fe-roster-name">
+                  <Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
+                  {f.name}{f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
+                </span>
+                <span>{f.age}</span>
+                <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
+                <span>{f.stats.striking}</span>
+                <span>{f.stats.wrestling}</span>
+                <span>{f.stats.submission}</span>
+                <span>{f.stats.chin}</span>
+                <span>{f.stats.cardio}</span>
+                <span className="fe-ovr">{f.overall}</span>
+                <span className={`fe-status fe-status-${status.cls}`}>{status.text}</span>
+                <span>${f.purseFloor.toLocaleString()}</span>
+              </div>
+            );
+          })}
         </div>
       </Panel>
 

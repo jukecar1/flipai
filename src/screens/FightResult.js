@@ -32,6 +32,7 @@ export default function FightResult() {
   return (
     <div className="fe-fight-result">
       <Panel title="FIGHT RESULT" className="fe-result-panel">
+        {last.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
         <div className="fe-result-headline">
           {draw ? (
             <span>{fighter?.name} vs {opponent?.name} — Draw</span>
