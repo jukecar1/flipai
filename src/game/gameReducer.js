@@ -5,6 +5,7 @@ import {
   CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
+  LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -61,6 +62,23 @@ function applyGameplan(fighter, gameplanId) {
     return { ...fighter, stats: { ...stats, submission: clampStat(stats.submission + 2), striking: clampStat(stats.striking + 1), chin: clampStat(stats.chin - 2) } };
   }
   return fighter;
+}
+
+// How a single fight shifts a fighter's loyalty — a real opportunity
+// (a title shot, a marquee crossover) is valued regardless of outcome; a
+// stay-busy squash match where they were never really tested wears thin;
+// getting thrown in as a huge underdog is either a star-making moment (if
+// it pays off) or feels like being fed to the wolves (if it doesn't); and
+// getting hurt in there on top of it reads as bad management either way.
+function loyaltyDeltaForFight({ winProbability, isTitle, isSuperFight, won, drew, injured }) {
+  let delta;
+  if (isTitle) delta = won ? 12 : drew ? 3 : -2;
+  else if (isSuperFight) delta = won ? 6 : drew ? 2 : -1;
+  else if (winProbability >= 0.75) delta = -3;
+  else if (winProbability <= 0.25) delta = won ? 10 : -8;
+  else delta = won ? 2 : drew ? 0 : -2;
+  if (injured) delta -= 5;
+  return delta;
 }
 
 // Simulates one round (mode 'one', used when the player is watching and
@@ -177,7 +195,7 @@ function resolveHq(hq) {
 
 export function newCareerState({ managerName, promotionName, hq, selectedFighters, championFighterId }) {
   let roster = (selectedFighters && selectedFighters.length ? selectedFighters : makeStartingRoster(3))
-    .map(f => ({ ...f, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS }));
+    .map(f => ({ ...f, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0 }));
 
   // Optionally start with one of your drafted fighters already holding
   // their division's belt, instead of every title starting vacant.
@@ -329,6 +347,8 @@ export function gameReducer(state, action) {
         cards: action.state.cards || [],
         roster: (action.state.roster || []).map(f => ({
           contractFightsLeft: DEFAULT_CONTRACT_FIGHTS,
+          loyalty: LOYALTY_BASELINE,
+          weeksSinceLastFight: 0,
           ...f,
         })),
         meta: action.state.meta
@@ -352,7 +372,7 @@ export function gameReducer(state, action) {
       const cost = 1500;
       const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
       if (!action.fighter || state.funds < cost || state.roster.length >= rosterLimit) return state;
-      const prospect = { ...action.fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS };
+      const prospect = { ...action.fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0 };
       return {
         ...state,
         funds: state.funds - cost,
@@ -371,7 +391,7 @@ export function gameReducer(state, action) {
       return {
         ...state,
         funds: state.funds - cost,
-        roster: [...state.roster, { ...fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS }],
+        roster: [...state.roster, { ...fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0 }],
         freeAgents: state.freeAgents.filter(f => f.id !== agent.id),
         prestige: state.prestige + 15,
         news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${state.meta.promotionName} signs free agent ${fighter.name}`, body: `${fighter.name} turned down interest from rival promotions to join ${state.meta.promotionName}.` }, ...state.news],
@@ -397,7 +417,7 @@ export function gameReducer(state, action) {
         };
       }
       const { champion, promotionId, title, ...base } = target;
-      const signed = { ...base, signed: true, promotionId: null, champion: false, title: null, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS };
+      const signed = { ...base, signed: true, promotionId: null, champion: false, title: null, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0 };
       return {
         ...state,
         funds: state.funds - cost,
@@ -437,7 +457,7 @@ export function gameReducer(state, action) {
       const { amateurRecord, ...base } = amateur;
       // A strong amateur run carries a little polish into the pro debut.
       const overall = Math.min(20, base.overall + Math.min(3, amateurRecord.wins - AMATEUR_PROMOTION_WINS + 1));
-      const prospect = { ...base, overall, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 } };
+      const prospect = { ...base, overall, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 } };
       return {
         ...state,
         roster: [...state.roster, prospect],
@@ -489,12 +509,33 @@ export function gameReducer(state, action) {
       const fighter = state.roster.find(f => f.id === action.fighterId);
       if (!fighter) return state;
       const fights = CONTRACT_LENGTH_OPTIONS.includes(action.fights) ? action.fights : DEFAULT_CONTRACT_FIGHTS;
-      const cost = contractCost(fighter.purseFloor, fights);
+      const loyalty = fighter.loyalty ?? LOYALTY_BASELINE;
+      const cost = contractCost(fighter.purseFloor, fights, loyalty);
       if (state.funds < cost) return state;
+
+      // A fighter who isn't happy with how you've managed them can just
+      // say no — the worse it's been going, the more likely they walk
+      // away from the table rather than sign back up.
+      if (Math.random() >= renewalAcceptChance(loyalty)) {
+        return {
+          ...state,
+          news: [{
+            id: `n${Date.now()}_contractrefused`,
+            week: state.week,
+            category: 'poached',
+            title: `${fighter.name} turns down your contract offer`,
+            body: loyalty < 35
+              ? `${fighter.name} isn't interested — they've made it clear they don't like how they've been booked lately.`
+              : `${fighter.name} isn't ready to commit right now. No charge for asking — try again later.`,
+          }, ...state.news],
+        };
+      }
+
       return {
         ...state,
         funds: state.funds - cost,
-        roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractFightsLeft: fights } : f)),
+        // Locking in more fights together is itself a vote of confidence.
+        roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractFightsLeft: fights, loyalty: clampLoyalty(loyalty + 5) } : f)),
       };
     }
 
@@ -633,6 +674,13 @@ export function gameReducer(state, action) {
       const funds = Math.max(0, state.funds - upkeep);
       const agedRoster = state.roster.map(f => {
         const age = week % WEEKS_PER_YEAR === 0 ? f.age + 1 : f.age;
+        const weeksSinceLastFight = (f.weeksSinceLastFight ?? 0) + 1;
+        const startingLoyalty = f.loyalty ?? LOYALTY_BASELINE;
+        // Sitting on the shelf too long wears on a fighter; either way,
+        // grievances (or extra goodwill) fade a little each week, drifting
+        // back toward a neutral baseline rather than staying locked in.
+        const inactivityPenalty = weeksSinceLastFight > INACTIVE_WEEKS_BEFORE_FRUSTRATION ? 1 : 0;
+        const loyalty = clampLoyalty(startingLoyalty + (LOYALTY_BASELINE - startingLoyalty) * 0.03 - inactivityPenalty);
         return {
           ...f,
           fatigue: Math.max(0, f.fatigue - 15),
@@ -641,6 +689,8 @@ export function gameReducer(state, action) {
           // A birthday can nudge OVR before a single punch is thrown — the
           // age curve is always live, not just something training reveals.
           overall: age === f.age ? f.overall : effectiveOverall(f.stats, age),
+          weeksSinceLastFight,
+          loyalty,
         };
       });
 
@@ -999,17 +1049,27 @@ export function gameReducer(state, action) {
 
       // Your fighter's contract counts down only when they actually
       // compete — if this was their last fight under contract, they walk
-      // to a rival the same way an unrenewed deal always has.
+      // to a rival the same way an unrenewed deal always has. How you
+      // booked them also shapes how they feel about re-signing later.
       const bookedFighterPostFight = roster2.find(f => f.id === active.fighterId);
       if (bookedFighterPostFight) {
         const contractFightsLeft = (bookedFighterPostFight.contractFightsLeft ?? DEFAULT_CONTRACT_FIGHTS) - 1;
+        const loyaltyDelta = loyaltyDeltaForFight({
+          winProbability: fight?.winProbability ?? 0.5,
+          isTitle: !!fight?.isTitle,
+          isSuperFight: !!fight?.isSuperFight,
+          won: fighterWon,
+          drew: draw,
+          injured: fighterInjuryWeeks > 0,
+        });
+        const loyalty = clampLoyalty((bookedFighterPostFight.loyalty ?? LOYALTY_BASELINE) + loyaltyDelta);
         if (contractFightsLeft <= 0) {
           if (titles[bookedFighterPostFight.weightClass]?.holderId === bookedFighterPostFight.id) {
             titles = { ...titles, [bookedFighterPostFight.weightClass]: null };
           }
           const promo = pick(state.rivals);
           const { contractFightsLeft: oldFightsLeft, signed, title, ...departed } = bookedFighterPostFight;
-          worldPool[bookedFighterPostFight.weightClass] = [...worldPool[bookedFighterPostFight.weightClass], { ...departed, promotionId: promo.id, champion: false, title: null }];
+          worldPool[bookedFighterPostFight.weightClass] = [...worldPool[bookedFighterPostFight.weightClass], { ...departed, loyalty, promotionId: promo.id, champion: false, title: null }];
           roster2 = roster2.filter(f => f.id !== bookedFighterPostFight.id);
           news.unshift({
             id: `n${Date.now()}_contractdone`,
@@ -1019,7 +1079,7 @@ export function gameReducer(state, action) {
             body: `${bookedFighterPostFight.name} fought out their deal and walks to ${promo.name} as a free agent.`,
           });
         } else {
-          roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft } : f));
+          roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft, loyalty, weeksSinceLastFight: 0 } : f));
         }
       }
 

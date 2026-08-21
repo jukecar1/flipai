@@ -96,15 +96,18 @@ export const RETIREMENT_AGE = 39;
 
 // A fighter's true physical prime is their late 20s. Younger fighters are
 // still developing (a 19-year-old prospect hasn't hit their ceiling yet)
-// and older fighters decline — gently through their early-to-mid 30s, then
-// sharper heading into retirement. This scales EFFECTIVE ability (what
+// and past 30 they decline on an accelerating curve — barely noticeable
+// right after their prime, clearly felt by their mid-30s, steep heading
+// into retirement — rather than coasting on a flat plateau for years
+// before suddenly falling off. This scales EFFECTIVE ability (what
 // actually plays out in the cage, and what OVR reports) without ever
 // touching the raw trained stat numbers on the Roster screen — training
 // gains are real and permanent, age just determines how much of them
 // you're currently fighting at.
 const PRIME_START_AGE = 26;
 const PRIME_END_AGE = 30;
-const VETERAN_AGE = 34;
+const DECLINE_CURVE_POWER = 1.3; // >1 = decline accelerates the further past prime you are
+const MAX_DECLINE = 0.35; // multiplier bottoms out at 1 - this, right at RETIREMENT_AGE
 
 export function ageCurveMultiplier(age) {
   if (age < PRIME_START_AGE) {
@@ -112,12 +115,8 @@ export function ageCurveMultiplier(age) {
     return 0.9 + t * 0.1; // ramps 0.90 -> 1.00 rising into their prime
   }
   if (age <= PRIME_END_AGE) return 1;
-  if (age <= VETERAN_AGE) {
-    const t = (age - PRIME_END_AGE) / (VETERAN_AGE - PRIME_END_AGE);
-    return 1 - t * 0.1; // gentle decline, down to 0.90 at 34
-  }
-  const t = Math.max(0, Math.min(1, (age - VETERAN_AGE) / (RETIREMENT_AGE - VETERAN_AGE)));
-  return 0.9 - t * 0.22; // sharper drop-off, down to ~0.68 near retirement
+  const t = Math.max(0, Math.min(1, (age - PRIME_END_AGE) / (RETIREMENT_AGE - PRIME_END_AGE)));
+  return 1 - Math.pow(t, DECLINE_CURVE_POWER) * MAX_DECLINE;
 }
 
 // The badge shown right on a fighter's profile — exactly where they sit
@@ -176,12 +175,8 @@ export const COACH_SPECIALTY_DISCOUNT = 0.25;
 export function trainingAgeMultiplier(age) {
   if (age < PRIME_START_AGE) return 0.92; // a young body adapts fast
   if (age <= PRIME_END_AGE) return 1;
-  if (age <= VETERAN_AGE) {
-    const t = (age - PRIME_END_AGE) / (VETERAN_AGE - PRIME_END_AGE);
-    return 1 + t * 0.35; // up to 1.35x by 34
-  }
-  const t = Math.max(0, Math.min(1, (age - VETERAN_AGE) / (RETIREMENT_AGE - VETERAN_AGE)));
-  return 1.35 + t * 0.65; // up to 2x heading into retirement
+  const t = Math.max(0, Math.min(1, (age - PRIME_END_AGE) / (RETIREMENT_AGE - PRIME_END_AGE)));
+  return 1 + Math.pow(t, DECLINE_CURVE_POWER); // same acceleration as ageCurveMultiplier, up to 2x by retirement
 }
 
 export function trainingCost(statValue, isSpecialty, age) {
@@ -201,8 +196,50 @@ export const DEFAULT_CONTRACT_FIGHTS = 3;
 export const CONTRACT_WARNING_FIGHTS = 1; // flag the badge on their last fight under contract
 const CONTRACT_COST_PER_FIGHT_MULTIPLIER = 0.5;
 
-export function contractCost(purseFloor, fights) {
-  return Math.round(purseFloor * CONTRACT_COST_PER_FIGHT_MULTIPLIER * fights);
+// Loyalty: how a fighter feels about the way you've managed their career
+// lately — real opportunities and fair fights vs. being used as a
+// stay-busy tune-up, thrown in over their head, or left to rot on the
+// shelf. A fresh signing starts neutral; it drifts back toward that
+// baseline over time so an old grievance eventually fades, but sustained
+// bad booking can tank it, and a badly-treated fighter can flat-out
+// refuse to re-sign — or demand a lot more to do it.
+export const LOYALTY_BASELINE = 60;
+export const LOYALTY_MIN = 0;
+export const LOYALTY_MAX = 100;
+export const INACTIVE_WEEKS_BEFORE_FRUSTRATION = 10;
+
+export function clampLoyalty(n) {
+  return Math.max(LOYALTY_MIN, Math.min(LOYALTY_MAX, Math.round(n)));
+}
+
+export function loyaltyStatus(loyalty) {
+  if (loyalty >= 80) return { id: 'loyal', label: 'Loyal' };
+  if (loyalty >= LOYALTY_BASELINE) return { id: 'content', label: 'Content' };
+  if (loyalty >= 35) return { id: 'frustrated', label: 'Frustrated' };
+  return { id: 'resentful', label: 'Resentful' };
+}
+
+// Comfortably confident at baseline and above; refusal risk grows as
+// loyalty falls below it, becoming a real coinflip-or-worse once resentful.
+export function renewalAcceptChance(loyalty) {
+  if (loyalty >= LOYALTY_BASELINE) {
+    const t = Math.min(1, (loyalty - LOYALTY_BASELINE) / (LOYALTY_MAX - LOYALTY_BASELINE));
+    return 0.85 + t * 0.13;
+  }
+  const t = loyalty / LOYALTY_BASELINE;
+  return Math.max(0.05, 0.85 * t);
+}
+
+// A frustrated fighter's camp drives a harder bargain.
+export function loyaltyCostMultiplier(loyalty) {
+  if (loyalty >= LOYALTY_BASELINE) return 1;
+  if (loyalty >= 40) return 1.2;
+  if (loyalty >= 20) return 1.5;
+  return 2;
+}
+
+export function contractCost(purseFloor, fights, loyalty = LOYALTY_BASELINE) {
+  return Math.round(purseFloor * CONTRACT_COST_PER_FIGHT_MULTIPLIER * fights * loyaltyCostMultiplier(loyalty));
 }
 
 // Moving a fighter to an adjacent weight class costs a training-camp fee

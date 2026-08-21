@@ -2,7 +2,7 @@ import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUp
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
-  STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost,
+  STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
 } from './constants';
 import { CITIES } from './namePool';
 
@@ -52,6 +52,10 @@ function emptySideStats() {
 
 function bookMainEvent(state, fighterId) {
   return gameReducer(state, { type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+}
+
+function bookShowcase(state, fighterId) {
+  return gameReducer(state, { type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType: FIGHT_TYPES.SHOWCASE, venue });
 }
 
 // PREPARE_FIGHT_SIM (and the round-by-round actions built on it) look the
@@ -277,6 +281,13 @@ test('ageCurveMultiplier peaks in the late 20s and declines toward retirement', 
   expect(ageCurveMultiplier(RETIREMENT_AGE - 1)).toBeGreaterThan(0.6);
 });
 
+test('35 is clearly past prime, not just barely started to fade', () => {
+  expect(primeStatus(35).id).toBe('past-prime');
+  expect(primeStatus(35).label).toBe('Past Prime');
+  // more than a token dip — a real, felt decline by the mid-30s
+  expect(ageCurveMultiplier(35)).toBeLessThan(0.9);
+});
+
 test('effectiveOverall scales the same stats down for an older fighter', () => {
   const stats = { striking: 16, wrestling: 16, submission: 16, chin: 16, cardio: 16 };
   const primeOverall = effectiveOverall(stats, 28);
@@ -434,6 +445,93 @@ test('advancing the week alone never touches a contract', () => {
   const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
   const next = gameReducer(stateWithContract, { type: 'ADVANCE_WEEK' });
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(1);
+});
+
+test('winning a title fight boosts loyalty', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const before = state.roster.find(f => f.id === 'champ1').loyalty;
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBeGreaterThan(before);
+});
+
+test('a lopsided win as a heavy favorite is a stay-busy match that dents loyalty a little', () => {
+  let state = bookShowcase(baseState(), 'champ1');
+  const fight = state.scheduledFights[0];
+  expect(fight.winProbability).toBeGreaterThanOrEqual(0.75);
+  const before = state.roster.find(f => f.id === 'champ1').loyalty;
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBeLessThan(before);
+});
+
+test('a huge underdog win is a star-making moment that boosts loyalty a lot', () => {
+  let state = baseState();
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, overall: 5 } : f)) };
+  state = bookShowcase(state, 'champ1');
+  const fight = state.scheduledFights[0];
+  expect(fight.winProbability).toBeLessThanOrEqual(0.25);
+  const before = state.roster.find(f => f.id === 'champ1').loyalty;
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'champ1');
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBeGreaterThan(before + 5);
+});
+
+test('losing badly as a big underdog feels like being fed to the wolves', () => {
+  let state = baseState();
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, overall: 5 } : f)) };
+  state = bookShowcase(state, 'champ1');
+  const fight = state.scheduledFights[0];
+  const before = state.roster.find(f => f.id === 'champ1').loyalty;
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'opp1');
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBeLessThan(before - 5);
+});
+
+test('a resentful fighter can refuse to re-sign, and it costs nothing', () => {
+  const state = baseState();
+  const resentfulState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 10 } : f)) };
+  const before = resentfulState.roster.find(f => f.id === 'champ1');
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+  const next = gameReducer(resentfulState, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
+  spy.mockRestore();
+  expect(next.funds).toBe(resentfulState.funds);
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(before.contractFightsLeft);
+  expect(next.news.some(n => n.title.includes('turns down'))).toBe(true);
+});
+
+test('a loyal fighter reliably re-signs and gets a small loyalty bump for it', () => {
+  const state = baseState();
+  const loyalState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 90 } : f)) };
+  const fighter = loyalState.roster.find(f => f.id === 'champ1');
+  const cost = contractCost(fighter.purseFloor, 3, 90);
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
+  const next = gameReducer(loyalState, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
+  spy.mockRestore();
+  expect(next.funds).toBe(loyalState.funds - cost);
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(3);
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBe(95);
+});
+
+test('a frustrated fighter costs more to sign than a loyal one for the same deal', () => {
+  const fighter = { purseFloor: 2000 };
+  const loyalCost = contractCost(fighter.purseFloor, 3, 90);
+  const frustratedCost = contractCost(fighter.purseFloor, 3, 25);
+  expect(frustratedCost).toBeGreaterThan(loyalCost);
+});
+
+test('advancing the week ticks up weeksSinceLastFight and drifts loyalty toward baseline', () => {
+  const state = baseState();
+  const shifted = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 90, weeksSinceLastFight: 0 } : f)) };
+  const next = gameReducer(shifted, { type: 'ADVANCE_WEEK' });
+  const champ = next.roster.find(f => f.id === 'champ1');
+  expect(champ.weeksSinceLastFight).toBe(1);
+  expect(champ.loyalty).toBeLessThan(90);
+  expect(champ.loyalty).toBeGreaterThan(60);
+});
+
+test('long-term inactivity slowly frustrates a fighter', () => {
+  const state = baseState();
+  const shelved = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 60, weeksSinceLastFight: INACTIVE_WEEKS_BEFORE_FRUSTRATION + 1 } : f)) };
+  const next = gameReducer(shelved, { type: 'ADVANCE_WEEK' });
+  expect(next.roster.find(f => f.id === 'champ1').loyalty).toBeLessThan(60);
 });
 
 test('moving a fighter to an adjacent weight class spends funds and updates their division', () => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, CONTRACT_LENGTH_OPTIONS, contractCost, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT } from '../game/constants';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, CONTRACT_LENGTH_OPTIONS, contractCost, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT, loyaltyStatus, LOYALTY_BASELINE } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -169,6 +169,9 @@ function FighterProfileModal({ fighter: f, funds, onClose, onRenew, onRetire }) 
   const stage = primeStatus(f.age);
   const contractLeft = f.contractFightsLeft ?? '—';
   const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_FIGHTS;
+  const loyalty = f.loyalty ?? LOYALTY_BASELINE;
+  const loyaltyTier = loyaltyStatus(loyalty);
+  const loyaltyLow = loyalty < LOYALTY_BASELINE;
   return (
     <div className="fe-modal-backdrop" onClick={onClose}>
       <div className="fe-modal fe-profile-modal" onClick={e => e.stopPropagation()}>
@@ -185,7 +188,10 @@ function FighterProfileModal({ fighter: f, funds, onClose, onRenew, onRetire }) 
               {ARCHETYPE_LABELS[f.archetype]} · Age {f.age} · {f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)
             </div>
           </div>
-          <span className={`fe-prime-badge fe-prime-badge-${stage.id}`}>{stage.label}</span>
+          <div className="fe-profile-badges">
+            <span className={`fe-prime-badge fe-prime-badge-${stage.id}`}>{stage.label}</span>
+            <span className={`fe-loyalty-badge fe-loyalty-badge-${loyaltyTier.id}`} title={`Loyalty ${loyalty}/100 — reflects how well you've booked and managed ${f.name.split(' ')[0]} lately`}>{loyaltyTier.label}</span>
+          </div>
         </div>
 
         <div className="fe-profile-ovr-row">
@@ -220,9 +226,16 @@ function FighterProfileModal({ fighter: f, funds, onClose, onRenew, onRetire }) 
         </div>
 
         <div className="fe-subheading">Sign for</div>
+        {loyaltyLow && (
+          <div className="fe-loyalty-warning">
+            {loyalty < 35
+              ? `${f.name.split(' ')[0]} is unhappy with how they've been booked — there's a real chance they turn down any offer.`
+              : `${f.name.split(' ')[0]} isn't thrilled with recent booking — signing will cost more, and they might say no.`}
+          </div>
+        )}
         <div className="fe-contract-options">
           {CONTRACT_LENGTH_OPTIONS.map(fights => {
-            const cost = contractCost(f.purseFloor, fights);
+            const cost = contractCost(f.purseFloor, fights, loyalty);
             return (
               <button
                 key={fights}
