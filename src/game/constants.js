@@ -191,11 +191,19 @@ export function trainingCost(statValue, isSpecialty, age) {
 }
 
 // Contracts: every signed fighter (starting roster, scouted, free agent,
-// promoted amateur) has a contract that runs out — renew it before it
-// does or a rival scoops them up, same as an unsigned free agent.
-export const CONTRACT_LENGTH_RANGE = [40, 90];
-export const CONTRACT_WARNING_WEEKS = 8;
-export const CONTRACT_RENEWAL_MULTIPLIER = 1.5;
+// promoted amateur) is locked in for a set number of fights, not a length
+// of time — it counts down only when they actually compete, so signing
+// someone doesn't put them on a silent expiration clock. Sign (or renew)
+// for 1, 3, or 5 fights at a time; run out and a rival scoops them up,
+// same as an unsigned free agent.
+export const CONTRACT_LENGTH_OPTIONS = [1, 3, 5];
+export const DEFAULT_CONTRACT_FIGHTS = 3;
+export const CONTRACT_WARNING_FIGHTS = 1; // flag the badge on their last fight under contract
+const CONTRACT_COST_PER_FIGHT_MULTIPLIER = 0.5;
+
+export function contractCost(purseFloor, fights) {
+  return Math.round(purseFloor * CONTRACT_COST_PER_FIGHT_MULTIPLIER * fights);
+}
 
 // Moving a fighter to an adjacent weight class costs a training-camp fee
 // and takes a toll on their conditioning that week.

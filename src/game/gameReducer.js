@@ -2,7 +2,7 @@ import {
   WEIGHT_CLASSES, WEIGHT_CLASS_MAP, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS,
   GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT,
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
-  CONTRACT_LENGTH_RANGE, CONTRACT_RENEWAL_MULTIPLIER, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
+  CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
 } from './constants';
@@ -86,9 +86,6 @@ function runFightRounds(fighter, opponent, gameplanId, session, fromRound, total
   return { roundsData: roundsOut, stopped: stoppedOut, session: s };
 }
 
-function randomContractLength() {
-  return randInt(CONTRACT_LENGTH_RANGE[0], CONTRACT_LENGTH_RANGE[1]);
-}
 
 const TITLE_ELIGIBLE_OVERALL = 11;
 
@@ -180,7 +177,7 @@ function resolveHq(hq) {
 
 export function newCareerState({ managerName, promotionName, hq, selectedFighters, championFighterId }) {
   let roster = (selectedFighters && selectedFighters.length ? selectedFighters : makeStartingRoster(3))
-    .map(f => ({ ...f, signed: true, contractWeeksLeft: randomContractLength() }));
+    .map(f => ({ ...f, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS }));
 
   // Optionally start with one of your drafted fighters already holding
   // their division's belt, instead of every title starting vacant.
@@ -331,7 +328,7 @@ export function gameReducer(state, action) {
         hallOfFame: action.state.hallOfFame || [],
         cards: action.state.cards || [],
         roster: (action.state.roster || []).map(f => ({
-          contractWeeksLeft: randomContractLength(),
+          contractFightsLeft: DEFAULT_CONTRACT_FIGHTS,
           ...f,
         })),
         meta: action.state.meta
@@ -355,7 +352,7 @@ export function gameReducer(state, action) {
       const cost = 1500;
       const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
       if (!action.fighter || state.funds < cost || state.roster.length >= rosterLimit) return state;
-      const prospect = { ...action.fighter, signed: true, contractWeeksLeft: randomContractLength() };
+      const prospect = { ...action.fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS };
       return {
         ...state,
         funds: state.funds - cost,
@@ -374,7 +371,7 @@ export function gameReducer(state, action) {
       return {
         ...state,
         funds: state.funds - cost,
-        roster: [...state.roster, { ...fighter, signed: true, contractWeeksLeft: randomContractLength() }],
+        roster: [...state.roster, { ...fighter, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS }],
         freeAgents: state.freeAgents.filter(f => f.id !== agent.id),
         prestige: state.prestige + 15,
         news: [{ id: `n${Date.now()}`, week: state.week, category: 'signing', title: `${state.meta.promotionName} signs free agent ${fighter.name}`, body: `${fighter.name} turned down interest from rival promotions to join ${state.meta.promotionName}.` }, ...state.news],
@@ -400,7 +397,7 @@ export function gameReducer(state, action) {
         };
       }
       const { champion, promotionId, title, ...base } = target;
-      const signed = { ...base, signed: true, promotionId: null, champion: false, title: null, contractWeeksLeft: randomContractLength() };
+      const signed = { ...base, signed: true, promotionId: null, champion: false, title: null, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS };
       return {
         ...state,
         funds: state.funds - cost,
@@ -440,7 +437,7 @@ export function gameReducer(state, action) {
       const { amateurRecord, ...base } = amateur;
       // A strong amateur run carries a little polish into the pro debut.
       const overall = Math.min(20, base.overall + Math.min(3, amateurRecord.wins - AMATEUR_PROMOTION_WINS + 1));
-      const prospect = { ...base, overall, signed: true, contractWeeksLeft: randomContractLength(), record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 } };
+      const prospect = { ...base, overall, signed: true, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 } };
       return {
         ...state,
         roster: [...state.roster, prospect],
@@ -491,12 +488,13 @@ export function gameReducer(state, action) {
     case 'RENEW_CONTRACT': {
       const fighter = state.roster.find(f => f.id === action.fighterId);
       if (!fighter) return state;
-      const cost = Math.round(fighter.purseFloor * CONTRACT_RENEWAL_MULTIPLIER);
+      const fights = CONTRACT_LENGTH_OPTIONS.includes(action.fights) ? action.fights : DEFAULT_CONTRACT_FIGHTS;
+      const cost = contractCost(fighter.purseFloor, fights);
       if (state.funds < cost) return state;
       return {
         ...state,
         funds: state.funds - cost,
-        roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractWeeksLeft: randomContractLength() } : f)),
+        roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractFightsLeft: fights } : f)),
       };
     }
 
@@ -643,18 +641,17 @@ export function gameReducer(state, action) {
           // A birthday can nudge OVR before a single punch is thrown — the
           // age curve is always live, not just something training reveals.
           overall: age === f.age ? f.overall : effectiveOverall(f.stats, age),
-          contractWeeksLeft: (f.contractWeeksLeft ?? randomContractLength()) - 1,
         };
       });
 
       // Anyone who's aged into retirement leaves the roster — a genuinely
       // great career earns a Hall of Fame plaque, and a vacated belt goes
-      // back on the table for someone else to win. A contract running out
-      // is a different exit — the fighter walks to a rival instead.
+      // back on the table for someone else to win. Contracts don't run out
+      // from time passing anymore — they count down per fight, so an
+      // expiring deal is handled in RESOLVE_FIGHT instead.
       const news = [...state.news];
       let titles = state.titles;
       let hallOfFame = state.hallOfFame || [];
-      let worldPoolFromRoster = state.worldPool;
       const roster = [];
       agedRoster.forEach(f => {
         if (f.age >= RETIREMENT_AGE) {
@@ -669,25 +666,6 @@ export function gameReducer(state, action) {
             category: 'retirement',
             title: worthy ? `${f.name} retires — Hall of Fame` : `${f.name} retires`,
             body: `${f.name} hangs up the gloves at ${f.age}, finishing ${f.record.wins}-${f.record.losses}-${f.record.draws}.${worthy ? ' A career worthy of the Fight Empire Hall of Fame.' : ''}`,
-          });
-          return;
-        }
-        if (f.contractWeeksLeft <= 0) {
-          if (titles[f.weightClass]?.holderId === f.id) {
-            titles = { ...titles, [f.weightClass]: null };
-          }
-          const promo = pick(state.rivals);
-          const { contractWeeksLeft, signed, ...departed } = f;
-          worldPoolFromRoster = {
-            ...worldPoolFromRoster,
-            [f.weightClass]: [...worldPoolFromRoster[f.weightClass], { ...departed, promotionId: promo.id, champion: false, title: null }],
-          };
-          news.unshift({
-            id: `n${Date.now()}_contract_${f.id}`,
-            week,
-            category: 'poached',
-            title: `${f.name}'s contract expires — signs with ${promo.name}`,
-            body: `You didn't renew in time — ${f.name} walks to ${promo.name} as a free agent.`,
           });
           return;
         }
@@ -716,7 +694,7 @@ export function gameReducer(state, action) {
 
       // free agents age; if their window closes, a rival scoops them up
       const stillFree = [];
-      let worldPool = worldPoolFromRoster;
+      let worldPool = state.worldPool;
       state.freeAgents.forEach(agent => {
         const weeksLeft = agent.weeksLeft - 1;
         if (weeksLeft <= 0) {
@@ -1016,6 +994,32 @@ export function gameReducer(state, action) {
           titles = { ...titles, [wcId]: null };
           roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: null } : f));
           news.unshift({ id: `n${Date.now()}_titlevacant`, week: state.week, category: 'title', title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
+        }
+      }
+
+      // Your fighter's contract counts down only when they actually
+      // compete — if this was their last fight under contract, they walk
+      // to a rival the same way an unrenewed deal always has.
+      const bookedFighterPostFight = roster2.find(f => f.id === active.fighterId);
+      if (bookedFighterPostFight) {
+        const contractFightsLeft = (bookedFighterPostFight.contractFightsLeft ?? DEFAULT_CONTRACT_FIGHTS) - 1;
+        if (contractFightsLeft <= 0) {
+          if (titles[bookedFighterPostFight.weightClass]?.holderId === bookedFighterPostFight.id) {
+            titles = { ...titles, [bookedFighterPostFight.weightClass]: null };
+          }
+          const promo = pick(state.rivals);
+          const { contractFightsLeft: oldFightsLeft, signed, title, ...departed } = bookedFighterPostFight;
+          worldPool[bookedFighterPostFight.weightClass] = [...worldPool[bookedFighterPostFight.weightClass], { ...departed, promotionId: promo.id, champion: false, title: null }];
+          roster2 = roster2.filter(f => f.id !== bookedFighterPostFight.id);
+          news.unshift({
+            id: `n${Date.now()}_contractdone`,
+            week: state.week,
+            category: 'poached',
+            title: `${bookedFighterPostFight.name}'s contract is up — signs with ${promo.name}`,
+            body: `${bookedFighterPostFight.name} fought out their deal and walks to ${promo.name} as a free agent.`,
+          });
+        } else {
+          roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft } : f));
         }
       }
 

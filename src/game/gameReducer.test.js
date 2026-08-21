@@ -1,7 +1,7 @@
 import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
-  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, CONTRACT_RENEWAL_MULTIPLIER,
+  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost,
 } from './constants';
 import { CITIES } from './namePool';
@@ -392,23 +392,48 @@ test('training without enough XP does nothing', () => {
   expect(after.stats.striking).toBe(before.stats.striking);
 });
 
-test('renewing a contract resets the countdown and spends funds', () => {
+test('renewing a contract sets the chosen fight count and spends funds', () => {
   const state = baseState();
-  const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractWeeksLeft: 2 } : f)) };
+  const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
   const fighter = stateWithContract.roster.find(f => f.id === 'champ1');
-  const cost = Math.round(fighter.purseFloor * CONTRACT_RENEWAL_MULTIPLIER);
-  const next = gameReducer(stateWithContract, { type: 'RENEW_CONTRACT', fighterId: 'champ1' });
+  const cost = contractCost(fighter.purseFloor, 5);
+  const next = gameReducer(stateWithContract, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 5 });
   expect(next.funds).toBe(stateWithContract.funds - cost);
-  expect(next.roster.find(f => f.id === 'champ1').contractWeeksLeft).toBeGreaterThan(2);
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(5);
 });
 
-test('a fighter whose contract runs out during ADVANCE_WEEK leaves the roster for a rival', () => {
+test('renewing with an invalid fight count falls back to the default length', () => {
   const state = baseState();
-  const stateExpiring = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractWeeksLeft: 1 } : f)) };
-  const next = gameReducer(stateExpiring, { type: 'ADVANCE_WEEK' });
+  const fighter = state.roster.find(f => f.id === 'champ1');
+  const cost = contractCost(fighter.purseFloor, DEFAULT_CONTRACT_FIGHTS);
+  const next = gameReducer(state, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 4 });
+  expect(next.funds).toBe(state.funds - cost);
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(DEFAULT_CONTRACT_FIGHTS);
+});
+
+test('a fight completing the contract sends the fighter to a rival, not just decrements a clock', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
   expect(next.worldPool.FLW.some(f => f.id === 'champ1')).toBe(true);
   expect(next.news.some(n => n.category === 'poached')).toBe(true);
+});
+
+test('a fight that does not use up the contract just counts it down by one', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 3 } : f)) };
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(2);
+});
+
+test('advancing the week alone never touches a contract', () => {
+  const state = baseState();
+  const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
+  const next = gameReducer(stateWithContract, { type: 'ADVANCE_WEEK' });
+  expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(1);
 });
 
 test('moving a fighter to an adjacent weight class spends funds and updates their division', () => {

@@ -1292,6 +1292,46 @@ button, select, input {
   width: 100%;
 }
 
+.fe-contract-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.fe-contract-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: 7px;
+  padding: 8px 6px;
+  color: var(--fe-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.fe-contract-option:hover:not(:disabled) {
+  border-color: var(--fe-teal);
+}
+
+.fe-contract-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fe-contract-option-fights {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.fe-contract-option-cost {
+  color: var(--fe-gold);
+  font-size: 12px;
+}
+
 .fe-belt-badge {
   margin-left: 6px;
   font-size: 12px;

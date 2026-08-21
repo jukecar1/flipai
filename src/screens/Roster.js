@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_WEEKS, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT } from '../game/constants';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, CONTRACT_LENGTH_OPTIONS, contractCost, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -40,7 +40,7 @@ export default function Roster() {
       dispatch({ type: 'RETIRE_FIGHTER', fighterId: fighter.id });
     }
   };
-  const renew = fighter => dispatch({ type: 'RENEW_CONTRACT', fighterId: fighter.id });
+  const renew = (fighter, fights) => dispatch({ type: 'RENEW_CONTRACT', fighterId: fighter.id, fights });
   const moveWeight = (fighter, direction) => dispatch({ type: 'MOVE_WEIGHT_CLASS', fighterId: fighter.id, direction });
 
   return (
@@ -71,8 +71,8 @@ export default function Roster() {
             const wcIdx = WEIGHT_CLASSES.findIndex(w => w.id === f.weightClass);
             const canMoveUp = wcIdx > 0 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;
             const canMoveDown = wcIdx < WEIGHT_CLASSES.length - 1 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;
-            const contractLeft = f.contractWeeksLeft ?? '—';
-            const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_WEEKS;
+            const contractLeft = f.contractFightsLeft ?? '—';
+            const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_FIGHTS;
             return (
               <div key={f.id} className="fe-roster-row">
                 <button className="fe-roster-name fe-roster-name-btn" onClick={() => setProfileFighterId(f.id)} title={`View ${f.name}'s profile`}>
@@ -94,10 +94,10 @@ export default function Roster() {
                 <Followers count={f.followers} />
                 <button
                   className={`fe-contract-badge ${contractWarn ? 'warn' : ''}`}
-                  onClick={() => renew(f)}
-                  title={`Renew ${f.name}'s contract for $${Math.round(f.purseFloor * 1.5).toLocaleString()}`}
+                  onClick={() => setProfileFighterId(f.id)}
+                  title={contractWarn ? `${f.name} walks after this fight unless you re-sign — open their profile to renew` : `${contractLeft} fight${contractLeft === 1 ? '' : 's'} left on ${f.name}'s deal`}
                 >
-                  {contractLeft}w
+                  {contractLeft}f
                 </button>
                 <span>${f.purseFloor.toLocaleString()}</span>
                 <span className="fe-roster-actions">
@@ -155,8 +155,9 @@ export default function Roster() {
       {profileFighter && (
         <FighterProfileModal
           fighter={profileFighter}
+          funds={state.funds}
           onClose={() => setProfileFighterId(null)}
-          onRenew={() => renew(profileFighter)}
+          onRenew={fights => renew(profileFighter, fights)}
           onRetire={() => { setProfileFighterId(null); retire(profileFighter); }}
         />
       )}
@@ -164,10 +165,10 @@ export default function Roster() {
   );
 }
 
-function FighterProfileModal({ fighter: f, onClose, onRenew, onRetire }) {
+function FighterProfileModal({ fighter: f, funds, onClose, onRenew, onRetire }) {
   const stage = primeStatus(f.age);
-  const contractLeft = f.contractWeeksLeft ?? '—';
-  const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_WEEKS;
+  const contractLeft = f.contractFightsLeft ?? '—';
+  const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_FIGHTS;
   return (
     <div className="fe-modal-backdrop" onClick={onClose}>
       <div className="fe-modal fe-profile-modal" onClick={e => e.stopPropagation()}>
@@ -205,12 +206,6 @@ function FighterProfileModal({ fighter: f, onClose, onRenew, onRetire }) {
 
         <div className="fe-profile-facts">
           <div>
-            <span className="fe-hint">Contract</span>
-            <button className={`fe-contract-badge ${contractWarn ? 'warn' : ''}`} onClick={onRenew} title={`Renew for $${Math.round(f.purseFloor * 1.5).toLocaleString()}`}>
-              {contractLeft}w — renew
-            </button>
-          </div>
-          <div>
             <span className="fe-hint">Purse floor</span>
             <span>${f.purseFloor.toLocaleString()}</span>
           </div>
@@ -218,6 +213,29 @@ function FighterProfileModal({ fighter: f, onClose, onRenew, onRetire }) {
             <span className="fe-hint">Followers</span>
             <Followers count={f.followers} />
           </div>
+          <div>
+            <span className="fe-hint">Under contract</span>
+            <span className={contractWarn ? 'fe-contract-badge warn' : ''}>{contractLeft} fight{contractLeft === 1 ? '' : 's'} left</span>
+          </div>
+        </div>
+
+        <div className="fe-subheading">Sign for</div>
+        <div className="fe-contract-options">
+          {CONTRACT_LENGTH_OPTIONS.map(fights => {
+            const cost = contractCost(f.purseFloor, fights);
+            return (
+              <button
+                key={fights}
+                className="fe-contract-option"
+                disabled={funds < cost}
+                onClick={() => onRenew(fights)}
+                title={`Sign ${f.name} for ${fights} fight${fights === 1 ? '' : 's'} — $${cost.toLocaleString()}`}
+              >
+                <span className="fe-contract-option-fights">{fights} fight{fights === 1 ? '' : 's'}</span>
+                <span className="fe-contract-option-cost">${cost.toLocaleString()}</span>
+              </button>
+            );
+          })}
         </div>
 
         <Button variant="secondary" className="fe-retire-btn fe-profile-retire" onClick={onRetire}>Retire {f.name.split(' ')[0]}</Button>
