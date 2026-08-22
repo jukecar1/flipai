@@ -1,4 +1,4 @@
-import { WEIGHT_CLASSES, STARTING_ROSTER_POOL_SIZE, effectiveOverall } from './constants';
+import { WEIGHT_CLASSES, STARTING_ROSTER_POOL_SIZE, effectiveOverall, LOYALTY_BASELINE, clampLoyalty } from './constants';
 import { randomFighterName } from './namePool';
 
 let fighterCounter = 1;
@@ -75,6 +75,12 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
     champion: false, // holds a rival promotion's divisional belt
     signed: false,
     retired: false,
+    // How content this fighter is with their current management — only
+    // meaningful for rival-owned fighters sitting in the world pool (any
+    // fighter you actually sign has this reset to a fresh baseline). Gives
+    // real variance to poach odds instead of every rival fighter being an
+    // identical coin flip.
+    loyalty: clampLoyalty(LOYALTY_BASELINE + randInt(-30, 25)),
   };
 }
 

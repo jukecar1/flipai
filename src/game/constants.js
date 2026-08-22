@@ -251,8 +251,15 @@ export const BANKRUPTCY_WEEKS = 6;
 
 // A rival won't sit still on a fighter they've marked as a champion —
 // poaching one out from under a rival promotion costs a steep buyout
-// with a success chance driven by your prestige relative to theirs.
+// with a success chance driven by your prestige relative to theirs, and
+// by how happy that fighter already is under their current management —
+// an unhappy fighter is that much easier to pull away.
 export const POACH_COST_MULTIPLIER = 6;
+
+export function poachChance(prestigeDelta, targetLoyalty = LOYALTY_BASELINE) {
+  const loyaltyFactor = (LOYALTY_BASELINE - targetLoyalty) / 250;
+  return Math.max(0.05, Math.min(0.75, 0.15 + prestigeDelta / 20000 + loyaltyFactor));
+}
 
 // A free agent's asking price climbs as their countdown runs out — other
 // promotions are circling too, so waiting costs you.

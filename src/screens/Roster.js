@@ -73,6 +73,20 @@ export default function Roster() {
             const canMoveDown = wcIdx < WEIGHT_CLASSES.length - 1 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;
             const contractLeft = f.contractFightsLeft ?? '—';
             const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_FIGHTS;
+            const loyaltyTier = loyaltyStatus(f.loyalty ?? LOYALTY_BASELINE);
+            const loyaltyRisk = loyaltyTier.id === 'resentful' ? 'high' : loyaltyTier.id === 'frustrated' ? 'low' : null;
+            let contractTitle;
+            if (contractWarn && loyaltyRisk === 'high') {
+              contractTitle = `${f.name} walks after this fight — and they're unhappy with your booking, so there's a real chance they refuse to re-sign at all.`;
+            } else if (contractWarn) {
+              contractTitle = `${f.name} walks after this fight unless you re-sign — open their profile to renew`;
+            } else if (loyaltyRisk === 'high') {
+              contractTitle = `${f.name} is unhappy with your booking — real risk they refuse to re-sign when their deal is up.`;
+            } else if (loyaltyRisk === 'low') {
+              contractTitle = `${f.name} isn't thrilled with recent booking — re-signing will cost more than usual.`;
+            } else {
+              contractTitle = `${contractLeft} fight${contractLeft === 1 ? '' : 's'} left on ${f.name}'s deal`;
+            }
             return (
               <div key={f.id} className="fe-roster-row">
                 <button className="fe-roster-name fe-roster-name-btn" onClick={() => setProfileFighterId(f.id)} title={`View ${f.name}'s profile`}>
@@ -93,9 +107,9 @@ export default function Roster() {
                 <span className={`fe-status fe-status-${status.cls}`}>{status.text}</span>
                 <Followers count={f.followers} />
                 <button
-                  className={`fe-contract-badge ${contractWarn ? 'warn' : ''}`}
+                  className={`fe-contract-badge ${contractWarn ? 'warn' : !contractWarn && loyaltyRisk ? `risk-${loyaltyRisk}` : ''}`}
                   onClick={() => setProfileFighterId(f.id)}
-                  title={contractWarn ? `${f.name} walks after this fight unless you re-sign — open their profile to renew` : `${contractLeft} fight${contractLeft === 1 ? '' : 's'} left on ${f.name}'s deal`}
+                  title={contractTitle}
                 >
                   {contractLeft}f
                 </button>

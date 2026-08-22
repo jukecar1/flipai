@@ -5,7 +5,7 @@ import {
   CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
-  LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance,
+  LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance, loyaltyStatus, poachChance,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -79,6 +79,16 @@ function loyaltyDeltaForFight({ winProbability, isTitle, isSuperFight, won, drew
   else delta = won ? 2 : drew ? 0 : -2;
   if (injured) delta -= 5;
   return delta;
+}
+
+// A fighter's parting words when they fight out their deal and walk —
+// flavored by how they actually feel about the way they were managed.
+function departureFlavor(name, promoName, loyalty) {
+  const tier = loyaltyStatus(loyalty).id;
+  if (tier === 'resentful') return `${name} fought out their deal and bolts to ${promoName} without a second thought — they'd wanted out for a long time.`;
+  if (tier === 'frustrated') return `${name} fought out their deal and walks to ${promoName}, tired of how they'd been booked.`;
+  if (tier === 'loyal') return `${name} fought out their deal and walks to ${promoName} — reluctantly, by their own account, but a contract's a contract.`;
+  return `${name} fought out their deal and walks to ${promoName} as a free agent.`;
 }
 
 // Simulates one round (mode 'one', used when the player is watching and
@@ -409,7 +419,8 @@ export function gameReducer(state, action) {
       const cost = Math.round(target.purseFloor * POACH_COST_MULTIPLIER);
       if (state.funds < cost) return state;
       const rivalPromo = state.rivals.find(r => r.id === target.promotionId);
-      const chance = Math.max(0.05, Math.min(0.75, 0.15 + (state.prestige - (rivalPromo?.prestige || 0)) / 20000));
+      const targetLoyalty = target.loyalty ?? LOYALTY_BASELINE;
+      const chance = poachChance(state.prestige - (rivalPromo?.prestige || 0), targetLoyalty);
       if (Math.random() >= chance) {
         return {
           ...state,
@@ -418,12 +429,15 @@ export function gameReducer(state, action) {
       }
       const { champion, promotionId, title, ...base } = target;
       const signed = { ...base, signed: true, promotionId: null, champion: false, title: null, contractFightsLeft: DEFAULT_CONTRACT_FIGHTS, loyalty: LOYALTY_BASELINE, weeksSinceLastFight: 0 };
+      const poachBody = targetLoyalty < 35
+        ? `${target.name} was already unhappy at ${rivalPromo?.name || 'their old promotion'} and jumps at the chance to join ${state.meta.promotionName}.`
+        : `${target.name} leaves ${rivalPromo?.name || 'their promotion'} to join ${state.meta.promotionName}.`;
       return {
         ...state,
         funds: state.funds - cost,
         roster: [...state.roster, signed],
         worldPool: { ...state.worldPool, [targetWc]: state.worldPool[targetWc].filter(f => f.id !== fighterId) },
-        news: [{ id: `n${Date.now()}_poach`, week: state.week, category: 'signing', title: `${state.meta.promotionName} poaches ${target.name} from ${rivalPromo?.name || 'a rival'}`, body: `${target.name} leaves ${rivalPromo?.name || 'their promotion'} to join ${state.meta.promotionName}.` }, ...state.news],
+        news: [{ id: `n${Date.now()}_poach`, week: state.week, category: 'signing', title: `${state.meta.promotionName} poaches ${target.name} from ${rivalPromo?.name || 'a rival'}`, body: poachBody }, ...state.news],
       };
     }
 
@@ -1076,7 +1090,7 @@ export function gameReducer(state, action) {
             week: state.week,
             category: 'poached',
             title: `${bookedFighterPostFight.name}'s contract is up — signs with ${promo.name}`,
-            body: `${bookedFighterPostFight.name} fought out their deal and walks to ${promo.name} as a free agent.`,
+            body: departureFlavor(bookedFighterPostFight.name, promo.name, loyalty),
           });
         } else {
           roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft, loyalty, weeksSinceLastFight: 0 } : f));

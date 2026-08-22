@@ -3,7 +3,9 @@ import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
+  LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance,
 } from './constants';
+import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
 
 function baseState() {
@@ -408,7 +410,9 @@ test('renewing a contract sets the chosen fight count and spends funds', () => {
   const stateWithContract = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
   const fighter = stateWithContract.roster.find(f => f.id === 'champ1');
   const cost = contractCost(fighter.purseFloor, 5);
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // guarantee they accept
   const next = gameReducer(stateWithContract, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 5 });
+  spy.mockRestore();
   expect(next.funds).toBe(stateWithContract.funds - cost);
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(5);
 });
@@ -417,7 +421,9 @@ test('renewing with an invalid fight count falls back to the default length', ()
   const state = baseState();
   const fighter = state.roster.find(f => f.id === 'champ1');
   const cost = contractCost(fighter.purseFloor, DEFAULT_CONTRACT_FIGHTS);
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // guarantee they accept
   const next = gameReducer(state, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 4 });
+  spy.mockRestore();
   expect(next.funds).toBe(state.funds - cost);
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(DEFAULT_CONTRACT_FIGHTS);
 });
@@ -430,6 +436,24 @@ test('a fight completing the contract sends the fighter to a rival, not just dec
   expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
   expect(next.worldPool.FLW.some(f => f.id === 'champ1')).toBe(true);
   expect(next.news.some(n => n.category === 'poached')).toBe(true);
+});
+
+test('a resentful fighter fought out their deal walks away without a backward glance', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1, loyalty: 5 } : f)) };
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  const departureNews = next.news.find(n => n.id.includes('contractdone'));
+  expect(departureNews.body).toMatch(/wanted out for a long time/);
+});
+
+test('a loyal fighter fought out their deal leaves reluctantly, not resentfully', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1, loyalty: 95 } : f)) };
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  const departureNews = next.news.find(n => n.id.includes('contractdone'));
+  expect(departureNews.body).toMatch(/reluctantly/);
 });
 
 test('a fight that does not use up the contract just counts it down by one', () => {
@@ -614,6 +638,48 @@ test('a failed poach attempt costs nothing and leaves the fighter with the rival
   spy.mockRestore();
   expect(next.roster.some(f => f.id === 'rival3')).toBe(false);
   expect(next.funds).toBe(stateWithRival.funds);
+});
+
+test('freshly generated fighters get a varied, in-bounds loyalty reading', () => {
+  const fighters = Array.from({ length: 20 }, () => makeFighter({ level: 'gatekeeper' }));
+  fighters.forEach(f => {
+    expect(f.loyalty).toBeGreaterThanOrEqual(LOYALTY_MIN);
+    expect(f.loyalty).toBeLessThanOrEqual(LOYALTY_MAX);
+  });
+  expect(new Set(fighters.map(f => f.loyalty)).size).toBeGreaterThan(1);
+});
+
+test('poachChance rewards a target who is already unhappy with their current promotion', () => {
+  const contentChance = poachChance(2000, LOYALTY_BASELINE);
+  const resentfulChance = poachChance(2000, 10);
+  const loyalChance = poachChance(2000, 95);
+  expect(resentfulChance).toBeGreaterThan(contentChance);
+  expect(loyalChance).toBeLessThan(contentChance);
+});
+
+test('an unhappy rival fighter is easier to poach than a loyal one facing the same odds', () => {
+  const state = baseState();
+  const loyalFighter = { ...opponent, id: 'rivalLoyal', promotionId: 'crown', purseFloor: 1000, loyalty: 95 };
+  const unhappyFighter = { ...opponent, id: 'rivalUnhappy', promotionId: 'crown', purseFloor: 1000, loyalty: 10 };
+  const stateWithRivals = { ...state, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, loyalFighter, unhappyFighter] } };
+  // Between the loyal fighter's depressed odds and the unhappy fighter's boosted odds.
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.15);
+  const failedOnLoyal = gameReducer(stateWithRivals, { type: 'POACH_FIGHTER', fighterId: 'rivalLoyal' });
+  const succeededOnUnhappy = gameReducer(stateWithRivals, { type: 'POACH_FIGHTER', fighterId: 'rivalUnhappy' });
+  spy.mockRestore();
+  expect(failedOnLoyal.roster.some(f => f.id === 'rivalLoyal')).toBe(false);
+  expect(succeededOnUnhappy.roster.some(f => f.id === 'rivalUnhappy')).toBe(true);
+});
+
+test('a poached fighter who was already unhappy gets a callout in the signing news', () => {
+  const state = baseState();
+  const unhappyFighter = { ...opponent, id: 'rivalUnhappy2', promotionId: 'crown', purseFloor: 1000, loyalty: 10 };
+  const stateWithRival = { ...state, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, unhappyFighter] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // always succeeds
+  const next = gameReducer(stateWithRival, { type: 'POACH_FIGHTER', fighterId: 'rivalUnhappy2' });
+  spy.mockRestore();
+  const poachNews = next.news.find(n => n.id.includes('_poach'));
+  expect(poachNews.body).toMatch(/already unhappy/);
 });
 
 test('starting a career with a chosen champion crowns them and boosts starting prestige', () => {

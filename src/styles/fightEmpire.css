@@ -1061,6 +1061,16 @@ button, select, input {
   font-weight: 700;
 }
 
+.fe-contract-badge.risk-high {
+  border-color: var(--fe-red);
+  color: var(--fe-red);
+}
+
+.fe-contract-badge.risk-low {
+  border-color: var(--fe-gold);
+  color: var(--fe-gold);
+}
+
 .fe-roster-head {
   color: var(--fe-text-dim);
   text-transform: uppercase;
