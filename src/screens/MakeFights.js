@@ -2,8 +2,43 @@ import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS } from '../game/constants';
 import { isTitleFight, drawMultiplier, purseForFight, winProbability } from '../game/gameReducer';
-import { venuesNear, venuesForFightType } from '../game/venues';
+import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+
+const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
+
+// Shared by both booking flows — home venues (scaled to the player's own
+// HQ) always list first, with any "on the road" marquee options grouped
+// separately underneath so it reads as a real geography, not one flat list.
+function VenueGroups({ home, away, venueId, cardChoice, onSelect }) {
+  const row = v => (
+    <div key={v.id} className={`fe-venue-row ${venueId === v.id && !cardChoice ? 'selected' : ''}`} onClick={() => onSelect(v)}>
+      <div>
+        <strong>{v.name}</strong>
+        <span>{v.home ? VENUE_TIER_LABELS[v.tier] : `${v.city} · ${VENUE_TIER_LABELS[v.tier]}`} · {v.capacity.toLocaleString()} seats</span>
+      </div>
+      <span className="fe-venue-fee">${v.fee.toLocaleString()}</span>
+    </div>
+  );
+  return (
+    <>
+      {home.length > 0 && (
+        <>
+          <div className="fe-subheading">Home Market</div>
+          <div className="fe-venue-list">{home.map(row)}</div>
+        </>
+      )}
+      {away.length > 0 && (
+        <>
+          <div className="fe-subheading">On the Road</div>
+          <p className="fe-hint">A bigger stage in a bigger city — no home discount, but the sport's biggest venues are always open to a promotion that can afford them.</p>
+          <div className="fe-venue-list">{away.map(row)}</div>
+        </>
+      )}
+      {home.length === 0 && away.length === 0 && <div className="fe-empty">No venues available for this fight type.</div>}
+    </>
+  );
+}
 
 const TYPE_LABELS = {
   [FIGHT_TYPES.SINGLE]: 'Single Fight',
@@ -138,14 +173,14 @@ function SingleBookingFlow() {
   const opponent = opponents.find(o => o.id === opponentId) || crossoverOpponents.find(o => o.id === opponentId);
   const isSuperFight = fightType === FIGHT_TYPES.MAIN_EVENT && !!opponent?.promotionId;
 
-  const venues = useMemo(() => venuesForFightType(fightType, meta.hq), [fightType, meta.hq]);
+  const { home: homeVenues, away: awayVenues } = useMemo(() => venueOptions(fightType, meta.hq, meta.hqTier), [fightType, meta.hq, meta.hqTier]);
   const isCardType = fightType !== FIGHT_TYPES.SINGLE;
   const bookableCards = useMemo(() => {
     if (!isCardType) return [];
     return (state.cards || []).filter(c => c.weeksOut > 0 && state.scheduledFights.filter(f => f.cardId === c.id).length < CARD_MAX_FIGHTS);
   }, [state.cards, state.scheduledFights, isCardType]);
   const selectedCard = bookableCards.find(c => c.id === cardChoice);
-  const venue = isCardType && selectedCard ? selectedCard.venue : venues.find(v => v.id === venueId);
+  const venue = isCardType && selectedCard ? selectedCard.venue : [...homeVenues, ...awayVenues].find(v => v.id === venueId);
 
   const sanctionFee = isSuperFight ? SUPER_FIGHT_SANCTION_FEE : 0;
   const venueCost = fightType === FIGHT_TYPES.SINGLE ? 0 : (isCardType && selectedCard ? 0 : (venue ? venue.fee : 0));
@@ -250,17 +285,7 @@ function SingleBookingFlow() {
             <div className="fe-subheading">Or Book a New Card</div>
           </>
         )}
-        <div className="fe-venue-list">
-          {venues.slice(0, 8).map(v => (
-            <div key={v.id} className={`fe-venue-row ${venueId === v.id && !cardChoice ? 'selected' : ''}`} onClick={() => { setVenueId(v.id); setCardChoice(''); }}>
-              <div>
-                <strong>{v.name}</strong>
-                <span>{v.city} · {v.capacity.toLocaleString()} seats</span>
-              </div>
-              <span className="fe-venue-fee">${v.fee.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
+        <VenueGroups home={homeVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} />
 
         {fighter && opponent && venue && (
           <div className="fe-confirm-box">
@@ -298,8 +323,8 @@ function CardBuilderFlow() {
   const [pickOpponentId, setPickOpponentId] = useState('');
   const [pickGameplan, setPickGameplan] = useState('balanced');
 
-  const venues = useMemo(() => venuesNear(meta.hq), [meta.hq]);
-  const venue = venues.find(v => v.id === venueId);
+  const { home: homeVenues, away: awayVenues } = useMemo(() => venueOptions(null, meta.hq, meta.hqTier), [meta.hq, meta.hqTier]);
+  const venue = [...homeVenues, ...awayVenues].find(v => v.id === venueId);
 
   const alreadyBooked = new Set(state.scheduledFights.map(f => f.fighterId));
   const pendingFighterIds = new Set(pendingBouts.map(b => b.fighterId));
@@ -356,17 +381,7 @@ function CardBuilderFlow() {
     <div className="fe-make-fights">
       <Panel title="1. VENUE" className="fe-mf-col">
         <p className="fe-hint">Pick a venue to host your card — the site fee covers up to {CARD_MAX_FIGHTS} bouts, one fee for the whole night.</p>
-        <div className="fe-venue-list">
-          {venues.slice(0, 8).map(v => (
-            <div key={v.id} className={`fe-venue-row ${venueId === v.id ? 'selected' : ''}`} onClick={() => setVenueId(v.id)}>
-              <div>
-                <strong>{v.name}</strong>
-                <span>{v.city} · {v.capacity.toLocaleString()} seats</span>
-              </div>
-              <span className="fe-venue-fee">${v.fee.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
+        <VenueGroups home={homeVenues} away={awayVenues} venueId={venueId} onSelect={v => setVenueId(v.id)} />
       </Panel>
 
       <Panel title={`2. ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`} className="fe-mf-col">
