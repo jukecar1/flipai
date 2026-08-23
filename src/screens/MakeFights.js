@@ -10,15 +10,18 @@ const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena:
 // Shared by both booking flows — home venues (scaled to the player's own
 // HQ) list first, real nearby cities next, and any "on the road" marquee
 // options grouped separately underneath, so it reads as a real geography
-// instead of one flat list.
-function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect }) {
+// instead of one flat list. A Single Fight never actually charges a site
+// fee (feesApply=false) — the dollar figure would just be noise since it's
+// never deducted, so those rows show "Free" instead, same as an existing
+// card's shared-fee rows.
+function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, feesApply = true }) {
   const row = v => (
     <div key={v.id} className={`fe-venue-row ${venueId === v.id && !cardChoice ? 'selected' : ''}`} onClick={() => onSelect(v)}>
       <div>
         <strong>{v.name}</strong>
         <span>{v.home ? VENUE_TIER_LABELS[v.tier] : `${v.city} · ${VENUE_TIER_LABELS[v.tier]}`} · {v.capacity.toLocaleString()} seats</span>
       </div>
-      <span className="fe-venue-fee">${v.fee.toLocaleString()}</span>
+      <span className="fe-venue-fee">{feesApply ? `$${v.fee.toLocaleString()}` : 'Free'}</span>
     </div>
   );
   const empty = home.length === 0 && regional.length === 0 && away.length === 0;
@@ -199,7 +202,7 @@ function SingleBookingFlow() {
   const isDefense = isTitle && state.titles[fighter.weightClass]?.holderId === fighter.id;
 
   const drawMult = opponent && fighter ? drawMultiplier(fighter.followers, opponent.followers) : 1;
-  const estimatedPurse = fighter && venue && opponent
+  const winPurse = fighter && venue && opponent
     ? Math.round(purseForFight(fighter, opponent, fightType, venue) * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1))
     : 0;
 
@@ -293,7 +296,8 @@ function SingleBookingFlow() {
             <div className="fe-subheading">Or Book a New Card</div>
           </>
         )}
-        <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} />
+        {!isCardType && <p className="fe-hint">No site fee for a Single Fight — but a bigger venue still means a bigger purse.</p>}
+        <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} feesApply={isCardType} />
 
         {fighter && opponent && venue && (
           <div className="fe-confirm-box">
@@ -305,7 +309,10 @@ function SingleBookingFlow() {
               Draw power: <span className="fe-gold">{drawMult.toFixed(2)}x gate</span>
               <span className="fe-hint"> ({(fighter.followers + opponent.followers).toLocaleString()} combined followers)</span>
             </div>
-            <div>Est. purse: <span className="fe-gold">${estimatedPurse.toLocaleString()}+</span></div>
+            <div>
+              Purse: <span className="fe-gold">${winPurse.toLocaleString()} to win</span>
+              <span className="fe-hint"> · ${Math.round(winPurse * 0.5).toLocaleString()} on a draw · ${Math.round(winPurse * 0.3).toLocaleString()} on a loss</span>
+            </div>
             <div>Cost to book: <span className="fe-gold">${cost.toLocaleString()}</span>{isSuperFight && <span className="fe-hint"> (incl. ${sanctionFee.toLocaleString()} sanction fee)</span>}</div>
           </div>
         )}
@@ -350,6 +357,10 @@ function CardBuilderFlow() {
   const pickOpponent = opponents.find(o => o.id === pickOpponentId) || crossoverOpponents.find(o => o.id === pickOpponentId);
 
   const isTitle = pickType === FIGHT_TYPES.MAIN_EVENT && pickFighter && isTitleFight(state, pickFighter);
+  const pickIsSuperFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickOpponent?.promotionId;
+  const pickWinPurse = pickFighter && pickOpponent && venue
+    ? Math.round(purseForFight(pickFighter, pickOpponent, pickType, venue) * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1))
+    : 0;
 
   const sanctionTotal = pendingBouts.reduce((sum, b) => sum + (b.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0), 0);
   const totalCost = (venue?.fee || 0) + sanctionTotal;
@@ -423,6 +434,11 @@ function CardBuilderFlow() {
                 <div className="fe-subheading">Opponent</div>
                 <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={pickOpponentId} onSelect={o => setPickOpponentId(o.id)} />
                 {pickFighter && pickOpponent && <MatchupCompare fighter={pickFighter} opponent={pickOpponent} />}
+                {pickFighter && pickOpponent && (
+                  <p className="fe-hint">
+                    Purse: <span className="fe-gold">${pickWinPurse.toLocaleString()} to win</span> · ${Math.round(pickWinPurse * 0.5).toLocaleString()} on a draw · ${Math.round(pickWinPurse * 0.3).toLocaleString()} on a loss
+                  </p>
+                )}
                 <div className="fe-row-actions">
                   <Button variant="advance" onClick={addBout} disabled={!canAddBout}>Add Bout to Card</Button>
                 </div>
