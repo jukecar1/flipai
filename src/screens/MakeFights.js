@@ -1,12 +1,38 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability } from '../game/gameReducer';
+import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
 const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️', stadium: '🏙️' };
+
+// A crowd-fill readout — how full a venue will actually look with the
+// matchup you've picked, not just its raw capacity. Same math everywhere:
+// a small hall fills up on curiosity alone, a stadium needs real star
+// power, so the exact same fighters can look packed in one and empty in
+// the other.
+function CrowdMeter({ combinedFollowers, capacity, compact = false }) {
+  const rate = attendanceRate(combinedFollowers, capacity);
+  const status = attendanceStatus(rate);
+  const pct = Math.round(rate * 100);
+  if (compact) {
+    return <span className={`fe-attendance-chip fe-attendance-${status.id}`}>{pct}% · {status.label}</span>;
+  }
+  return (
+    <div className={`fe-crowd-meter fe-crowd-meter-${status.id}`}>
+      <div className="fe-crowd-meter-head">
+        <span className="fe-crowd-meter-label">{status.label}</span>
+        <span className="fe-crowd-meter-pct">{pct}%</span>
+      </div>
+      <div className="fe-crowd-meter-bar">
+        <span className="fe-crowd-meter-fill" style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+      <p className="fe-crowd-meter-flavor">{status.flavor}</p>
+    </div>
+  );
+}
 
 // Shared by both booking flows — home venues (scaled to the player's own
 // HQ) list first, real nearby cities next, and any "on the road" marquee
@@ -14,14 +40,18 @@ const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️'
 // instead of one flat list. A Single Fight never actually charges a site
 // fee (feesApply=false) — the dollar figure would just be noise since it's
 // never deducted, so those rows show "Free" instead, same as an existing
-// card's shared-fee rows.
-function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, feesApply = true }) {
+// card's shared-fee rows. When a matchup is already picked (combinedFollowers
+// is a number, not null), every row previews how full that specific venue
+// would look with these two fighters — the same crowd math applies to a
+// 600-seat hall and an 80,000-seat stadium alike.
+function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, feesApply = true, combinedFollowers = null }) {
   const row = v => (
     <div key={v.id} className={`fe-venue-row ${venueId === v.id && !cardChoice ? 'selected' : ''}`} onClick={() => onSelect(v)}>
       <span className="fe-venue-icon" aria-hidden="true">{VENUE_TIER_ICONS[v.tier]}</span>
       <div>
         <strong>{v.name}</strong>
         <span>{v.home ? VENUE_TIER_LABELS[v.tier] : `${v.city} · ${VENUE_TIER_LABELS[v.tier]}`} · {v.capacity.toLocaleString()} seats</span>
+        {combinedFollowers != null && <CrowdMeter combinedFollowers={combinedFollowers} capacity={v.capacity} compact />}
       </div>
       <span className="fe-venue-fee">{feesApply ? `$${v.fee.toLocaleString()}` : 'Free'}</span>
     </div>
@@ -49,6 +79,17 @@ function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, fees
         </>
       )}
       {empty && <div className="fe-empty">No venues available for this fight type.</div>}
+    </>
+  );
+}
+
+// Turns a plain panel title into a numbered step in the booking wizard —
+// a small badge instead of a hardcoded "1." in the text.
+function StepTitle({ n, children }) {
+  return (
+    <>
+      <span className="fe-step-num">{n}</span>
+      {children}
     </>
   );
 }
@@ -203,6 +244,7 @@ function SingleBookingFlow() {
 
   const opponent = opponents.find(o => o.id === opponentId) || crossoverOpponents.find(o => o.id === opponentId);
   const isSuperFight = fightType === FIGHT_TYPES.MAIN_EVENT && !!opponent?.promotionId;
+  const combinedFollowers = fighter && opponent ? (fighter.followers || 0) + (opponent.followers || 0) : null;
 
   const { home: homeVenues, regional: regionalVenues, away: awayVenues } = useMemo(() => venueOptions(fightType, meta.hq, meta.hqTier), [fightType, meta.hq, meta.hqTier]);
   const isCardType = fightType !== FIGHT_TYPES.SINGLE;
@@ -242,7 +284,7 @@ function SingleBookingFlow() {
 
   return (
     <div className="fe-make-fights">
-      <Panel title="1. SELECT YOUR FIGHTER" className="fe-mf-col">
+      <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-mf-col">
         <select value={fighterId} onChange={e => selectFighter(e.target.value)} className="fe-full-select">
           {roster.map(f => (
             <option key={f.id} value={f.id} disabled={alreadyBooked.has(f.id) || isInjured(f)}>
@@ -288,7 +330,7 @@ function SingleBookingFlow() {
         <p className="fe-hint">{GAMEPLANS.find(g => g.id === gameplan)?.description}</p>
       </Panel>
 
-      <Panel title="2. PICK AN OPPONENT" className="fe-mf-col">
+      <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
         {fighter && opponent && (
           <>
@@ -298,7 +340,7 @@ function SingleBookingFlow() {
         )}
       </Panel>
 
-      <Panel title={isCardType ? '3. CARD & CONFIRM' : '3. VENUE & CONFIRM'} className="fe-mf-col">
+      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col">
         {isCardType && bookableCards.length > 0 && (
           <>
             <div className="fe-subheading">Add to an Upcoming Card</div>
@@ -320,7 +362,7 @@ function SingleBookingFlow() {
           </>
         )}
         {!isCardType && <p className="fe-hint">No site fee for a Single Fight — but a bigger venue still means a bigger purse.</p>}
-        <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} feesApply={isCardType} />
+        <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} feesApply={isCardType} combinedFollowers={combinedFollowers} />
 
         {fighter && opponent && venue && (
           <div className="fe-fight-poster">
@@ -342,6 +384,7 @@ function SingleBookingFlow() {
               </div>
             </div>
             <div className="fe-fight-poster-venue">{venue.name}, {venue.city}{selectedCard ? ' · shared card' : ''}</div>
+            <CrowdMeter combinedFollowers={combinedFollowers} capacity={venue.capacity} />
             <div className="fe-fight-poster-stats">
               <div>
                 <span className="fe-fight-poster-stat-label">Draw power</span>
@@ -418,6 +461,7 @@ function CardBuilderFlow() {
       fighterId: pickFighter.id,
       fighterName: pickFighter.name,
       fighterWeightClass: pickFighter.weightClass,
+      fighterFollowers: pickFighter.followers,
       opponent: pickOpponent,
       fightType: pickType,
       gameplan: pickGameplan,
@@ -443,12 +487,12 @@ function CardBuilderFlow() {
 
   return (
     <div className="fe-make-fights">
-      <Panel title="1. VENUE" className="fe-mf-col">
+      <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-mf-col">
         <p className="fe-hint">Pick a venue to host your card — the site fee covers up to {CARD_MAX_FIGHTS} bouts, one fee for the whole night.</p>
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} onSelect={v => setVenueId(v.id)} />
       </Panel>
 
-      <Panel title={`2. ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`} className="fe-mf-col">
+      <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-mf-col">
         {!venue && <div className="fe-empty">Pick a venue first.</div>}
         {venue && (
           <>
@@ -479,6 +523,9 @@ function CardBuilderFlow() {
                 <div className="fe-subheading">Opponent</div>
                 <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={pickOpponentId} onSelect={o => setPickOpponentId(o.id)} />
                 {pickFighter && pickOpponent && <MatchupCompare fighter={pickFighter} opponent={pickOpponent} />}
+                {pickFighter && pickOpponent && venue && (
+                  <CrowdMeter combinedFollowers={(pickFighter.followers || 0) + (pickOpponent.followers || 0)} capacity={venue.capacity} />
+                )}
                 {pickFighter && pickOpponent && (
                   <p className="fe-hint">
                     Purse: <span className="fe-gold">${pickWinPurse.toLocaleString()} to win</span> · ${Math.round(pickWinPurse * 0.5).toLocaleString()} on a draw · ${Math.round(pickWinPurse * 0.3).toLocaleString()} on a loss
@@ -493,7 +540,7 @@ function CardBuilderFlow() {
         )}
       </Panel>
 
-      <Panel title="3. REVIEW & BOOK" className="fe-mf-col">
+      <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col">
         {pendingBouts.length === 0 && <div className="fe-empty">No bouts added yet.</div>}
         <div className="fe-fight-list">
           {pendingBouts.map((b, i) => (
@@ -503,6 +550,7 @@ function CardBuilderFlow() {
               {b.isTitle && <span title="Title fight">🏆</span>}
               {b.opponent.promotionId && <span title="Crossover event">⚔️</span>}
               <span className="fe-fight-title">{b.fighterName} v {b.opponent.name} <span className="fe-hint">({TYPE_LABELS[b.fightType]})</span></span>
+              {venue && <CrowdMeter combinedFollowers={(b.fighterFollowers || 0) + (b.opponent.followers || 0)} capacity={venue.capacity} compact />}
               <button className="fe-retire-btn" onClick={() => removeBout(i)}>Remove</button>
             </div>
           ))}

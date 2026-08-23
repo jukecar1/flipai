@@ -307,10 +307,36 @@ export function prestigeUpsetFactor(preFightOdds, won) {
   return Math.max(0.4, Math.min(2.4, 1 + swing * 2.4));
 }
 
+// A local walk-up crowd shows up to any sanctioned fight regardless of who's
+// on the poster — a small hall fills up on curiosity alone, but a stadium
+// needs real star power on top of it to look like anything but empty seats
+// on camera. Same formula for every venue tier, from a 600-seat hall to an
+// 80,000-seat stadium — it's just relative to whatever capacity you booked.
+const BASE_LOCAL_DRAW = 400;
+
+export function attendanceRate(combinedFollowers, capacity) {
+  if (!capacity) return 1;
+  return Math.max(0, Math.min(1, (BASE_LOCAL_DRAW + combinedFollowers) / capacity));
+}
+
+export function attendanceStatus(rate) {
+  if (rate >= 1) return { id: 'sold-out', label: 'Sold Out', flavor: 'Turned fans away at the door — an electric atmosphere.' };
+  if (rate >= 0.8) return { id: 'packed', label: 'Packed House', flavor: 'The place will be rocking all night.' };
+  if (rate >= 0.5) return { id: 'solid', label: 'Solid Crowd', flavor: 'A lively, respectable turnout.' };
+  if (rate >= 0.2) return { id: 'modest', label: 'Modest Turnout', flavor: 'Plenty of empty seats, but a crowd showed up.' };
+  return { id: 'sparse', label: 'Sparse Crowd', flavor: 'This venue will look embarrassingly empty on camera.' };
+}
+
 export function purseForFight(fighter, opponent, type, venue) {
   const base = fighter.purseFloor;
   const typeMult = type === FIGHT_TYPES.MAIN_EVENT ? 2.4 : type === FIGHT_TYPES.SHOWCASE ? 1.3 : 1;
-  const venueMult = 1 + venue.capacity / 20000;
+  const combinedFollowers = (fighter.followers || 0) + (opponent?.followers || 0);
+  // A well-matched booking (attendance at or near 100%) pays exactly what
+  // the venue's raw capacity always implied — only an actual mismatch (a
+  // huge room with no draw to fill it) gets docked, so this never nerfs a
+  // fight that was already going to sell the building out.
+  const rate = attendanceRate(combinedFollowers, venue.capacity);
+  const venueMult = 1 + (venue.capacity * rate) / 20000;
   const drawMult = drawMultiplier(fighter.followers, opponent?.followers);
   return Math.round(base * typeMult * venueMult * drawMult);
 }

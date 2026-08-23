@@ -1,4 +1,4 @@
-import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor } from './gameReducer';
+import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
@@ -165,6 +165,45 @@ test('drawMultiplier scales purse potential with combined followers, capped', ()
   expect(drawMultiplier(0, 0)).toBe(1);
   expect(drawMultiplier(20000, 20000)).toBeCloseTo(2, 5);
   expect(drawMultiplier(1000000, 1000000)).toBeCloseTo(2.5, 5); // capped at +1.5x
+});
+
+test('attendanceRate is relative to whatever venue you booked, not an absolute follower count', () => {
+  const twoUnknowns = 0;
+  const twoSuperstars = 80000;
+  // The exact same fighters look empty in a stadium and packed in a small hall.
+  expect(attendanceRate(twoUnknowns, 58500)).toBeLessThan(0.2);
+  expect(attendanceRate(twoUnknowns, 600)).toBeGreaterThan(0.5);
+  expect(attendanceRate(twoSuperstars, 58500)).toBe(1);
+  expect(attendanceRate(twoSuperstars, 600)).toBe(1);
+});
+
+test('attendanceStatus tiers run from Sparse Crowd to Sold Out', () => {
+  expect(attendanceStatus(0.05).id).toBe('sparse');
+  expect(attendanceStatus(0.3).id).toBe('modest');
+  expect(attendanceStatus(0.6).id).toBe('solid');
+  expect(attendanceStatus(0.9).id).toBe('packed');
+  expect(attendanceStatus(1).id).toBe('sold-out');
+});
+
+test('the same stadium pays vastly more when the fighters can actually fill it', () => {
+  const stadium = { capacity: 58500 };
+  const nobody = { purseFloor: 1000, followers: 0 };
+  const superstar = { purseFloor: 1000, followers: 60000 };
+  // Same purse floor, same venue and site fee — the only difference is
+  // whether the matchup draws a crowd. An empty-looking stadium show
+  // shouldn't pay anywhere close to a packed one.
+  const emptyHousePurse = purseForFight(nobody, { followers: 0 }, FIGHT_TYPES.MAIN_EVENT, stadium);
+  const packedHousePurse = purseForFight(superstar, { followers: 60000 }, FIGHT_TYPES.MAIN_EVENT, stadium);
+  expect(packedHousePurse).toBeGreaterThan(emptyHousePurse * 5);
+});
+
+test('a well-matched stadium booking is not nerfed at all — it pays exactly what capacity always implied', () => {
+  const star = { purseFloor: 1000, followers: 60000 };
+  const stadium = { capacity: 58500 };
+  const oldVenueMult = 1 + stadium.capacity / 20000;
+  const drawMult = drawMultiplier(star.followers, star.followers);
+  const expected = Math.round(star.purseFloor * 2.4 * oldVenueMult * drawMult);
+  expect(purseForFight(star, { followers: 60000 }, FIGHT_TYPES.MAIN_EVENT, stadium)).toBe(expected);
 });
 
 test('a big follower spike (title win by finish) generates a trending news item', () => {
