@@ -9,15 +9,21 @@ const METHOD_LABELS = {
   DRAW: 'Draw',
 };
 
+// Fight history only ever grows over a career — the full total still
+// counts toward Career Stats either way, this just keeps the list itself
+// from turning into an endless scroll of ancient prelims.
+const VISIBLE_BOUTS = 50;
+
 export default function Bouts() {
   const state = useGameState();
+  const visible = state.fightHistory.slice(0, VISIBLE_BOUTS);
 
   return (
     <div className="fe-bouts">
       <Panel title={`FIGHT HISTORY (${state.fightHistory.length})`}>
         {state.fightHistory.length === 0 && <div className="fe-empty">No fights yet — book your first card from Make Fights.</div>}
         <div className="fe-bouts-list">
-          {state.fightHistory.map(fh => {
+          {visible.map(fh => {
             const draw = fh.result.method === 'DRAW';
             const won = !draw && fh.result.winnerId === fh.fighterId;
             const fighter = findFighterAnywhere(state, fh.fighterId);
@@ -38,6 +44,9 @@ export default function Bouts() {
             );
           })}
         </div>
+        {state.fightHistory.length > VISIBLE_BOUTS && (
+          <p className="fe-hint fe-list-truncated-hint">Showing the {VISIBLE_BOUTS} most recent fights — {state.fightHistory.length - VISIBLE_BOUTS} earlier ones still count toward your career totals.</p>
+        )}
       </Panel>
     </div>
   );

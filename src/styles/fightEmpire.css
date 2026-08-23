@@ -1030,6 +1030,12 @@ button, select, input {
      force an avoidable horizontal scrollbar there — still scrolls on truly
      narrow viewports via .fe-roster-table's overflow-x below. */
   min-width: 960px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.fe-roster-row:hover {
+  background: var(--fe-panel-alt);
 }
 
 .fe-roster-actions {
@@ -1611,6 +1617,18 @@ button, select, input {
   border-radius: 7px;
   background: var(--fe-panel-alt);
   font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.fe-bout-row:hover {
+  background: var(--fe-border);
+}
+
+.fe-list-truncated-hint {
+  text-align: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fe-border);
 }
 
 .fe-bout-result {
@@ -2324,12 +2342,30 @@ button, select, input {
   margin-top: 10px;
 }
 
+.fe-tier-summary {
+  font-size: 11px;
+  color: var(--fe-text-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .fe-tier-rung {
   position: relative;
   display: flex;
   gap: 12px;
   padding: 10px 4px 22px 4px;
   opacity: 0.5;
+}
+
+/* Rungs already climbed (other than the one you're actually standing on)
+   and rungs still locked far above you don't need much room — all the
+   real detail lives on the current rung and the very next one, so the
+   rest condense down to a slim single line each. */
+.fe-tier-rung.achieved:not(.current),
+.fe-tier-rung:not(.achieved):not(.next) {
+  padding-top: 4px;
+  padding-bottom: 10px;
 }
 
 .fe-tier-rung:last-child {

@@ -3,7 +3,7 @@ import {
   GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT,
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
   CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
-  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
+  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, poachCostFor, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
   LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance, loyaltyStatus, poachChance,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE,
@@ -658,7 +658,7 @@ export function gameReducer(state, action) {
       if (!target || !target.promotionId) return state;
       const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
       if (state.roster.length >= rosterLimit) return state;
-      const cost = Math.round(target.purseFloor * POACH_COST_MULTIPLIER);
+      const cost = poachCostFor(target);
       if (state.funds < cost) return state;
       const rivalPromo = state.rivals.find(r => r.id === target.promotionId);
       const targetLoyalty = target.loyalty ?? LOYALTY_BASELINE;

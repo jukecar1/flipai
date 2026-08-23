@@ -311,6 +311,23 @@ export const BANKRUPTCY_WEEKS = 6;
 // an unhappy fighter is that much easier to pull away.
 export const POACH_COST_MULTIPLIER = 6;
 
+// On top of the flat multiplier, an actual top fighter costs real money
+// to pry loose: holding a division's belt is a rival's single biggest
+// asset, and a fighter with a huge following brings their whole audience
+// with them — both stack on the base buyout rather than replacing it, so
+// a star champion can run many times the price of an anonymous gatekeeper
+// with the same purse floor.
+const POACH_CHAMPION_PREMIUM = 1.8;
+const POACH_STAR_FOLLOWER_SCALE = 60000; // followers to reach the full stardom premium
+const POACH_STAR_PREMIUM_CAP = 1.5;
+
+export function poachCostFor(fighter) {
+  const isChampion = !!(fighter.champion || fighter.title);
+  const championMult = isChampion ? POACH_CHAMPION_PREMIUM : 1;
+  const starMult = 1 + Math.min(POACH_STAR_PREMIUM_CAP, (fighter.followers || 0) / POACH_STAR_FOLLOWER_SCALE);
+  return Math.round(fighter.purseFloor * POACH_COST_MULTIPLIER * championMult * starMult);
+}
+
 export function poachChance(prestigeDelta, targetLoyalty = LOYALTY_BASELINE) {
   const loyaltyFactor = (LOYALTY_BASELINE - targetLoyalty) / 250;
   return Math.max(0.05, Math.min(0.75, 0.15 + prestigeDelta / 20000 + loyaltyFactor));

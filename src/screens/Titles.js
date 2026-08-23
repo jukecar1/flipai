@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, POACH_COST_MULTIPLIER, rosterLimitForGym } from '../game/constants';
+import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, poachCostFor, rosterLimitForGym } from '../game/constants';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
 
 export default function Titles() {
@@ -30,7 +30,7 @@ export default function Titles() {
         <p className="fe-hint">Win a Main Event against an OVR 11+ contender in a division you don't already hold to claim its belt.</p>
         <div className="fe-champ-list">
           {rows.map(({ wc, status, holder, defenses, promo }) => {
-            const poachCost = status === 'rival' && holder ? Math.round(holder.purseFloor * POACH_COST_MULTIPLIER) : 0;
+            const poachCost = status === 'rival' && holder ? poachCostFor(holder) : 0;
             return (
               <div key={wc.id} className="fe-champ-row">
                 <WeightPill id={wc.id} />

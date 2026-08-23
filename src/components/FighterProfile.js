@@ -4,7 +4,7 @@ import { useFighterProfile } from '../context/FighterProfileContext';
 import { findFighterAnywhere } from '../game/gameReducer';
 import {
   CONTRACT_WARNING_FIGHTS, CONTRACT_LENGTH_OPTIONS, contractCost, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT,
-  loyaltyStatus, LOYALTY_BASELINE, trainingCost, RIVAL_PROMOTIONS, POACH_COST_MULTIPLIER, freeAgentCost,
+  loyaltyStatus, LOYALTY_BASELINE, trainingCost, RIVAL_PROMOTIONS, poachCostFor, freeAgentCost,
   AMATEUR_PROMOTION_WINS, rosterLimitForGym,
 } from '../game/constants';
 import { Button, WeightPill, Flag, Avatar, Followers } from './UI';
@@ -59,7 +59,7 @@ export default function FighterProfileModal() {
   const signFreeAgent = () => dispatch({ type: 'SIGN_FREE_AGENT', fighterId: f.id });
   const promoteAmateur = () => dispatch({ type: 'PROMOTE_AMATEUR', fighterId: f.id });
 
-  const poachCost = kind === 'rival' ? Math.round(f.purseFloor * POACH_COST_MULTIPLIER) : 0;
+  const poachCost = kind === 'rival' ? poachCostFor(f) : 0;
   const freeAgentSignCost = kind === 'freeAgent' ? freeAgentCost(f) : 0;
   const amateurWinsNeeded = kind === 'amateur' ? AMATEUR_PROMOTION_WINS - (f.amateurRecord?.wins || 0) : 0;
 

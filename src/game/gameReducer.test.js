@@ -4,7 +4,7 @@ import {
 } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
-  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
+  CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, poachCostFor, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
   LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
 } from './constants';
@@ -671,7 +671,7 @@ test('poaching a rival fighter succeeds when the roll favors you and removes the
   spy.mockRestore();
   expect(next.roster.some(f => f.id === 'rival2')).toBe(true);
   expect(next.worldPool.FLW.some(f => f.id === 'rival2')).toBe(false);
-  expect(next.funds).toBe(stateWithRival.funds - Math.round(rivalFighter.purseFloor * POACH_COST_MULTIPLIER));
+  expect(next.funds).toBe(stateWithRival.funds - poachCostFor(rivalFighter));
 });
 
 test('a failed poach attempt costs nothing and leaves the fighter with the rival', () => {
@@ -725,6 +725,36 @@ test('a poached fighter who was already unhappy gets a callout in the signing ne
   spy.mockRestore();
   const poachNews = next.news.find(n => n.id.includes('_poach'));
   expect(poachNews.body).toMatch(/already unhappy/);
+});
+
+test('poachCostFor charges a steep premium for a division champion over an identical non-champion', () => {
+  const gatekeeper = { purseFloor: 2000, followers: 0, champion: false };
+  const champion = { ...gatekeeper, champion: true };
+  expect(poachCostFor(champion)).toBeGreaterThan(poachCostFor(gatekeeper) * 1.5);
+});
+
+test('poachCostFor charges more for a fighter with a huge following, even with no title', () => {
+  const unknown = { purseFloor: 2000, followers: 0, champion: false };
+  const viral = { ...unknown, followers: 100000 };
+  expect(poachCostFor(viral)).toBeGreaterThan(poachCostFor(unknown) * 2);
+});
+
+test('poachCostFor stacks the champion and stardom premiums for an actual top fighter', () => {
+  const gatekeeper = { purseFloor: 2000, followers: 500, champion: false };
+  const superstarChamp = { purseFloor: 2000, followers: 80000, champion: true };
+  // Same purse floor, but a real top fighter should cost several times more to pry loose.
+  expect(poachCostFor(superstarChamp)).toBeGreaterThan(poachCostFor(gatekeeper) * 4);
+});
+
+test('POACH_FIGHTER actually charges poachCostFor, not the flat multiplier alone', () => {
+  const state = baseState();
+  const superstarChamp = { ...opponent, id: 'rivalStar', promotionId: 'apex', purseFloor: 1000, followers: 90000, champion: true, title: null };
+  const stateWithRival = { ...state, funds: 100000, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, superstarChamp] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // always succeeds
+  const next = gameReducer(stateWithRival, { type: 'POACH_FIGHTER', fighterId: 'rivalStar' });
+  spy.mockRestore();
+  expect(stateWithRival.funds - next.funds).toBe(poachCostFor(superstarChamp));
+  expect(stateWithRival.funds - next.funds).toBeGreaterThan(superstarChamp.purseFloor * 6); // well above the old flat multiplier
 });
 
 test('starting a career with a chosen champion crowns them and boosts starting prestige', () => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, PROMOTION_TIERS, freeAgentCost, POACH_COST_MULTIPLIER, rosterLimitForGym } from '../game/constants';
+import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, PROMOTION_TIERS, freeAgentCost, poachCostFor, rosterLimitForGym } from '../game/constants';
 import { currentPromotionTier, promotionTierProgress } from '../game/gameReducer';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers, formatFollowers, FighterNameButton } from '../components/UI';
 
@@ -34,7 +34,11 @@ export default function Promotions() {
 
   return (
     <div className="fe-promotions">
-      <Panel title="PROMOTION LADDER" className="fe-promo-col fe-tier-ladder-panel">
+      <Panel
+        title="PROMOTION LADDER"
+        className="fe-promo-col fe-tier-ladder-panel"
+        right={<span className="fe-tier-summary">Rung {tierIdx + 1} of {PROMOTION_TIERS.length}</span>}
+      >
         <p className="fe-hint">
           Every promotion starts at the bottom — climb by clearing each rung's prestige floor <em>and</em> its own
           stipulations, in order, all the way to the sport's #1 spot.
@@ -118,7 +122,7 @@ export default function Promotions() {
       <Panel title="DIVISIONAL CHAMPIONS" className="fe-promo-col">
         <div className="fe-champ-list">
           {champions.map(({ wc, champ, promo }) => {
-            const poachCost = champ ? Math.round(champ.purseFloor * POACH_COST_MULTIPLIER) : 0;
+            const poachCost = champ ? poachCostFor(champ) : 0;
             return (
               <div key={wc.id} className="fe-champ-row">
                 <WeightPill id={wc.id} />
