@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
-import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, CONTRACT_LENGTH_OPTIONS, contractCost, WEIGHT_MOVE_COST, primeStatus, STAT_KEYS, STAT_LABELS, MAX_STAT, loyaltyStatus, LOYALTY_BASELINE } from '../game/constants';
+import { useFighterProfile } from '../context/FighterProfileContext';
+import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, WEIGHT_MOVE_COST, primeStatus, loyaltyStatus, LOYALTY_BASELINE } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
 
 const ARCHETYPE_LABELS = {
   striker: 'Striker',
@@ -21,10 +22,9 @@ export default function Roster() {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { goTo } = useGameActions();
+  const { open: openProfile } = useFighterProfile();
   const [scoutClass, setScoutClass] = useState(WEIGHT_CLASSES[0].id);
   const [candidates, setCandidates] = useState([]);
-  const [profileFighterId, setProfileFighterId] = useState(null);
-  const profileFighter = state.roster.find(f => f.id === profileFighterId) || null;
 
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
   const rosterFull = state.roster.length >= rosterLimit;
@@ -40,7 +40,6 @@ export default function Roster() {
       dispatch({ type: 'RETIRE_FIGHTER', fighterId: fighter.id });
     }
   };
-  const renew = (fighter, fights) => dispatch({ type: 'RENEW_CONTRACT', fighterId: fighter.id, fights });
   const moveWeight = (fighter, direction) => dispatch({ type: 'MOVE_WEIGHT_CLASS', fighterId: fighter.id, direction });
 
   return (
@@ -89,11 +88,11 @@ export default function Roster() {
             }
             return (
               <div key={f.id} className="fe-roster-row">
-                <button className="fe-roster-name fe-roster-name-btn" onClick={() => setProfileFighterId(f.id)} title={`View ${f.name}'s profile`}>
+                <FighterNameButton fighter={f} className="fe-roster-name">
                   <Avatar fighter={f} size={24} /> <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
                   <span className="fe-boxer-name-text" title={f.name}>{f.name}</span>
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
-                </button>
+                </FighterNameButton>
                 <span className={`fe-age fe-age-${primeStatus(f.age).id}`} title={`${primeStatus(f.age).label} — OVR already reflects this`}>
                   {f.age}
                 </span>
@@ -108,7 +107,7 @@ export default function Roster() {
                 <Followers count={f.followers} />
                 <button
                   className={`fe-contract-badge ${contractWarn ? 'warn' : !contractWarn && loyaltyRisk ? `risk-${loyaltyRisk}` : ''}`}
-                  onClick={() => setProfileFighterId(f.id)}
+                  onClick={() => openProfile(f)}
                   title={contractTitle}
                 >
                   {contractLeft}f
@@ -165,108 +164,6 @@ export default function Roster() {
           </>
         )}
       </Panel>
-
-      {profileFighter && (
-        <FighterProfileModal
-          fighter={profileFighter}
-          funds={state.funds}
-          onClose={() => setProfileFighterId(null)}
-          onRenew={fights => renew(profileFighter, fights)}
-          onRetire={() => { setProfileFighterId(null); retire(profileFighter); }}
-        />
-      )}
-    </div>
-  );
-}
-
-function FighterProfileModal({ fighter: f, funds, onClose, onRenew, onRetire }) {
-  const stage = primeStatus(f.age);
-  const contractLeft = f.contractFightsLeft ?? '—';
-  const contractWarn = typeof contractLeft === 'number' && contractLeft <= CONTRACT_WARNING_FIGHTS;
-  const loyalty = f.loyalty ?? LOYALTY_BASELINE;
-  const loyaltyTier = loyaltyStatus(loyalty);
-  const loyaltyLow = loyalty < LOYALTY_BASELINE;
-  return (
-    <div className="fe-modal-backdrop" onClick={onClose}>
-      <div className="fe-modal fe-profile-modal" onClick={e => e.stopPropagation()}>
-        <button className="fe-modal-close" onClick={onClose} title="Close">✕</button>
-        <div className="fe-profile-head">
-          <Avatar fighter={f} size={56} champion={!!f.title} />
-          <div className="fe-profile-head-text">
-            <div className="fe-profile-name-row">
-              <WeightPill id={f.weightClass} /> <Flag nationality={f.nationality} />
-              <span className="fe-profile-name">{f.name}</span>
-              {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
-            </div>
-            <div className="fe-profile-sub">
-              {ARCHETYPE_LABELS[f.archetype]} · Age {f.age} · {f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)
-            </div>
-          </div>
-          <div className="fe-profile-badges">
-            <span className={`fe-prime-badge fe-prime-badge-${stage.id}`}>{stage.label}</span>
-            <span className={`fe-loyalty-badge fe-loyalty-badge-${loyaltyTier.id}`} title={`Loyalty ${loyalty}/100 — reflects how well you've booked and managed ${f.name.split(' ')[0]} lately`}>{loyaltyTier.label}</span>
-          </div>
-        </div>
-
-        <div className="fe-profile-ovr-row">
-          <span className="fe-profile-ovr">{f.overall}</span>
-          <span className="fe-hint">
-            OVR — weighted toward {f.name.split(' ')[0]}'s strongest stats, scaled by age. Raw training numbers below never change on their own.
-          </span>
-        </div>
-
-        <div className="fe-training-grid">
-          {STAT_KEYS.map(stat => (
-            <div key={stat} className="fe-training-row">
-              <span className="fe-training-label">{STAT_LABELS[stat]}</span>
-              <span className="fe-training-value">{f.stats[stat]}/{MAX_STAT}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="fe-profile-facts">
-          <div>
-            <span className="fe-hint">Purse floor</span>
-            <span>${f.purseFloor.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="fe-hint">Followers</span>
-            <Followers count={f.followers} />
-          </div>
-          <div>
-            <span className="fe-hint">Under contract</span>
-            <span className={contractWarn ? 'fe-contract-badge warn' : ''}>{contractLeft} fight{contractLeft === 1 ? '' : 's'} left</span>
-          </div>
-        </div>
-
-        <div className="fe-subheading">Sign for</div>
-        {loyaltyLow && (
-          <div className="fe-loyalty-warning">
-            {loyalty < 35
-              ? `${f.name.split(' ')[0]} is unhappy with how they've been booked — there's a real chance they turn down any offer.`
-              : `${f.name.split(' ')[0]} isn't thrilled with recent booking — signing will cost more, and they might say no.`}
-          </div>
-        )}
-        <div className="fe-contract-options">
-          {CONTRACT_LENGTH_OPTIONS.map(fights => {
-            const cost = contractCost(f.purseFloor, fights, loyalty);
-            return (
-              <button
-                key={fights}
-                className="fe-contract-option"
-                disabled={funds < cost}
-                onClick={() => onRenew(fights)}
-                title={`Sign ${f.name} for ${fights} fight${fights === 1 ? '' : 's'} — $${cost.toLocaleString()}`}
-              >
-                <span className="fe-contract-option-fights">{fights} fight{fights === 1 ? '' : 's'}</span>
-                <span className="fe-contract-option-cost">${cost.toLocaleString()}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <Button variant="secondary" className="fe-retire-btn fe-profile-retire" onClick={onRetire}>Retire {f.name.split(' ')[0]}</Button>
-      </div>
     </div>
   );
 }

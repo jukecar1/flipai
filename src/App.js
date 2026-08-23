@@ -1,5 +1,7 @@
 import React from 'react';
 import { GameProvider, useGameState } from './context/GameContext';
+import { FighterProfileProvider } from './context/FighterProfileContext';
+import FighterProfileModal from './components/FighterProfile';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import StartScreen from './screens/StartScreen';
@@ -82,8 +84,11 @@ function RotateOverlay() {
 export default function App() {
   return (
     <GameProvider>
-      <RotateOverlay />
-      <Router />
+      <FighterProfileProvider>
+        <RotateOverlay />
+        <Router />
+        <FighterProfileModal />
+      </FighterProfileProvider>
     </GameProvider>
   );
 }

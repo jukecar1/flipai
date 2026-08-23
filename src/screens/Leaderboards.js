@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameState } from '../context/GameContext';
 import { RIVAL_PROMOTIONS } from '../game/constants';
-import { Panel, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+import { Panel, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
 
 const CATEGORIES = [
   { id: 'wins', label: 'Most Wins', value: f => f.record.wins, format: f => `${f.record.wins}W` },
@@ -42,7 +42,7 @@ export default function Leaderboards() {
               <Avatar fighter={f} size={28} champion={f.champion || !!f.title} />
               <WeightPill id={f.weightClass} />
               <Flag nationality={f.nationality} />
-              <span className="fe-boxer-name" title={f.name}>{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</span>
+              <FighterNameButton fighter={f} className="fe-boxer-name">{f.name}{f.mine && <span className="fe-mine-badge">YOU</span>}</FighterNameButton>
               <span className="fe-hint">{f.ownerLabel}</span>
               {category.id === 'followers' ? <Followers count={f.followers} /> : <span className="fe-boxer-overall">{category.format(f)}</span>}
             </div>

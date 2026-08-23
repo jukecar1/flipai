@@ -1,12 +1,13 @@
 import React from 'react';
 import { useGameState, useGameDispatch, persistCurrentState } from '../context/GameContext';
-import { prestigeTierLabel } from '../game/gameReducer';
+import { currentPromotionTier } from '../game/gameReducer';
 import { Button } from './UI';
 
 export default function TopBar({ showAdvance = true }) {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { meta, week, funds, record, prestige } = state;
+  const tier = currentPromotionTier(state);
 
   const advance = () => {
     dispatch({ type: 'ADVANCE_WEEK' });
@@ -38,10 +39,14 @@ export default function TopBar({ showAdvance = true }) {
           <span className="fe-label">Record</span>
           <span className="fe-value">{record.wins}-{record.losses}-{record.draws}</span>
         </div>
-        <div>
-          <span className="fe-label">{prestigeTierLabel(prestige)}</span>
+        <button
+          className="fe-topbar-tier"
+          onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'promotions' })}
+          title={`${tier.blurb} — view the full promotion ladder`}
+        >
+          <span className="fe-label">{tier.label}</span>
           <span className="fe-value fe-gold">{prestige} pts</span>
-        </div>
+        </button>
       </div>
       {showAdvance && (
         <Button variant="advance" onClick={advance}>

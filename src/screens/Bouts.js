@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameState } from '../context/GameContext';
-import { Panel, WeightPill } from '../components/UI';
+import { findFighterAnywhere } from '../game/gameReducer';
+import { Panel, WeightPill, FighterNameButton } from '../components/UI';
 
 const METHOD_LABELS = {
   KO: 'KO', TKO: 'TKO', SUB: 'Submission',
@@ -19,12 +20,17 @@ export default function Bouts() {
           {state.fightHistory.map(fh => {
             const draw = fh.result.method === 'DRAW';
             const won = !draw && fh.result.winnerId === fh.fighterId;
+            const fighter = findFighterAnywhere(state, fh.fighterId);
+            const opponent = findFighterAnywhere(state, fh.opponentId);
             return (
               <div key={fh.id} className="fe-bout-row">
                 <span className="fe-news-week">W{fh.week}</span>
                 {fh.fighterWeightClass && <WeightPill id={fh.fighterWeightClass} />}
                 {fh.isTitle && <span title="Title fight">🏆</span>}
-                <span className="fe-fight-title">{fh.fighterName || 'Your fighter'} v {fh.opponentName || 'Unknown'}</span>
+                <span className="fe-fight-title">
+                  {fighter ? <FighterNameButton fighter={fighter}>{fh.fighterName}</FighterNameButton> : (fh.fighterName || 'Your fighter')} v{' '}
+                  {opponent ? <FighterNameButton fighter={opponent}>{fh.opponentName}</FighterNameButton> : (fh.opponentName || 'Unknown')}
+                </span>
                 <span className={`fe-bout-result fe-bout-${draw ? 'draw' : won ? 'win' : 'loss'}`}>
                   {draw ? 'DRAW' : won ? 'WIN' : 'LOSS'} · {METHOD_LABELS[fh.result.method] || fh.result.method}
                 </span>

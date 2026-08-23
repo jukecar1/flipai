@@ -1,7 +1,8 @@
 import React from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
 import { rosterLimitForGym } from '../game/constants';
-import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers } from '../components/UI';
+import { findFighterAnywhere } from '../game/gameReducer';
+import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers, FighterNameButton } from '../components/UI';
 
 export default function Hub() {
   const state = useGameState();
@@ -34,12 +35,16 @@ export default function Hub() {
 
   const renderFightRow = (f, showVenue) => {
     const fighter = roster.find(x => x.id === f.fighterId);
+    const opponent = findFighterAnywhere(state, f.opponentId);
     return (
       <div key={f.id} className="fe-fight-row">
         <WeightPill id={fighter?.weightClass} />
         {f.isTitle && <span title="Title fight">🏆</span>}
         {f.isSuperFight && <span title="Crossover event">⚔️</span>}
-        <span className="fe-fight-title">{fighter?.name} v {f.opponentName || 'TBD'}</span>
+        <span className="fe-fight-title">
+          <FighterNameButton fighter={fighter}>{fighter?.name}</FighterNameButton> v{' '}
+          {opponent ? <FighterNameButton fighter={opponent}>{f.opponentName}</FighterNameButton> : (f.opponentName || 'TBD')}
+        </span>
         {showVenue && <span className="fe-fight-venue">{f.venue.name}, {f.venue.city}</span>}
         {f.weeksOut > 0 ? (
           <span className="fe-weeks-out">{f.weeksOut}w</span>
@@ -61,7 +66,7 @@ export default function Hub() {
                   <Avatar fighter={f} size={28} />
                   <WeightPill id={f.weightClass} />
                   <Flag nationality={f.nationality} />
-                  <span className="fe-boxer-name" title={f.name}>{f.name}</span>
+                  <FighterNameButton fighter={f} className="fe-boxer-name" />
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                   <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO, {f.record.subs}SUB)</span>
                   {f.injuryWeeks > 0 && <span className="fe-status fe-status-injured">Injured · {f.injuryWeeks}w</span>}

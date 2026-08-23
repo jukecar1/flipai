@@ -1,9 +1,12 @@
-import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue } from './gameReducer';
+import {
+  gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue,
+  currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere,
+} from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
-  LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE,
+  LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -935,4 +938,93 @@ test('the social feed is capped so it never grows unbounded over a long career',
   const next = gameReducer({ ...resentfulState, socialFeed: seeded }, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
   spy.mockRestore();
   expect(next.socialFeed.length).toBeLessThanOrEqual(100);
+});
+
+// ---------- Promotion tier ladder ----------
+
+test('a fresh promotion starts at the bottom of the ladder', () => {
+  const state = baseState();
+  expect(currentPromotionTier(state).id).toBe(PROMOTION_TIERS[0].id);
+});
+
+test('a rung is not achieved until every one of its stipulations is met, prestige alone is not enough', () => {
+  // Sky-high prestige, but baseState only has 3 signed fighters — the
+  // very next rung (Local Circuit) needs 4+, so the ladder should not
+  // budge no matter how much prestige is sitting there unused.
+  const state = { ...baseState(), prestige: 999999 };
+  expect(state.roster.length).toBeLessThan(4);
+  expect(currentPromotionTier(state).id).toBe('regional');
+  expect(tierRequirementsMet(state, PROMOTION_TIERS[1])).toBe(false);
+});
+
+test('the ladder climbs exactly one rung at a time even when prestige is far ahead of it', () => {
+  const state = baseState();
+  const fourthFighter = { ...state.roster[0], id: 'extra1' };
+  const padded = { ...state, prestige: 999999, roster: [...state.roster, fourthFighter] };
+  // Roster size clears Local Circuit's stipulation, but no title has been
+  // won yet, so National Circuit's stipulation is still unmet — the climb
+  // should stop there, not jump straight to whatever prestige could reach.
+  expect(currentPromotionTier(padded).id).toBe('circuit');
+});
+
+test('promotionTierProgress reports live, per-requirement progress toward the very next rung', () => {
+  const state = baseState();
+  const progress = promotionTierProgress(state);
+  expect(progress.current.id).toBe('regional');
+  expect(progress.next.id).toBe('circuit');
+  expect(progress.prestigeCurrent).toBe(state.prestige);
+  expect(progress.prestigeTarget).toBe(PROMOTION_TIERS[1].minPrestige);
+  expect(progress.requirements).toEqual([
+    { metric: 'rosterSize', target: 4, label: 'Sign at least 4 fighters', current: state.roster.length, met: false },
+  ]);
+});
+
+test('nextPromotionTier is null once every rung has been climbed', () => {
+  // A prestige-only stub state that satisfies every tier's real-world
+  // stipulation directly, so the top rung ("Sport's #1 Promotion") is the
+  // one actually reached.
+  const state = {
+    ...baseState(),
+    prestige: 999999,
+    roster: Array.from({ length: 6 }, (_, i) => ({ ...baseState().roster[0], id: `r${i}`, overall: 16 })),
+    titles: { FLW: { holderId: 'r0' }, LW: { holderId: 'r1' }, WW: { holderId: 'r2' }, MW: { holderId: 'r3' }, LHW: { holderId: 'r4' } },
+    record: { wins: 500, losses: 0, draws: 0 },
+    meta: { ...baseState().meta, ppvEventsHosted: 3 },
+    rivals: baseState().rivals.map(r => ({ ...r, prestige: 1 })),
+  };
+  expect(currentPromotionTier(state).id).toBe('apex');
+  expect(nextPromotionTier(state)).toBeNull();
+});
+
+test('purseForFight applies the promotion tier bonus on top of everything else', () => {
+  const star = { purseFloor: 1000, followers: 0 };
+  const flatVenue = { capacity: 5000 };
+  const rate = attendanceRate(0, flatVenue.capacity);
+  const venueMult = 1 + (flatVenue.capacity * rate) / 20000;
+  const drawMult = drawMultiplier(0, 0);
+  const expected = Math.round(1000 * 1 * venueMult * drawMult * 1.2);
+  expect(purseForFight(star, { followers: 0 }, FIGHT_TYPES.SINGLE, flatVenue, 20)).toBe(expected);
+});
+
+test('purseForFight with no tier bonus argument behaves exactly as before', () => {
+  const star = { purseFloor: 1000, followers: 500 };
+  expect(purseForFight(star, { followers: 500 }, FIGHT_TYPES.SHOWCASE, venue)).toBe(purseForFight(star, { followers: 500 }, FIGHT_TYPES.SHOWCASE, venue, 0));
+});
+
+test('hosting a PPV event is tracked on the promotion, for the Major Promotion stipulation', () => {
+  const state = baseState();
+  expect(state.meta.ppvEventsHosted).toBe(0);
+  const next = gameReducer(state, {
+    type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, isPPV: true,
+  });
+  expect(next.meta.ppvEventsHosted).toBe(1);
+});
+
+test('findFighterAnywhere also looks in free agents and amateurs, not just the roster and world pool', () => {
+  const freeAgent = { ...opponent, id: 'fa1' };
+  const amateur = { ...opponent, id: 'am1' };
+  const state = { ...baseState(), freeAgents: [freeAgent], amateurs: [amateur] };
+  expect(findFighterAnywhere(state, 'fa1')).toBe(freeAgent);
+  expect(findFighterAnywhere(state, 'am1')).toBe(amateur);
+  expect(findFighterAnywhere(state, 'nope')).toBeNull();
 });

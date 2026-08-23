@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState } from '../context/GameContext';
-import { prestigeTierLabel } from '../game/gameReducer';
+import { currentPromotionTier } from '../game/gameReducer';
 import { Panel } from '../components/UI';
 
 export default function CareerStats() {
@@ -22,7 +22,7 @@ export default function CareerStats() {
     { label: 'Record', value: `${record.wins}-${record.losses}-${record.draws}` },
     { label: 'Finish Rate', value: `${finishRate}%` },
     { label: 'Weeks in Business', value: state.week },
-    { label: 'Reputation', value: prestigeTierLabel(state.prestige) },
+    { label: 'Reputation', value: currentPromotionTier(state).label },
     { label: 'Prestige Points', value: state.prestige.toLocaleString() },
     { label: 'Current Funds', value: `$${state.funds.toLocaleString()}` },
     { label: 'All-Time Earnings', value: `$${(meta.totalEarnings || 0).toLocaleString()}` },

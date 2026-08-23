@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, rosterLimitForGym } from '../game/constants';
 import { makeAmateurCandidates } from '../game/generateFighter';
-import { Panel, Button, WeightPill, Flag, Avatar } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, FighterNameButton } from '../components/UI';
 
 const ARCHETYPE_LABELS = {
   striker: 'Striker',
@@ -46,7 +46,7 @@ export default function Amateurs() {
                   <Avatar fighter={a} size={26} />
                   <WeightPill id={a.weightClass} />
                   <Flag nationality={a.nationality} />
-                  <span className="fe-boxer-name" title={a.name}>{a.name}</span>
+                  <FighterNameButton fighter={a} className="fe-boxer-name" />
                   <span className="fe-boxer-record">Amateur record {a.amateurRecord.wins}-{a.amateurRecord.losses}</span>
                   <Button
                     variant="secondary"

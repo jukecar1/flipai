@@ -1,5 +1,5 @@
 import {
-  WEIGHT_CLASSES, WEIGHT_CLASS_MAP, FIGHT_TYPES, RIVAL_PROMOTIONS, PRESTIGE_TIERS,
+  WEIGHT_CLASSES, WEIGHT_CLASS_MAP, FIGHT_TYPES, RIVAL_PROMOTIONS, PROMOTION_TIERS,
   GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT,
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
   CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
@@ -254,12 +254,65 @@ export function isTitleFight(state, fighter) {
   return !holder || holder.holderId === fighter.id;
 }
 
-export function prestigeTierLabel(prestige) {
-  let label = PRESTIGE_TIERS[0].label;
-  for (const t of PRESTIGE_TIERS) {
-    if (prestige >= t.min) label = t.label;
+// ---------- Promotion tier ladder ----------
+// What each rung's stipulation actually measures, read straight off state.
+const TIER_METRICS = {
+  rosterSize: state => state.roster.length,
+  titles: state => Object.values(state.titles || {}).filter(Boolean).length,
+  wins: state => state.record.wins,
+  avgOverall: state => (state.roster.length ? Math.round(state.roster.reduce((sum, f) => sum + f.overall, 0) / state.roster.length) : 0),
+  ppvEvents: state => state.meta.ppvEventsHosted || 0,
+  // The ultimate stipulation: your own prestige actually has to pass every
+  // rival's, not just clear a fixed number — the #1 spot is whoever the
+  // sport's biggest promotions say it is, not a static target.
+  dethroneTopRival: state => (state.rivals && state.rivals.length && state.prestige > Math.max(...state.rivals.map(r => r.prestige)) ? 1 : 0),
+};
+
+function tierMetricValue(state, metric) {
+  const fn = TIER_METRICS[metric];
+  return fn ? fn(state) : 0;
+}
+
+export function tierRequirementsMet(state, tier) {
+  return tier.requirements.every(r => tierMetricValue(state, r.metric) >= r.target);
+}
+
+// Highest rung reached by walking the ladder from the bottom, stopping at
+// the first one whose prestige floor or stipulations aren't cleared yet —
+// so a promotion ranks at the level it's actually earned, not just
+// whatever its prestige number alone would imply, and can't vault past a
+// rung it hasn't cleared even if a later one's prestige floor is already
+// met.
+export function currentPromotionTier(state) {
+  let achieved = PROMOTION_TIERS[0];
+  for (const tier of PROMOTION_TIERS) {
+    if (state.prestige >= tier.minPrestige && tierRequirementsMet(state, tier)) {
+      achieved = tier;
+    } else {
+      break;
+    }
   }
-  return label;
+  return achieved;
+}
+
+export function nextPromotionTier(state) {
+  const idx = PROMOTION_TIERS.findIndex(t => t.id === currentPromotionTier(state).id);
+  return idx >= 0 && idx < PROMOTION_TIERS.length - 1 ? PROMOTION_TIERS[idx + 1] : null;
+}
+
+// Everything a "climb the ladder" panel needs: the rung you're on, the one
+// you're chasing, and live progress against its prestige floor and every
+// stipulation.
+export function promotionTierProgress(state) {
+  const current = currentPromotionTier(state);
+  const next = nextPromotionTier(state);
+  if (!next) return { current, next: null, requirements: [] };
+  const requirements = next.requirements.map(r => ({
+    ...r,
+    current: tierMetricValue(state, r.metric),
+    met: tierMetricValue(state, r.metric) >= r.target,
+  }));
+  return { current, next, prestigeCurrent: state.prestige, prestigeTarget: next.minPrestige, requirements };
 }
 
 // Champions + a slice of each division's talent belong to rival promotions
@@ -342,6 +395,7 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
       brokeWeeks: 0,
       totalEarnings: 0,
       titlesWon: 0,
+      ppvEventsHosted: 0,
       autoSkipFights: false,
       createdAt: Date.now(),
     },
@@ -376,13 +430,22 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
   };
 }
 
-function findFighterAnywhere(state, fighterId) {
+// Looks a fighter up wherever they might currently live — your roster,
+// the world pool (rivals + independents), the free agent market, or your
+// amateur prospects. Used both by the reducer itself (crediting the right
+// fighter after a fight) and by the UI (the fighter profile modal can be
+// opened on anyone, not just your own signed talent).
+export function findFighterAnywhere(state, fighterId) {
   const own = state.roster.find(f => f.id === fighterId);
   if (own) return own;
   for (const wc of Object.keys(state.worldPool)) {
     const found = state.worldPool[wc].find(f => f.id === fighterId);
     if (found) return found;
   }
+  const freeAgent = (state.freeAgents || []).find(f => f.id === fighterId);
+  if (freeAgent) return freeAgent;
+  const amateur = (state.amateurs || []).find(f => f.id === fighterId);
+  if (amateur) return amateur;
   return null;
 }
 
@@ -436,7 +499,10 @@ export function attendanceStatus(rate) {
   return { id: 'sparse', label: 'Sparse Crowd', flavor: 'This venue will look embarrassingly empty on camera.' };
 }
 
-export function purseForFight(fighter, opponent, type, venue) {
+// tierBonusPct is the standing sponsorship/gate bonus for the promotion
+// tier you've actually earned (see PROMOTION_TIERS) — climbing the ladder
+// pays off on every single purse from then on, not just at the top.
+export function purseForFight(fighter, opponent, type, venue, tierBonusPct = 0) {
   const base = fighter.purseFloor;
   const typeMult = type === FIGHT_TYPES.MAIN_EVENT ? 2.4 : type === FIGHT_TYPES.SHOWCASE ? 1.3 : 1;
   const combinedFollowers = (fighter.followers || 0) + (opponent?.followers || 0);
@@ -447,7 +513,7 @@ export function purseForFight(fighter, opponent, type, venue) {
   const rate = attendanceRate(combinedFollowers, venue.capacity);
   const venueMult = 1 + (venue.capacity * rate) / 20000;
   const drawMult = drawMultiplier(fighter.followers, opponent?.followers);
-  return Math.round(base * typeMult * venueMult * drawMult);
+  return Math.round(base * typeMult * venueMult * drawMult * (1 + tierBonusPct / 100));
 }
 
 // PPV buys come from your own promotion's reach (prestige — your existing
@@ -504,7 +570,7 @@ function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venu
     venue,
     weeksOut,
     rounds: fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3,
-    purse: Math.round(purseForFight(fighter, opponent, fightType, venue) * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1)),
+    purse: Math.round(purseForFight(fighter, opponent, fightType, venue, currentPromotionTier(state).purseBonusPct) * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1)),
     isTitle: titleFight,
     isSuperFight,
     winProbability: winProbability(fighter, opponent),
@@ -544,6 +610,7 @@ export function gameReducer(state, action) {
               brokeWeeks: 0,
               totalEarnings: 0,
               titlesWon: 0,
+              ppvEventsHosted: 0,
               autoSkipFights: false,
               ...action.state.meta,
             }
@@ -802,6 +869,7 @@ export function gameReducer(state, action) {
         scheduledFights: [...state.scheduledFights, fight],
         socialFeed,
         news: ppv.news ? [ppv.news, ...state.news] : state.news,
+        meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
       };
     }
 
@@ -870,6 +938,7 @@ export function gameReducer(state, action) {
         scheduledFights: [...state.scheduledFights, ...fights],
         socialFeed,
         news: ppv.news ? [ppv.news, ...state.news] : state.news,
+        meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
       };
     }
 

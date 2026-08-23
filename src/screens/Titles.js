@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, POACH_COST_MULTIPLIER, rosterLimitForGym } from '../game/constants';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
 
 export default function Titles() {
   const state = useGameState();
@@ -39,7 +39,7 @@ export default function Titles() {
                   <>
                     <Avatar fighter={holder} size={26} champion />
                     <Flag nationality={holder.nationality} />
-                    <span className="fe-boxer-name" title={holder.name}>{holder.name}</span>
+                    <FighterNameButton fighter={holder} className="fe-boxer-name" />
                     <span className="fe-champ-record">{holder.record.wins}-{holder.record.losses}-{holder.record.draws}</span>
                     <Followers count={holder.followers} />
                     {status === 'yours' ? (

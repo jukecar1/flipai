@@ -61,13 +61,68 @@ export const RIVAL_PROMOTIONS = [
   { id: 'crown', name: 'Crown Championship', tier: 'Global Strikers', color: '#2ec4b6', basePrestige: 2600, weeklyGrowth: [2, 10] },
 ];
 
-export const PRESTIGE_TIERS = [
-  { min: 0, label: 'Regional Promotion' },
-  { min: 500, label: 'National Promotion' },
-  { min: 1500, label: 'Rising Contender' },
-  { min: 3500, label: 'Major Promotion' },
-  { min: 6000, label: 'Global Contender' },
-  { min: 9000, label: 'Industry Leader' },
+// The career ladder every promotion climbs, bottom to top. Prestige alone
+// doesn't rank you up a rung — each tier also expects something concrete
+// from your promotion (a title, a run of wins, a PPV under your belt)
+// before you're actually recognized at that level, the same way a real
+// organization can't just buy its way onto pay-per-view. Climb it in
+// order: see currentPromotionTier() in gameReducer.js for how a tier is
+// only "achieved" once every earlier rung, and this one's own
+// requirements, are cleared — a big prestige number alone can't skip you
+// past a rung whose stipulations you haven't met yet.
+//
+// requirements[].metric keys into TIER_METRICS in gameReducer.js.
+// purseBonusPct is a standing gate/sponsorship bonus applied to every
+// purse once you've actually earned that rung (see purseForFight).
+export const PROMOTION_TIERS = [
+  {
+    id: 'regional', label: 'Regional Promotion', minPrestige: 0, requirements: [], purseBonusPct: 0,
+    blurb: 'Every empire starts in a half-empty community center.',
+  },
+  {
+    id: 'circuit', label: 'Local Circuit', minPrestige: 400, purseBonusPct: 5,
+    requirements: [{ metric: 'rosterSize', target: 4, label: 'Sign at least 4 fighters' }],
+    blurb: 'Regional press is starting to cover your cards.',
+  },
+  {
+    id: 'national', label: 'National Circuit', minPrestige: 1200, purseBonusPct: 10,
+    requirements: [{ metric: 'titles', target: 1, label: 'Crown at least 1 divisional champion' }],
+    blurb: "You're a name outside your hometown now.",
+  },
+  {
+    id: 'contender', label: 'Rising Contender', minPrestige: 2600, purseBonusPct: 16,
+    requirements: [
+      { metric: 'wins', target: 25, label: '25 promotion wins' },
+      { metric: 'avgOverall', target: 11, label: 'Roster average OVR 11+' },
+    ],
+    blurb: 'Bigger networks are starting to circle your cards.',
+  },
+  {
+    id: 'major', label: 'Major Promotion', minPrestige: 4500, purseBonusPct: 24,
+    requirements: [
+      { metric: 'titles', target: 3, label: 'Hold 3 divisional titles' },
+      { metric: 'ppvEvents', target: 1, label: 'Headline a PPV event' },
+    ],
+    blurb: 'A genuine national threat to the established order.',
+  },
+  {
+    id: 'global', label: 'Global Contender', minPrestige: 7000, purseBonusPct: 32,
+    requirements: [
+      { metric: 'wins', target: 70, label: '70 promotion wins' },
+      { metric: 'avgOverall', target: 13, label: 'Roster average OVR 13+' },
+    ],
+    blurb: 'You share marquees with the sport’s biggest names.',
+  },
+  {
+    id: 'leader', label: 'Industry Leader', minPrestige: 9500, purseBonusPct: 40,
+    requirements: [{ metric: 'titles', target: 5, label: 'Hold 5 divisional titles' }],
+    blurb: 'One step from the very top of the sport.',
+  },
+  {
+    id: 'apex', label: "Sport's #1 Promotion", minPrestige: 9500, purseBonusPct: 50,
+    requirements: [{ metric: 'dethroneTopRival', target: 1, label: "Surpass every rival's prestige" }],
+    blurb: "You didn't just make it — you're the promotion every fighter dreams of signing with.",
+  },
 ];
 
 // Your gym's active roster capacity. You start at level 1 and spend funds

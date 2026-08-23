@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameState, useGameActions } from '../context/GameContext';
-import { prestigeTierLabel } from '../game/gameReducer';
+import { currentPromotionTier } from '../game/gameReducer';
 import { Panel, Button } from '../components/UI';
 
 export default function GameOver() {
@@ -17,7 +17,7 @@ export default function GameOver() {
         <div className="fe-gameover-stats">
           <div><span>Final record</span><strong>{state.record.wins}-{state.record.losses}-{state.record.draws}</strong></div>
           <div><span>Weeks in business</span><strong>{state.week}</strong></div>
-          <div><span>Peak reputation</span><strong>{prestigeTierLabel(state.prestige)}</strong></div>
+          <div><span>Peak reputation</span><strong>{currentPromotionTier(state).label}</strong></div>
           <div><span>Titles won</span><strong>{state.meta.titlesWon || 0}</strong></div>
           <div><span>Total earnings</span><strong>${(state.meta.totalEarnings || 0).toLocaleString()}</strong></div>
         </div>

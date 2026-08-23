@@ -1,5 +1,6 @@
 import React from 'react';
 import { WEIGHT_CLASS_MAP } from '../game/constants';
+import { useFighterProfile } from '../context/FighterProfileContext';
 
 export function Panel({ title, children, className = '', right }) {
   return (
@@ -83,6 +84,25 @@ export function Followers({ count }) {
     <span className="fe-followers" title={`${(count || 0).toLocaleString()} followers`}>
       <span className="fe-followers-icon">👥</span>{formatFollowers(count || 0)}
     </span>
+  );
+}
+
+// Every fighter's name is clickable everywhere they show up — this is the
+// one place that wiring lives, so a screen just swaps a plain <span> for
+// this and gets the shared mini-profile popup for free (see
+// FighterProfileContext / components/FighterProfile.js).
+export function FighterNameButton({ fighter, className = '', title, children }) {
+  const { open } = useFighterProfile();
+  if (!fighter) return null;
+  return (
+    <button
+      type="button"
+      className={`fe-fighter-name-btn ${className}`}
+      onClick={() => open(fighter)}
+      title={title || `View ${fighter.name}'s profile`}
+    >
+      {children || fighter.name}
+    </button>
   );
 }
 
