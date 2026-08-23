@@ -10,6 +10,7 @@ import MakeFights from './screens/MakeFights';
 import Rankings from './screens/Rankings';
 import Promotions from './screens/Promotions';
 import News from './screens/News';
+import Chirp from './screens/Chirp';
 import FightSim from './screens/FightSim';
 import FightResult from './screens/FightResult';
 import Gyms from './screens/Gyms';
@@ -48,6 +49,7 @@ function Router() {
           {screen === 'rankings' && <Rankings />}
           {screen === 'promotions' && <Promotions />}
           {screen === 'news' && <News />}
+          {screen === 'chirp' && <Chirp />}
           {screen === 'fightSim' && <FightSim />}
           {screen === 'fightResult' && <FightResult />}
           {screen === 'gyms' && <Gyms />}

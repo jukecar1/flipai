@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus } from '../game/gameReducer';
+import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE } from '../game/constants';
+import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -80,6 +80,36 @@ function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, fees
       )}
       {empty && <div className="fe-empty">No venues available for this fight type.</div>}
     </>
+  );
+}
+
+// A Main Event can be sold as a premium broadcast on top of the gate —
+// real upfront revenue from the promotion's own reach and the headliner's
+// star power, at the cost of a flat production fee whether or not the
+// numbers come in. Shown wherever a Main Event card is being put together
+// (a brand-new single-fight card or the card builder).
+function PPVToggle({ isPPV, onToggle, price, onPriceChange, buys, revenue }) {
+  return (
+    <div className={`fe-ppv-panel ${isPPV ? 'active' : ''}`}>
+      <label className="fe-ppv-toggle">
+        <input type="checkbox" checked={isPPV} onChange={e => onToggle(e.target.checked)} />
+        <span className="fe-ppv-toggle-label">🎬 Make this a PPV Event</span>
+      </label>
+      {isPPV && (
+        <>
+          <div className="fe-ppv-prices">
+            {PPV_PRICE_OPTIONS.map(p => (
+              <button key={p} type="button" className={`fe-ppv-price ${price === p ? 'active' : ''}`} onClick={() => onPriceChange(p)}>
+                ${p}
+              </button>
+            ))}
+          </div>
+          <p className="fe-hint">
+            Projected <strong className="fe-gold">{buys.toLocaleString()} buys</strong> · <strong className="fe-gold">${revenue.toLocaleString()}</strong> in broadcast revenue, credited up front — plus a ${PPV_PRODUCTION_FEE.toLocaleString()} production fee whether or not it sells.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -224,13 +254,15 @@ function SingleBookingFlow() {
   const [venueId, setVenueId] = useState('');
   const [cardChoice, setCardChoice] = useState('');
   const [gameplan, setGameplan] = useState('balanced');
+  const [isPPV, setIsPPV] = useState(false);
+  const [ppvPrice, setPpvPrice] = useState(DEFAULT_PPV_PRICE);
 
   const fighter = roster.find(f => f.id === fighterId);
   const alreadyBooked = new Set(state.scheduledFights.map(f => f.fighterId));
   const isInjured = f => f.injuryWeeks > 0;
 
   const selectFighter = id => { setFighterId(id); setOpponentId(''); };
-  const selectType = t => { setFightType(t); setOpponentId(''); setCardChoice(''); setVenueId(''); };
+  const selectType = t => { setFightType(t); setOpponentId(''); setCardChoice(''); setVenueId(''); setIsPPV(false); };
 
   const opponents = useMemo(() => {
     if (!fighter) return [];
@@ -255,9 +287,18 @@ function SingleBookingFlow() {
   const selectedCard = bookableCards.find(c => c.id === cardChoice);
   const venue = isCardType && selectedCard ? selectedCard.venue : [...homeVenues, ...regionalVenues, ...awayVenues].find(v => v.id === venueId);
 
+  // PPV only makes sense for a brand-new Main Event card — you can't turn
+  // an existing card into a PPV after the fact, and Single/Showcase bouts
+  // aren't the kind of event anyone pays to watch from home.
+  const canOfferPPV = fightType === FIGHT_TYPES.MAIN_EVENT && !selectedCard;
+  const wantsPPV = canOfferPPV && isPPV;
+  const ppvBuysCount = wantsPPV && fighter && opponent ? ppvBuys(state.prestige, combinedFollowers || 0) : 0;
+  const ppvEarned = wantsPPV ? ppvRevenue(ppvBuysCount, ppvPrice) : 0;
+
   const sanctionFee = isSuperFight ? SUPER_FIGHT_SANCTION_FEE : 0;
   const venueCost = fightType === FIGHT_TYPES.SINGLE ? 0 : (isCardType && selectedCard ? 0 : (venue ? venue.fee : 0));
-  const cost = venueCost + sanctionFee;
+  const ppvFee = wantsPPV ? PPV_PRODUCTION_FEE : 0;
+  const cost = venueCost + sanctionFee + ppvFee;
 
   const canConfirm = fighter && opponent && venue && state.funds >= cost && !alreadyBooked.has(fighter.id) && !isInjured(fighter);
   const isTitle = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && isTitleFight(state, fighter);
@@ -275,11 +316,12 @@ function SingleBookingFlow() {
     } else if (selectedCard) {
       dispatch({ type: 'ADD_FIGHT_TO_CARD', cardId: selectedCard.id, fighterId, opponent, fightType, gameplan });
     } else {
-      dispatch({ type: 'CREATE_CARD', venue, fighterId, opponent, fightType, gameplan });
+      dispatch({ type: 'CREATE_CARD', venue, fighterId, opponent, fightType, gameplan, isPPV: wantsPPV, ppvPrice });
     }
     setOpponentId('');
     setVenueId('');
     setCardChoice('');
+    setIsPPV(false);
   };
 
   return (
@@ -364,6 +406,17 @@ function SingleBookingFlow() {
         {!isCardType && <p className="fe-hint">No site fee for a Single Fight — but a bigger venue still means a bigger purse.</p>}
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} feesApply={isCardType} combinedFollowers={combinedFollowers} />
 
+        {fighter && opponent && canOfferPPV && (
+          <PPVToggle
+            isPPV={isPPV}
+            onToggle={setIsPPV}
+            price={ppvPrice}
+            onPriceChange={setPpvPrice}
+            buys={ppvBuysCount}
+            revenue={ppvEarned}
+          />
+        )}
+
         {fighter && opponent && venue && (
           <div className="fe-fight-poster">
             {(isTitle || isSuperFight) && (
@@ -400,7 +453,15 @@ function SingleBookingFlow() {
                 <span className="fe-fight-poster-stat-label">Cost to book</span>
                 <span className="fe-fight-poster-stat-value">${cost.toLocaleString()}</span>
                 {isSuperFight && <span className="fe-hint">incl. ${sanctionFee.toLocaleString()} sanction</span>}
+                {wantsPPV && <span className="fe-hint">incl. ${ppvFee.toLocaleString()} PPV production</span>}
               </div>
+              {wantsPPV && (
+                <div>
+                  <span className="fe-fight-poster-stat-label">PPV revenue</span>
+                  <span className="fe-fight-poster-stat-value">${ppvEarned.toLocaleString()}</span>
+                  <span className="fe-hint">{ppvBuysCount.toLocaleString()} buys @ ${ppvPrice}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -420,6 +481,8 @@ function CardBuilderFlow() {
 
   const [venueId, setVenueId] = useState('');
   const [pendingBouts, setPendingBouts] = useState([]);
+  const [isPPV, setIsPPV] = useState(false);
+  const [ppvPrice, setPpvPrice] = useState(DEFAULT_PPV_PRICE);
 
   const [pickFighterId, setPickFighterId] = useState('');
   const [pickType, setPickType] = useState(FIGHT_TYPES.SHOWCASE);
@@ -451,7 +514,23 @@ function CardBuilderFlow() {
     : 0;
 
   const sanctionTotal = pendingBouts.reduce((sum, b) => sum + (b.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0), 0);
-  const totalCost = (venue?.fee || 0) + sanctionTotal;
+
+  // The PPV headliner is whichever Main Event bout on the card draws the
+  // biggest combined following — a card needs at least one to sell as a
+  // PPV at all, same rule the reducer uses when it actually books it.
+  const headliner = pendingBouts
+    .filter(b => b.fightType === FIGHT_TYPES.MAIN_EVENT)
+    .reduce((best, b) => {
+      const combined = (b.fighterFollowers || 0) + (b.opponent.followers || 0);
+      return !best || combined > best.combined ? { ...b, combined } : best;
+    }, null);
+  const canOfferPPV = !!headliner;
+  const wantsPPV = canOfferPPV && isPPV;
+  const ppvBuysCount = wantsPPV ? ppvBuys(state.prestige, headliner.combined) : 0;
+  const ppvEarned = wantsPPV ? ppvRevenue(ppvBuysCount, ppvPrice) : 0;
+  const ppvFee = wantsPPV ? PPV_PRODUCTION_FEE : 0;
+
+  const totalCost = (venue?.fee || 0) + sanctionTotal + ppvFee;
   const canAddBout = pickFighter && pickOpponent && pendingBouts.length < CARD_MAX_FIGHTS;
   const canBookCard = venue && pendingBouts.length > 0 && state.funds >= totalCost;
 
@@ -480,9 +559,12 @@ function CardBuilderFlow() {
       type: 'BOOK_CARD',
       venue,
       bouts: pendingBouts.map(b => ({ fighterId: b.fighterId, opponent: b.opponent, fightType: b.fightType, gameplan: b.gameplan })),
+      isPPV: wantsPPV,
+      ppvPrice,
     });
     setPendingBouts([]);
     setVenueId('');
+    setIsPPV(false);
   };
 
   return (
@@ -555,6 +637,16 @@ function CardBuilderFlow() {
             </div>
           ))}
         </div>
+        {canOfferPPV && (
+          <PPVToggle
+            isPPV={isPPV}
+            onToggle={setIsPPV}
+            price={ppvPrice}
+            onPriceChange={setPpvPrice}
+            buys={ppvBuysCount}
+            revenue={ppvEarned}
+          />
+        )}
         {venue && (
           <div className="fe-fight-poster fe-fight-poster-card">
             <div className="fe-fight-poster-venue">{venue.name}, {venue.city}</div>
@@ -569,9 +661,17 @@ function CardBuilderFlow() {
                   <span className="fe-fight-poster-stat-value">${sanctionTotal.toLocaleString()}</span>
                 </div>
               )}
+              {wantsPPV && (
+                <div>
+                  <span className="fe-fight-poster-stat-label">PPV revenue</span>
+                  <span className="fe-fight-poster-stat-value">${ppvEarned.toLocaleString()}</span>
+                  <span className="fe-hint">{ppvBuysCount.toLocaleString()} buys</span>
+                </div>
+              )}
               <div>
                 <span className="fe-fight-poster-stat-label">Total cost</span>
                 <span className="fe-fight-poster-stat-value">${totalCost.toLocaleString()}</span>
+                {wantsPPV && <span className="fe-hint">incl. ${ppvFee.toLocaleString()} PPV production</span>}
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { useGameActions, useGameState } from '../context/GameContext';
 import {
   HomeIcon, RosterIcon, FightsIcon, RankingsIcon, PromotionsIcon, NewsIcon,
   GymsIcon, TitlesIcon, BoutsIcon, HallOfFameIcon, AmateursIcon, LeaderboardsIcon,
-  StatsIcon, SettingsIcon,
+  StatsIcon, SettingsIcon, ChirpIcon,
 } from './icons';
 
 const NAV_ITEMS = [
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { id: 'rankings', label: 'Rankings', Icon: RankingsIcon },
   { id: 'bouts', label: 'Bouts', Icon: BoutsIcon },
   { id: 'news', label: 'News', Icon: NewsIcon },
+  { id: 'chirp', label: 'Chirp', Icon: ChirpIcon },
   { id: 'hallOfFame', label: 'Hall of Fame', Icon: HallOfFameIcon },
   { id: 'amateurs', label: 'Amateurs', Icon: AmateursIcon },
   { id: 'leaderboards', label: 'Leaderboards', Icon: LeaderboardsIcon },

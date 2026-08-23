@@ -6,6 +6,7 @@ import {
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, POACH_COST_MULTIPLIER, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
   LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance, loyaltyStatus, poachChance,
+  PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -89,6 +90,113 @@ function departureFlavor(name, promoName, loyalty) {
   if (tier === 'frustrated') return `${name} fought out their deal and walks to ${promoName}, tired of how they'd been booked.`;
   if (tier === 'loyal') return `${name} fought out their deal and walks to ${promoName} — reluctantly, by their own account, but a contract's a contract.`;
   return `${name} fought out their deal and walks to ${promoName} as a free agent.`;
+}
+
+// ---------- Social media (Chirp) ----------
+// A lightweight, auto-generated social feed — fighters react to their own
+// results, air grievances with management when they're unhappy (tied
+// directly to the loyalty system), and announce contract news, the same
+// way real fighters use social media. Every post is template text filled
+// in from state that already exists; nothing here is tracked long-term
+// beyond the feed itself.
+
+function chirpHandle(name) {
+  const clean = (name || 'fighter').replace(/[^a-zA-Z]/g, '').toLowerCase();
+  return `@${clean || 'fighter'}`;
+}
+
+function makeChirp(state, { fighter, text, category }) {
+  return {
+    id: `sp${Date.now()}_${randInt(0, 999999)}`,
+    week: state.week,
+    fighterId: fighter.id,
+    fighterName: fighter.name,
+    weightClass: fighter.weightClass,
+    handle: chirpHandle(fighter.name),
+    text,
+    category,
+    likes: randInt(40, 6000),
+  };
+}
+
+function pushChirp(feed, chirp, cap = 100) {
+  return [chirp, ...(feed || [])].slice(0, cap);
+}
+
+const WIN_HYPE_CHIRPS = [
+  opp => `Never doubted it for a second. Ran through ${opp} exactly like I said I would. Who's next? 🔥`,
+  opp => `That's what happens when you step in there with a real one. RIP to ${opp}'s hype train.`,
+  opp => `Business as usual. ${opp} found out the hard way. 🥊`,
+];
+
+const WIN_UPSET_CHIRPS = [
+  opp => `EVERYBODY had me losing to ${opp} and I just shut the whole building up. 🐐`,
+  opp => `They said ${opp} was walking through me. Scoreboard don't lie. 💰`,
+  opp => `Underdog my whole life, doubted my whole life. Remember this one.`,
+];
+
+const LOSS_RESPECTFUL_CHIRPS = [
+  opp => `Credit to ${opp}, they got the job done tonight. Back to the drawing board.`,
+  opp => `Hats off to ${opp}. I'll be better next time out, that's a promise.`,
+];
+
+const LOSS_UPSET_CHIRPS = [
+  () => `I want the rematch. Everybody knows that wasn't the real me tonight.`,
+  () => `Can't believe that just happened. That's on me, I'll fix it in the gym.`,
+];
+
+const DRAW_CHIRPS = [
+  opp => `Thought I did more than enough against ${opp} honestly. Judges watching a different fight than me.`,
+];
+
+const LOYALTY_FRUSTRATED_CHIRPS = [
+  () => `Some of us putting our bodies on the line for real disrespect behind closed doors. Y'all know who I'm talking about. 👀`,
+  () => `Funny how the people signing the checks never actually watch the film.`,
+  () => `Ain't naming names but a few fighters on this roster deserve better booking. Just saying.`,
+];
+
+const LOYALTY_RESENTFUL_CHIRPS = [
+  () => `Given this company everything and this is the thanks I get? Nah. Remember this.`,
+  () => `Booked like a sacrifice and they expect loyalty back. Make it make sense.`,
+];
+
+const CONTRACT_REFUSAL_CHIRPS = [
+  () => `Turned down the new deal. If they think I'm signing off on how I've been treated, they've got another thing coming.`,
+];
+
+const DEPARTURE_CHIRPS = [
+  promo => `Contract's up. Excited for this next chapter with ${promo}. New beginnings 🙏`,
+  promo => `Officially heading to ${promo}. Thanks for the memories, I guess.`,
+];
+
+const LOYAL_RENEWAL_CHIRPS = [
+  () => `New deal signed. Still running it back with the team that's always had my back. 💪`,
+];
+
+const PPV_HYPE_CHIRPS = [
+  opp => `PPV week. ${opp} better enjoy the attention while it lasts. See you at the top. 🎬`,
+  opp => `They're paying to watch me do this to ${opp}. Worth every penny.`,
+];
+
+function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability }) {
+  if (!fighter) return null;
+  if (draw) return makeChirp(state, { fighter, category: 'result', text: pick(DRAW_CHIRPS)(opponentName) });
+  if (fighterWon) {
+    const wasUnderdog = (winProbability ?? 0.5) <= 0.35;
+    const template = pick(wasUnderdog ? WIN_UPSET_CHIRPS : WIN_HYPE_CHIRPS);
+    return makeChirp(state, { fighter, category: 'result', text: template(opponentName) });
+  }
+  const wasHeavyFavorite = (winProbability ?? 0.5) >= 0.65;
+  const template = pick(wasHeavyFavorite ? LOSS_UPSET_CHIRPS : LOSS_RESPECTFUL_CHIRPS);
+  return makeChirp(state, { fighter, category: 'result', text: template(opponentName) });
+}
+
+function loyaltyBeefChirp(state, fighter, loyalty) {
+  const tier = loyaltyStatus(loyalty).id;
+  if (tier !== 'frustrated' && tier !== 'resentful') return null;
+  if (Math.random() >= 0.4) return null; // not every unhappy fighter vents every single time out
+  const template = pick(tier === 'resentful' ? LOYALTY_RESENTFUL_CHIRPS : LOYALTY_FRUSTRATED_CHIRPS);
+  return makeChirp(state, { fighter, category: 'beef', text: template() });
 }
 
 // Simulates one round (mode 'one', used when the player is watching and
@@ -251,6 +359,7 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
     scheduledFights: [],
     cards: [],
     fightHistory: [],
+    socialFeed: [],
     news: [
       {
         id: 'n0',
@@ -341,6 +450,45 @@ export function purseForFight(fighter, opponent, type, venue) {
   return Math.round(base * typeMult * venueMult * drawMult);
 }
 
+// PPV buys come from your own promotion's reach (prestige — your existing
+// subscriber base and brand) plus the headliner's own pull (their combined
+// social following) — a tiny regional outfit with two unknowns barely
+// sells a broadcast, a major promotion headlined by real stars can do
+// real business. This is separate from gate attendance (drawMultiplier /
+// attendanceRate above) — a PPV is bought from home, not limited by any
+// venue's seat count.
+export function ppvBuys(prestige, headlinerFollowers) {
+  return Math.max(0, Math.round(50 + prestige * 0.8 + headlinerFollowers * 0.06));
+}
+
+// Your cut after the platform's split and production overhead.
+export function ppvRevenue(buys, price) {
+  return Math.round(buys * price * 0.45);
+}
+
+// Shared by CREATE_CARD (a single Main Event booked as its own card) and
+// BOOK_CARD (the multi-bout card builder) so the PPV math and news/social
+// beat never drift between the two paths. Revenue is credited up front,
+// at booking time — the money from buys comes in before the card ever
+// airs, same as it does in real life.
+function resolvePPV(state, { wantsPPV, ppvPrice, headlinerA, headlinerB }) {
+  if (!wantsPPV || !headlinerA || !headlinerB) {
+    return { productionFee: 0, revenue: 0, news: null, cardFields: { isPPV: false, ppvPrice: null, ppvBuys: 0, ppvRevenue: 0 } };
+  }
+  const price = PPV_PRICE_OPTIONS.includes(ppvPrice) ? ppvPrice : DEFAULT_PPV_PRICE;
+  const headlinerFollowers = (headlinerA.followers || 0) + (headlinerB.followers || 0);
+  const buys = ppvBuys(state.prestige, headlinerFollowers);
+  const revenue = ppvRevenue(buys, price);
+  const news = {
+    id: `n${Date.now()}_ppv`,
+    week: state.week,
+    category: 'ppv',
+    title: `${headlinerA.name} vs ${headlinerB.name} announced as a PPV event`,
+    body: `Early projections have ${buys.toLocaleString()} buys at $${price} — ${state.meta.promotionName} banks $${revenue.toLocaleString()} from the broadcast alone.`,
+  };
+  return { productionFee: PPV_PRODUCTION_FEE, revenue, news, cardFields: { isPPV: true, ppvPrice: price, ppvBuys: buys, ppvRevenue: revenue } };
+}
+
 // Builds one scheduled-fight record — shared by every booking path
 // (Single Fight, a new card, adding to an existing card, or the
 // multi-bout card builder) so the shape never drifts between them.
@@ -381,6 +529,7 @@ export function gameReducer(state, action) {
         amateurs: action.state.amateurs || [],
         hallOfFame: action.state.hallOfFame || [],
         cards: action.state.cards || [],
+        socialFeed: action.state.socialFeed || [],
         roster: (action.state.roster || []).map(f => ({
           contractFightsLeft: DEFAULT_CONTRACT_FIGHTS,
           loyalty: LOYALTY_BASELINE,
@@ -557,8 +706,11 @@ export function gameReducer(state, action) {
       // say no — the worse it's been going, the more likely they walk
       // away from the table rather than sign back up.
       if (Math.random() >= renewalAcceptChance(loyalty)) {
+        let socialFeed = state.socialFeed;
+        if (loyalty < 35) socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter, category: 'beef', text: pick(CONTRACT_REFUSAL_CHIRPS)() }));
         return {
           ...state,
+          socialFeed,
           news: [{
             id: `n${Date.now()}_contractrefused`,
             week: state.week,
@@ -571,9 +723,13 @@ export function gameReducer(state, action) {
         };
       }
 
+      let socialFeed = state.socialFeed;
+      if (loyalty >= 80) socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter, category: 'signing', text: pick(LOYAL_RENEWAL_CHIRPS)() }));
+
       return {
         ...state,
         funds: state.funds - cost,
+        socialFeed,
         // Locking in more fights together is itself a vote of confidence.
         roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractFightsLeft: fights, loyalty: clampLoyalty(loyalty + 5) } : f)),
       };
@@ -624,21 +780,28 @@ export function gameReducer(state, action) {
     }
 
     case 'CREATE_CARD': {
-      const { venue, fighterId, opponent, fightType, gameplan } = action;
+      const { venue, fighterId, opponent, fightType, gameplan, isPPV, ppvPrice } = action;
       const fighter = state.roster.find(f => f.id === fighterId);
       if (!fighter || !opponent || !venue || fighter.injuryWeeks > 0) return state;
       const sanctionFee = opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0;
-      const cost = venue.fee + sanctionFee;
+      const wantsPPV = !!isPPV && fightType === FIGHT_TYPES.MAIN_EVENT;
+      const ppv = resolvePPV(state, { wantsPPV, ppvPrice, headlinerA: fighter, headlinerB: opponent });
+      const cost = venue.fee + sanctionFee + ppv.productionFee;
       if (state.funds < cost) return state;
       const cardId = `card${Date.now()}_${randInt(0, 9999)}`;
       const weeksOut = randInt(2, 6);
-      const card = { id: cardId, venue, weeksOut, createdWeek: state.week };
+      const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, cardId, weeksOut, week: state.week });
+      const socialFeed = wantsPPV
+        ? pushChirp(state.socialFeed, makeChirp(state, { fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(opponent.name) }))
+        : state.socialFeed;
       return {
         ...state,
-        funds: state.funds - cost,
+        funds: state.funds - cost + ppv.revenue,
         cards: [...(state.cards || []), card],
         scheduledFights: [...state.scheduledFights, fight],
+        socialFeed,
+        news: ppv.news ? [ppv.news, ...state.news] : state.news,
       };
     }
 
@@ -659,7 +822,7 @@ export function gameReducer(state, action) {
     }
 
     case 'BOOK_CARD': {
-      const { venue, bouts } = action;
+      const { venue, bouts, isPPV, ppvPrice } = action;
       if (!venue || !Array.isArray(bouts) || bouts.length === 0 || bouts.length > CARD_MAX_FIGHTS) return state;
 
       const seenFighterIds = new Set();
@@ -673,21 +836,40 @@ export function gameReducer(state, action) {
         totalCost += bout.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0;
         resolvedBouts.push({ fighter, opponent: bout.opponent, fightType: bout.fightType, gameplan: bout.gameplan });
       }
+
+      // The headliner for PPV purposes is whichever Main Event bout on the
+      // card draws the biggest combined following — a card needs at least
+      // one to be sold as a PPV at all.
+      const headliner = resolvedBouts
+        .filter(b => b.fightType === FIGHT_TYPES.MAIN_EVENT)
+        .reduce((best, b) => {
+          const combined = (b.fighter.followers || 0) + (b.opponent.followers || 0);
+          return !best || combined > best.combined ? { ...b, combined } : best;
+        }, null);
+      const wantsPPV = !!isPPV && !!headliner;
+      const ppv = resolvePPV(state, { wantsPPV, ppvPrice, headlinerA: headliner?.fighter, headlinerB: headliner?.opponent });
+      totalCost += ppv.productionFee;
       if (state.funds < totalCost) return state;
 
       const cardId = `card${Date.now()}_${randInt(0, 9999)}`;
       const weeksOut = randInt(2, 6);
-      const card = { id: cardId, venue, weeksOut, createdWeek: state.week };
+      const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fights = resolvedBouts.map(b => buildFightRecord(state, {
         fighterId: b.fighter.id, fighter: b.fighter, opponent: b.opponent, fightType: b.fightType,
         venue, gameplan: b.gameplan, cardId, weeksOut, week: state.week,
       }));
 
+      const socialFeed = wantsPPV
+        ? pushChirp(state.socialFeed, makeChirp(state, { fighter: headliner.fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(headliner.opponent.name) }))
+        : state.socialFeed;
+
       return {
         ...state,
-        funds: state.funds - totalCost,
+        funds: state.funds - totalCost + ppv.revenue,
         cards: [...(state.cards || []), card],
         scheduledFights: [...state.scheduledFights, ...fights],
+        socialFeed,
+        news: ppv.news ? [ppv.news, ...state.news] : state.news,
       };
     }
 
@@ -1035,6 +1217,15 @@ export function gameReducer(state, action) {
         : `${fighterWon ? fighterRef?.name : oppRef?.name} defeats ${fighterWon ? oppRef?.name : fighterRef?.name} ${methodText}`;
 
       const news = [{ id: `n${Date.now()}`, week: state.week, category: 'fight', title: headline, body: 'A fight for the ages in front of the crowd.' }];
+      let socialFeed = state.socialFeed;
+      const reactionChirp = fightReactionChirp(state, {
+        fighter: fighterRef,
+        opponentName: oppRef?.name,
+        fighterWon,
+        draw,
+        winProbability: fight?.winProbability,
+      });
+      if (reactionChirp) socialFeed = pushChirp(socialFeed, reactionChirp);
       if (fight?.isSuperFight) {
         news.unshift({
           id: `n${Date.now()}_super`,
@@ -1118,8 +1309,11 @@ export function gameReducer(state, action) {
             title: `${bookedFighterPostFight.name}'s contract is up — signs with ${promo.name}`,
             body: departureFlavor(bookedFighterPostFight.name, promo.name, loyalty),
           });
+          socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter: bookedFighterPostFight, category: 'departure', text: pick(DEPARTURE_CHIRPS)(promo.name) }));
         } else {
           roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft, loyalty, weeksSinceLastFight: 0 } : f));
+          const beefChirp = loyaltyBeefChirp(state, bookedFighterPostFight, loyalty);
+          if (beefChirp) socialFeed = pushChirp(socialFeed, beefChirp);
         }
       }
 
@@ -1156,6 +1350,7 @@ export function gameReducer(state, action) {
           opponentFollowerDelta,
         }, ...state.fightHistory],
         news: [...news, ...state.news],
+        socialFeed,
         activeFight: null,
         ui: { ...state.ui, screen: 'fightResult' },
       };

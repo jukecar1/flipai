@@ -275,6 +275,15 @@ export const SUPER_FIGHT_SANCTION_FEE = 8000;
 // A Fight Night card can host this many bouts sharing one venue booking.
 export const CARD_MAX_FIGHTS = 5;
 
+// Pay-per-view: a Main Event card can be sold as a premium broadcast on
+// top of the gate — real upfront revenue from your promotion's own reach
+// plus the headliner's star power, at the cost of a production fee paid
+// whether or not the numbers come in. See ppvBuys/ppvRevenue in
+// gameReducer.js for the payout math.
+export const PPV_PRICE_OPTIONS = [29.99, 39.99, 49.99, 59.99];
+export const DEFAULT_PPV_PRICE = 49.99;
+export const PPV_PRODUCTION_FEE = 12000;
+
 // Pre-fight gameplans nudge the sim by lightly reshaping your fighter's
 // effective stats for that one fight — a real tradeoff, not a free bonus.
 export const GAMEPLANS = [

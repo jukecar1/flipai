@@ -2072,6 +2072,73 @@ button, select, input {
   color: var(--fe-gold);
 }
 
+/* PPV — a distinct purple/violet accent (matching the existing crossover
+   "superfight" badge) so a premium broadcast reads as its own thing next
+   to the gate-driven crowd meter (teal/gold) and fight-type badges
+   (red/gold). */
+.fe-ppv-panel {
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fe-ppv-panel.active {
+  border-color: #8338ec;
+  background: rgba(131, 56, 236, 0.1);
+}
+
+.fe-ppv-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.fe-ppv-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #8338ec;
+  cursor: pointer;
+}
+
+.fe-ppv-toggle-label {
+  font-family: var(--fe-font-display);
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+
+.fe-ppv-prices {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+
+.fe-ppv-price {
+  flex: 1;
+  background: var(--fe-panel);
+  border: 1px solid var(--fe-border);
+  border-radius: 6px;
+  padding: 6px 4px;
+  color: var(--fe-text-dim);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.fe-ppv-price:hover {
+  border-color: var(--fe-border-light);
+  color: var(--fe-text);
+}
+
+.fe-ppv-price.active {
+  border-color: #8338ec;
+  color: #fff;
+  background: rgba(131, 56, 236, 0.28);
+}
+
 .fe-confirm-btn {
   width: 100%;
 }
@@ -2302,6 +2369,84 @@ button, select, input {
   gap: 16px;
   min-width: 0;
   overflow-x: auto;
+}
+
+/* ---------- Chirp (social feed) ---------- */
+
+.fe-chirp-screen {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.fe-chirp-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fe-chirp-post {
+  display: flex;
+  gap: 10px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-left: 3px solid var(--fe-border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.fe-chirp-result {
+  border-left-color: var(--fe-teal);
+}
+.fe-chirp-beef {
+  border-left-color: var(--fe-red);
+}
+.fe-chirp-departure {
+  border-left-color: var(--fe-orange);
+}
+.fe-chirp-signing {
+  border-left-color: var(--fe-blue);
+}
+.fe-chirp-ppv {
+  border-left-color: #8338ec;
+}
+
+.fe-chirp-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fe-chirp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.fe-chirp-name {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.fe-chirp-handle, .fe-chirp-week {
+  color: var(--fe-text-dim);
+  font-size: 12px;
+}
+
+.fe-chirp-category {
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.fe-chirp-text {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.fe-chirp-foot {
+  font-size: 12px;
+  color: var(--fe-text-dim);
 }
 
 /* ---------- Fight result ---------- */

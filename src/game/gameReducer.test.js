@@ -1,9 +1,9 @@
-import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight } from './gameReducer';
+import { gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, POACH_COST_MULTIPLIER, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
-  LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance,
+  LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -475,6 +475,7 @@ test('a fight completing the contract sends the fighter to a rival, not just dec
   expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
   expect(next.worldPool.FLW.some(f => f.id === 'champ1')).toBe(true);
   expect(next.news.some(n => n.category === 'poached')).toBe(true);
+  expect(next.socialFeed.some(p => p.category === 'departure' && p.fighterId === 'champ1')).toBe(true);
 });
 
 test('a resentful fighter fought out their deal walks away without a backward glance', () => {
@@ -558,6 +559,7 @@ test('a resentful fighter can refuse to re-sign, and it costs nothing', () => {
   expect(next.funds).toBe(resentfulState.funds);
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(before.contractFightsLeft);
   expect(next.news.some(n => n.title.includes('turns down'))).toBe(true);
+  expect(next.socialFeed.some(p => p.category === 'beef' && p.fighterId === 'champ1')).toBe(true);
 });
 
 test('a loyal fighter reliably re-signs and gets a small loyalty bump for it', () => {
@@ -571,6 +573,7 @@ test('a loyal fighter reliably re-signs and gets a small loyalty bump for it', (
   expect(next.funds).toBe(loyalState.funds - cost);
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(3);
   expect(next.roster.find(f => f.id === 'champ1').loyalty).toBe(95);
+  expect(next.socialFeed.some(p => p.category === 'signing' && p.fighterId === 'champ1')).toBe(true);
 });
 
 test('a frustrated fighter costs more to sign than a loyal one for the same deal', () => {
@@ -819,4 +822,117 @@ test('an unrecognized HQ label falls back to the default (unscaled) funds tier',
 test('every CITIES entry has a unique id', () => {
   const ids = CITIES.map(c => c.id);
   expect(new Set(ids).size).toBe(ids.length);
+});
+
+// ---------- Pay-per-view ----------
+
+test('ppvBuys scales with the promotion\'s own reach and the headliner\'s star power', () => {
+  const tinyPromoNoNames = ppvBuys(50, 0);
+  const bigPromoBigStars = ppvBuys(3000, 40000);
+  expect(tinyPromoNoNames).toBeGreaterThan(0); // even a nobody promotion gets some baseline interest
+  expect(bigPromoBigStars).toBeGreaterThan(tinyPromoNoNames * 10);
+});
+
+test('ppvRevenue is buys times price times the promotion\'s cut', () => {
+  expect(ppvRevenue(1000, 50)).toBe(Math.round(1000 * 50 * 0.45));
+});
+
+test('booking a Main Event as a PPV charges the production fee and credits PPV revenue up front', () => {
+  const state = baseState();
+  const next = gameReducer(state, {
+    type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, isPPV: true, ppvPrice: DEFAULT_PPV_PRICE,
+  });
+  const card = next.cards[0];
+  const expectedBuys = ppvBuys(state.prestige, 0); // both fighters start at 0 followers
+  const expectedRevenue = ppvRevenue(expectedBuys, DEFAULT_PPV_PRICE);
+  expect(card.isPPV).toBe(true);
+  expect(card.ppvPrice).toBe(DEFAULT_PPV_PRICE);
+  expect(card.ppvBuys).toBe(expectedBuys);
+  expect(card.ppvRevenue).toBe(expectedRevenue);
+  expect(next.funds).toBe(state.funds - venue.fee - PPV_PRODUCTION_FEE + expectedRevenue);
+  expect(next.news.some(n => n.category === 'ppv')).toBe(true);
+  expect(next.socialFeed.some(p => p.category === 'ppv')).toBe(true);
+});
+
+test('a PPV the promotion cannot afford the production fee for is not booked at all', () => {
+  const state = { ...baseState(), funds: 5000 }; // enough for the venue, not the PPV fee on top
+  const next = gameReducer(state, {
+    type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, isPPV: true,
+  });
+  expect(next).toBe(state);
+});
+
+test('the PPV flag is ignored on anything but a Main Event — no fee, no revenue', () => {
+  const state = baseState();
+  const next = gameReducer(state, {
+    type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE, isPPV: true,
+  });
+  const card = next.cards[0];
+  expect(card.isPPV).toBe(false);
+  expect(next.funds).toBe(state.funds - venue.fee);
+});
+
+test('BOOK_CARD as a PPV keys off the Main Event bout with the biggest combined following, not just any bout', () => {
+  const state = baseState();
+  const bigStar = { ...state.roster[0], followers: 50000 };
+  const smallFighter = { ...state.roster[1], followers: 100 };
+  const state2 = { ...state, roster: [bigStar, smallFighter, ...state.roster.slice(2)] };
+  const bouts = [
+    { fighterId: bigStar.id, opponent: { ...opponent, id: 'opp-big', followers: 40000 }, fightType: FIGHT_TYPES.MAIN_EVENT, gameplan: 'balanced' },
+    { fighterId: smallFighter.id, opponent: { ...opponent, id: 'opp-small', followers: 50 }, fightType: FIGHT_TYPES.MAIN_EVENT, gameplan: 'balanced' },
+  ];
+  const next = gameReducer(state2, { type: 'BOOK_CARD', venue, bouts, isPPV: true });
+  const card = next.cards[0];
+  expect(card.ppvBuys).toBe(ppvBuys(state2.prestige, 90000));
+});
+
+test('BOOK_CARD ignores the PPV flag when there is no Main Event bout to headline it', () => {
+  const state = baseState();
+  const bouts = [{ fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' }];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts, isPPV: true });
+  const card = next.cards[0];
+  expect(card.isPPV).toBe(false);
+  expect(next.funds).toBe(state.funds - venue.fee);
+});
+
+// ---------- Social media (Chirp) ----------
+
+test('winning a fight posts a hype chirp from the booked fighter', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  const post = next.socialFeed.find(p => p.category === 'result');
+  expect(post).toBeTruthy();
+  expect(post.fighterId).toBe('champ1');
+  expect(post.handle).toBe('@testchampion');
+});
+
+test('a resentful fighter may vent about the company after a fight, but stays on the roster', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 10, contractFightsLeft: 5 } : f)) };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // forces the venting chance to fire
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.socialFeed.some(p => p.category === 'beef' && p.fighterId === 'champ1')).toBe(true);
+});
+
+test('a content fighter does not vent about the company', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: LOYALTY_BASELINE, contractFightsLeft: 5 } : f)) };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // even at the "always vent" roll, a content fighter has nothing to vent about
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.socialFeed.some(p => p.category === 'beef')).toBe(false);
+});
+
+test('the social feed is capped so it never grows unbounded over a long career', () => {
+  const state = baseState();
+  const resentfulState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 10 } : f)) };
+  const seeded = Array.from({ length: 150 }, (_, i) => ({ id: `sp${i}`, week: 1, fighterId: 'champ1', fighterName: 'Test Champion', text: 'x', category: 'result', likes: 1 }));
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99); // forces a refusal, which posts a beef chirp
+  const next = gameReducer({ ...resentfulState, socialFeed: seeded }, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
+  spy.mockRestore();
+  expect(next.socialFeed.length).toBeLessThanOrEqual(100);
 });
