@@ -2,12 +2,16 @@
 //
 // "Home" venues are generated for the player's own HQ city and scaled by
 // its size tier (town/city/metro/megacity) — a promotion based in Denver
-// books Denver venues, not whatever city happened to be hardcoded. A
-// short, fixed list of real "on the road" marquee arenas and stadiums is
-// also on offer for Main Events — the sport's biggest stages, available
-// to any promotion (regardless of HQ) once it can afford the trip.
+// books Denver venues, not whatever city happened to be hardcoded.
+// "Regional" venues are generated for the real nearby cities within a
+// reasonable drive of the HQ (Denver turns up Boulder, Fort Collins,
+// Colorado Springs), each scaled to that neighbor's own size. A short,
+// fixed list of real "on the road" marquee arenas and stadiums is also on
+// offer for Main Events — the sport's biggest stages, available to any
+// promotion (regardless of HQ) once it can afford the trip.
 
-import { FIGHT_TYPES, CITY_SIZE_TIERS } from './constants';
+import { FIGHT_TYPES, CITY_SIZE_TIERS, cityTierForPopulation } from './constants';
+import { nearbyCities } from './namePool';
 
 function tierMultiplier(hqTier) {
   return (CITY_SIZE_TIERS.find(t => t.id === hqTier) || CITY_SIZE_TIERS[1]).fundsMultiplier;
@@ -53,6 +57,26 @@ export function homeVenues(hqLabel, hqTier) {
     }));
 }
 
+// One small local hall in each real city near the HQ, sized to that
+// neighbor's own population rather than the HQ's — a small nearby town
+// gets a modest hall even if the HQ itself is a big city, and vice versa.
+export function regionalVenues(hqLabel) {
+  const template = HOME_VENUE_TEMPLATES.find(t => t.suffix === 'Community Center');
+  return nearbyCities(hqLabel).map(city => {
+    const mult = tierMultiplier(cityTierForPopulation(city.pop).id);
+    return {
+      id: `regional-${city.id}`,
+      name: `${city.city} ${template.suffix}`,
+      city: city.city,
+      tier: template.tier,
+      capacity: niceRound(template.capacity * mult),
+      fee: niceRound(template.fee * mult),
+      home: false,
+      regional: true,
+    };
+  });
+}
+
 // Real, fixed marquee arenas and stadiums — the biggest stages in the
 // sport. Always "on the road" relative to the player's HQ.
 export const MARQUEE_VENUES = [
@@ -80,16 +104,18 @@ const TIERS_BY_FIGHT_TYPE = {
   [FIGHT_TYPES.MAIN_EVENT]: ['arena', 'stadium'],
 };
 
-// Returns { home, away } venue lists appropriate for the fight type. Home
-// venues are always scaled to the player's own city and shown first;
-// "on the road" marquee options only make sense once a fight is big
-// enough to be a destination event, so they're offered for Main Events
-// (and for the card builder, which can carry a Main Event bout) — a
-// Single Fight or Showcase stays a local, no-travel booking.
+// Returns { home, regional, away } venue lists appropriate for the fight
+// type. Home venues are always scaled to the player's own city and shown
+// first; regional venues are real nearby cities and only ever small halls,
+// so they naturally only turn up for Single Fights and Showcases; "on the
+// road" marquee options only make sense once a fight is big enough to be a
+// destination event, so they're offered for Main Events (and for the card
+// builder, which can carry a Main Event bout).
 export function venueOptions(fightType, hqLabel, hqTier) {
   const allowedTiers = fightType ? TIERS_BY_FIGHT_TYPE[fightType] : null;
   const home = homeVenues(hqLabel, hqTier).filter(v => !allowedTiers || allowedTiers.includes(v.tier));
+  const regional = regionalVenues(hqLabel).filter(v => !allowedTiers || allowedTiers.includes(v.tier));
   const includeAway = !fightType || fightType === FIGHT_TYPES.MAIN_EVENT;
   const away = includeAway ? MARQUEE_VENUES : [];
-  return { home, away };
+  return { home, regional, away };
 }
