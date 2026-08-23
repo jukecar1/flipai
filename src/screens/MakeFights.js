@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue } from '../game/gameReducer';
+import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -247,6 +247,7 @@ function SingleBookingFlow() {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { roster, worldPool, meta } = state;
+  const tierBonusPct = currentPromotionTier(state).purseBonusPct;
 
   const [fighterId, setFighterId] = useState(roster[0]?.id || '');
   const [fightType, setFightType] = useState(FIGHT_TYPES.SINGLE);
@@ -306,7 +307,7 @@ function SingleBookingFlow() {
 
   const drawMult = opponent && fighter ? drawMultiplier(fighter.followers, opponent.followers) : 1;
   const winPurse = fighter && venue && opponent
-    ? Math.round(purseForFight(fighter, opponent, fightType, venue) * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1))
+    ? Math.round(purseForFight(fighter, opponent, fightType, venue, tierBonusPct) * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1))
     : 0;
 
   const confirm = () => {
@@ -478,6 +479,7 @@ function CardBuilderFlow() {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { roster, worldPool, meta } = state;
+  const tierBonusPct = currentPromotionTier(state).purseBonusPct;
 
   const [venueId, setVenueId] = useState('');
   const [pendingBouts, setPendingBouts] = useState([]);
@@ -510,7 +512,7 @@ function CardBuilderFlow() {
   const isTitle = pickType === FIGHT_TYPES.MAIN_EVENT && pickFighter && isTitleFight(state, pickFighter);
   const pickIsSuperFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickOpponent?.promotionId;
   const pickWinPurse = pickFighter && pickOpponent && venue
-    ? Math.round(purseForFight(pickFighter, pickOpponent, pickType, venue) * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1))
+    ? Math.round(purseForFight(pickFighter, pickOpponent, pickType, venue, tierBonusPct) * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1))
     : 0;
 
   const sanctionTotal = pendingBouts.reduce((sum, b) => sum + (b.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0), 0);
