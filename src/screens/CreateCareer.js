@@ -6,7 +6,14 @@ import { GYM_LEVELS, STARTING_FUNDS, cityTierForPopulation, startingFundsForPopu
 import { Button, Panel, WeightPill, Flag, Avatar } from '../components/UI';
 
 const ROSTER_SIZE = GYM_LEVELS[0].rosterLimit;
-const DEFAULT_CITY = CITIES.find(c => c.id === 'jacksonville-fl') || CITIES[0];
+// Defensive fallback only (should never actually surface — hq always
+// tracks a real CITIES entry). The starting HQ itself is randomized per
+// visit to this screen, not pinned to one city — see randomCity() below.
+const DEFAULT_CITY = CITIES[0];
+
+function randomCity() {
+  return CITIES[Math.floor(Math.random() * CITIES.length)] || DEFAULT_CITY;
+}
 
 const ARCHETYPE_LABELS = {
   striker: 'Striker',
@@ -21,9 +28,9 @@ export default function CreateCareer({ slot }) {
   const [step, setStep] = useState('details');
   const [managerName, setManagerName] = useState('');
   const [promotionName, setPromotionName] = useState('');
-  const [hq, setHq] = useState(DEFAULT_CITY.id);
+  const [hq, setHq] = useState(() => randomCity().id);
   const [citySearch, setCitySearch] = useState('');
-  const [suggestions, setSuggestions] = useState(() => suggestPromotionNames('', DEFAULT_CITY.city));
+  const [suggestions, setSuggestions] = useState(() => suggestPromotionNames('', (CITIES.find(c => c.id === hq) || DEFAULT_CITY).city));
 
   const [pool, setPool] = useState(() => makeRosterCandidates());
   const [selectedIds, setSelectedIds] = useState([]);

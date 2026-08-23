@@ -316,6 +316,17 @@ test('fighters age a year and retire once they cross the retirement age', () => 
   expect(next.news.some(n => n.category === 'retirement')).toBe(true);
 });
 
+test('advancing weeks with no fights booked does not grow the promotion\'s prestige on its own', () => {
+  // A well-stocked, well-funded promotion that simply lets the calendar
+  // run should not passively climb the tier ladder — prestige only moves
+  // from actually doing something (booking and winning fights, signing a
+  // free agent, etc.), never from idly clicking "Advance Week."
+  const state = { ...baseState(), funds: 200000, prestige: 1000 };
+  let next = state;
+  for (let i = 0; i < 10; i++) next = gameReducer(next, { type: 'ADVANCE_WEEK' });
+  expect(next.prestige).toBe(1000);
+});
+
 test('ageCurveMultiplier peaks in the late 20s and declines toward retirement', () => {
   expect(ageCurveMultiplier(19)).toBeLessThan(1);
   expect(ageCurveMultiplier(27)).toBe(1);

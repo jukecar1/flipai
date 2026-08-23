@@ -1017,9 +1017,14 @@ export function gameReducer(state, action) {
       const brokeWeeks = funds === 0 ? (state.meta.brokeWeeks || 0) + 1 : 0;
       const bankrupt = brokeWeeks >= BANKRUPTCY_WEEKS;
 
+      // Rivals keep growing on their own clock regardless of what you do —
+      // they're running their own promotion in the background. Yours does
+      // not: prestige only moves from what you actually do (book fights,
+      // win them, sign a name free agent, host a PPV) — see RESOLVE_FIGHT,
+      // SIGN_FREE_AGENT, etc. Just letting the calendar advance, with no
+      // fights on the books, earns nothing — otherwise the promotion tier
+      // ladder could be climbed by idly clicking "Advance Week."
       const rivals = state.rivals.map(rv => ({ ...rv, prestige: rv.prestige + randInt(rv.weeklyGrowth[0], rv.weeklyGrowth[1]) }));
-      const avgOverall = roster.length ? roster.reduce((s, f) => s + f.overall, 0) / roster.length : 0;
-      const prestige = state.prestige + Math.round(avgOverall / 4) + Math.min(5, Math.floor(funds / 15000));
 
       // Amateurs quietly pick up bouts on their own schedule, building
       // toward a pro promotion — no news noise, just their record ticking.
@@ -1071,7 +1076,6 @@ export function gameReducer(state, action) {
         hallOfFame,
         titles,
         rivals,
-        prestige,
         freeAgents,
         worldPool,
         news,
