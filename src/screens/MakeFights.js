@@ -6,6 +6,7 @@ import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
+const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️', stadium: '🏙️' };
 
 // Shared by both booking flows — home venues (scaled to the player's own
 // HQ) list first, real nearby cities next, and any "on the road" marquee
@@ -17,6 +18,7 @@ const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena:
 function VenueGroups({ home, regional, away, venueId, cardChoice, onSelect, feesApply = true }) {
   const row = v => (
     <div key={v.id} className={`fe-venue-row ${venueId === v.id && !cardChoice ? 'selected' : ''}`} onClick={() => onSelect(v)}>
+      <span className="fe-venue-icon" aria-hidden="true">{VENUE_TIER_ICONS[v.tier]}</span>
       <div>
         <strong>{v.name}</strong>
         <span>{v.home ? VENUE_TIER_LABELS[v.tier] : `${v.city} · ${VENUE_TIER_LABELS[v.tier]}`} · {v.capacity.toLocaleString()} seats</span>
@@ -55,6 +57,12 @@ const TYPE_LABELS = {
   [FIGHT_TYPES.SINGLE]: 'Single Fight',
   [FIGHT_TYPES.SHOWCASE]: 'Showcase',
   [FIGHT_TYPES.MAIN_EVENT]: 'Main Event',
+};
+
+const TYPE_ICONS = {
+  [FIGHT_TYPES.SINGLE]: '🥊',
+  [FIGHT_TYPES.SHOWCASE]: '🎤',
+  [FIGHT_TYPES.MAIN_EVENT]: '🏆',
 };
 
 const TYPE_DESCRIPTIONS = {
@@ -143,9 +151,21 @@ export default function MakeFights() {
   const [mode, setMode] = useState('single');
   return (
     <div>
-      <div className="fe-wc-tabs fe-mf-mode-tabs">
-        <button className={`fe-wc-tab ${mode === 'single' ? 'active' : ''}`} onClick={() => setMode('single')}>Book One Fight</button>
-        <button className={`fe-wc-tab ${mode === 'card' ? 'active' : ''}`} onClick={() => setMode('card')}>Build a Card</button>
+      <div className="fe-mode-tabs">
+        <button className={`fe-mode-tab ${mode === 'single' ? 'active' : ''}`} onClick={() => setMode('single')}>
+          <span className="fe-mode-tab-icon">🥊</span>
+          <span className="fe-mode-tab-text">
+            <span className="fe-mode-tab-label">Book One Fight</span>
+            <span className="fe-mode-tab-desc">Quick single booking</span>
+          </span>
+        </button>
+        <button className={`fe-mode-tab ${mode === 'card' ? 'active' : ''}`} onClick={() => setMode('card')}>
+          <span className="fe-mode-tab-icon">🎟️</span>
+          <span className="fe-mode-tab-text">
+            <span className="fe-mode-tab-label">Build a Card</span>
+            <span className="fe-mode-tab-desc">Multi-bout fight night</span>
+          </span>
+        </button>
       </div>
       {mode === 'single' ? <SingleBookingFlow /> : <CardBuilderFlow />}
     </div>
@@ -238,7 +258,10 @@ function SingleBookingFlow() {
         <div className="fe-type-tabs">
           {Object.values(FIGHT_TYPES).map(t => (
             <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => selectType(t)}>
-              <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
+              <span className="fe-type-tab-top">
+                <span className="fe-type-tab-icon" aria-hidden="true">{TYPE_ICONS[t]}</span>
+                <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
+              </span>
               <span className="fe-type-tab-desc">{TYPE_DESCRIPTIONS[t]}</span>
             </button>
           ))}
@@ -300,20 +323,42 @@ function SingleBookingFlow() {
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} cardChoice={cardChoice} onSelect={v => { setVenueId(v.id); setCardChoice(''); }} feesApply={isCardType} />
 
         {fighter && opponent && venue && (
-          <div className="fe-confirm-box">
-            {isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
-            {isSuperFight && <div className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER EVENT</div>}
-            <div><strong>{fighter.name}</strong> vs <strong>{opponent.name}</strong></div>
-            <div>{venue.name}, {venue.city}{selectedCard ? ' (shared card)' : ''}</div>
-            <div>
-              Draw power: <span className="fe-gold">{drawMult.toFixed(2)}x gate</span>
-              <span className="fe-hint"> ({(fighter.followers + opponent.followers).toLocaleString()} combined followers)</span>
+          <div className="fe-fight-poster">
+            {(isTitle || isSuperFight) && (
+              <div className="fe-fight-poster-badges">
+                {isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
+                {isSuperFight && <div className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER EVENT</div>}
+              </div>
+            )}
+            <div className="fe-fight-poster-vs">
+              <div className="fe-fight-poster-side">
+                <Avatar fighter={fighter} size={44} champion={!!fighter.title} />
+                <span className="fe-fight-poster-name" title={fighter.name}>{fighter.name}</span>
+              </div>
+              <span className="fe-fight-poster-vs-text">VS</span>
+              <div className="fe-fight-poster-side">
+                <Avatar fighter={opponent} size={44} champion={opponent.champion} />
+                <span className="fe-fight-poster-name" title={opponent.name}>{opponent.name}</span>
+              </div>
             </div>
-            <div>
-              Purse: <span className="fe-gold">${winPurse.toLocaleString()} to win</span>
-              <span className="fe-hint"> · ${Math.round(winPurse * 0.5).toLocaleString()} on a draw · ${Math.round(winPurse * 0.3).toLocaleString()} on a loss</span>
+            <div className="fe-fight-poster-venue">{venue.name}, {venue.city}{selectedCard ? ' · shared card' : ''}</div>
+            <div className="fe-fight-poster-stats">
+              <div>
+                <span className="fe-fight-poster-stat-label">Draw power</span>
+                <span className="fe-fight-poster-stat-value">{drawMult.toFixed(2)}x</span>
+                <span className="fe-hint">{(fighter.followers + opponent.followers).toLocaleString()} followers</span>
+              </div>
+              <div>
+                <span className="fe-fight-poster-stat-label">Purse to win</span>
+                <span className="fe-fight-poster-stat-value">${winPurse.toLocaleString()}</span>
+                <span className="fe-hint">${Math.round(winPurse * 0.5).toLocaleString()} draw · ${Math.round(winPurse * 0.3).toLocaleString()} loss</span>
+              </div>
+              <div>
+                <span className="fe-fight-poster-stat-label">Cost to book</span>
+                <span className="fe-fight-poster-stat-value">${cost.toLocaleString()}</span>
+                {isSuperFight && <span className="fe-hint">incl. ${sanctionFee.toLocaleString()} sanction</span>}
+              </div>
             </div>
-            <div>Cost to book: <span className="fe-gold">${cost.toLocaleString()}</span>{isSuperFight && <span className="fe-hint"> (incl. ${sanctionFee.toLocaleString()} sanction fee)</span>}</div>
           </div>
         )}
 
@@ -419,7 +464,7 @@ function CardBuilderFlow() {
                 <div className="fe-wc-tabs">
                   {Object.values(FIGHT_TYPES).filter(t => t !== FIGHT_TYPES.SINGLE).map(t => (
                     <button key={t} className={`fe-wc-tab ${pickType === t ? 'active' : ''}`} onClick={() => { setPickType(t); setPickOpponentId(''); }}>
-                      {TYPE_LABELS[t]}
+                      {TYPE_ICONS[t]} {TYPE_LABELS[t]}
                     </button>
                   ))}
                 </div>
@@ -453,6 +498,7 @@ function CardBuilderFlow() {
         <div className="fe-fight-list">
           {pendingBouts.map((b, i) => (
             <div key={i} className="fe-fight-row">
+              <Avatar fighter={{ name: b.fighterName, weightClass: b.fighterWeightClass }} size={26} />
               <WeightPill id={b.fighterWeightClass} />
               {b.isTitle && <span title="Title fight">🏆</span>}
               {b.opponent.promotionId && <span title="Crossover event">⚔️</span>}
@@ -462,11 +508,24 @@ function CardBuilderFlow() {
           ))}
         </div>
         {venue && (
-          <div className="fe-confirm-box">
-            <div>{venue.name}, {venue.city}</div>
-            <div>Site fee: <span className="fe-gold">${venue.fee.toLocaleString()}</span></div>
-            {sanctionTotal > 0 && <div>Sanction fees: <span className="fe-gold">${sanctionTotal.toLocaleString()}</span></div>}
-            <div>Total cost: <span className="fe-gold">${totalCost.toLocaleString()}</span></div>
+          <div className="fe-fight-poster fe-fight-poster-card">
+            <div className="fe-fight-poster-venue">{venue.name}, {venue.city}</div>
+            <div className="fe-fight-poster-stats">
+              <div>
+                <span className="fe-fight-poster-stat-label">Site fee</span>
+                <span className="fe-fight-poster-stat-value">${venue.fee.toLocaleString()}</span>
+              </div>
+              {sanctionTotal > 0 && (
+                <div>
+                  <span className="fe-fight-poster-stat-label">Sanction fees</span>
+                  <span className="fe-fight-poster-stat-value">${sanctionTotal.toLocaleString()}</span>
+                </div>
+              )}
+              <div>
+                <span className="fe-fight-poster-stat-label">Total cost</span>
+                <span className="fe-fight-poster-stat-value">${totalCost.toLocaleString()}</span>
+              </div>
+            </div>
           </div>
         )}
         <Button variant="advance" onClick={bookCard} disabled={!canBookCard} className="fe-confirm-btn">
