@@ -645,6 +645,40 @@ test('BOOK_CARD books every bout on one venue fee, atomically', () => {
   expect(next.scheduledFights.every(f => f.cardId === next.cards[0].id)).toBe(true);
 });
 
+test('BOOK_CARD names a Showcase-only card into the numbered Fight Night series', () => {
+  const state = baseState();
+  const bouts = [{ fighterId: 'champ1', opponent: { ...opponent, id: 'opp1' }, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' }];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next.cards[0].name).toBe('Test FC Fight Night 1');
+  expect(next.meta.fightNightCount).toBe(1);
+  expect(next.meta.numberedEventCount).toBe(0);
+});
+
+test('BOOK_CARD names a card with a Main Event bout into the numbered flagship series', () => {
+  const state = baseState();
+  const bouts = [{ fighterId: 'champ1', opponent: { ...opponent, id: 'opp1' }, fightType: FIGHT_TYPES.MAIN_EVENT, gameplan: 'balanced' }];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next.cards[0].name).toBe('Test FC 1');
+  expect(next.meta.numberedEventCount).toBe(1);
+  expect(next.meta.fightNightCount).toBe(0);
+});
+
+test('the Fight Night and numbered flagship series count up independently across cards', () => {
+  const state = baseState();
+  const afterFirst = gameReducer(state, {
+    type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE,
+  });
+  const afterSecond = gameReducer(afterFirst, {
+    type: 'CREATE_CARD', venue, fighterId: afterFirst.roster[1].id, opponent: { ...opponent, id: 'opp2' }, fightType: FIGHT_TYPES.MAIN_EVENT,
+  });
+  const afterThird = gameReducer(afterSecond, {
+    type: 'CREATE_CARD', venue, fighterId: afterSecond.roster[2].id, opponent: { ...opponent, id: 'opp3' }, fightType: FIGHT_TYPES.SHOWCASE,
+  });
+  expect(afterFirst.cards[0].name).toBe('Test FC Fight Night 1');
+  expect(afterSecond.cards[1].name).toBe('Test FC 1');
+  expect(afterThird.cards[2].name).toBe('Test FC Fight Night 2');
+});
+
 test('BOOK_CARD refuses to book the same fighter twice on one card', () => {
   const state = baseState();
   const bouts = [

@@ -82,7 +82,10 @@ export default function Hub() {
             {cardGroups.map(({ card, fights }) => (
               <div key={card?.id || fights[0].cardId} className="fe-card-group">
                 <div className="fe-card-group-header">
-                  <span>{card?.venue.name}, {card?.venue.city}</span>
+                  <span className="fe-card-group-name">
+                    {card?.name || 'Event'}
+                    <span className="fe-hint">{card?.venue.name}, {card?.venue.city}</span>
+                  </span>
                   <span className="fe-hint">{fights.length} bout{fights.length === 1 ? '' : 's'}</span>
                 </div>
                 <div className="fe-fight-list">

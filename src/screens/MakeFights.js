@@ -4,7 +4,7 @@ import {
   FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, MAX_STAT,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE, isLegacyFight, isMismatchedBooking, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier } from '../game/gameReducer';
+import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
@@ -127,22 +127,35 @@ function StepTitle({ n, children }) {
   );
 }
 
+// Fight Empire's three fight types map straight onto how the UFC actually
+// splits its calendar: small local bouts with no real production, a
+// numbered "Fight Night" series (the ESPN-style shows), and the numbered
+// flagship series (the pay-per-view "UFC 330" tier). See nameForCard in
+// gameReducer.js for where a booked card actually gets that number.
 const TYPE_LABELS = {
   [FIGHT_TYPES.SINGLE]: 'Single Fight',
-  [FIGHT_TYPES.SHOWCASE]: 'Showcase',
+  [FIGHT_TYPES.SHOWCASE]: 'Fight Night',
   [FIGHT_TYPES.MAIN_EVENT]: 'Main Event',
 };
 
 const TYPE_ICONS = {
   [FIGHT_TYPES.SINGLE]: '🥊',
-  [FIGHT_TYPES.SHOWCASE]: '🎤',
+  [FIGHT_TYPES.SHOWCASE]: '📺',
   [FIGHT_TYPES.MAIN_EVENT]: '🏆',
 };
 
 const TYPE_DESCRIPTIONS = {
-  [FIGHT_TYPES.SINGLE]: 'No venue fee — you just split the purse. Small local halls only, fastest and cheapest way to get a fighter booked. 3 rounds.',
-  [FIGHT_TYPES.SHOWCASE]: 'A proper undercard slot on a Fight Night card, at a small hall or theatre. Costs a shared site fee, pays a bigger purse. 3 rounds.',
-  [FIGHT_TYPES.MAIN_EVENT]: 'Your biggest stage — headline a full arena or stadium, biggest purse, title-eligible if your fighter qualifies. 5 rounds.',
+  [FIGHT_TYPES.SINGLE]: 'No event, no venue fee — just a booked bout at a small local hall. Fastest, cheapest way to get a fighter working. 3 rounds.',
+  [FIGHT_TYPES.SHOWCASE]: 'Your promotion\'s numbered Fight Night series, at a small hall or theatre — like a UFC Fight Night. 3 rounds.',
+  [FIGHT_TYPES.MAIN_EVENT]: 'Your flagship numbered event, headlining a full arena or stadium — like a numbered UFC pay-per-view. Title-eligible, biggest purse. 5 rounds.',
+};
+
+// The one-line version of the same three, used as a quick legend — short
+// and simple, no venue/round detail.
+const TYPE_LEGEND_SHORT = {
+  [FIGHT_TYPES.SINGLE]: 'a quick bout, no event',
+  [FIGHT_TYPES.SHOWCASE]: 'your numbered Fight Night card',
+  [FIGHT_TYPES.MAIN_EVENT]: 'your numbered flagship event',
 };
 
 // Short axis labels for the radar chart — the full STAT_LABELS ("Submission")
@@ -309,9 +322,16 @@ export default function MakeFights() {
       </div>
       <p className="fe-hint fe-mode-explainer">
         {mode === 'single'
-          ? <><strong>Book One Fight</strong> books one bout at a time — pick a fighter, an opponent, and a venue, and it goes straight on the schedule. A Single Fight (no venue fee, small halls only) is the fastest way to get someone booked; picking Showcase or Main Event here lets you either book a standalone bout or slot one more fight onto a card someone's already building.</>
-          : <><strong>Build a Card</strong> sets up a whole fight night at once — pick one venue first (its site fee covers every bout you add, up to {CARD_MAX_FIGHTS}), then stack Showcase and Main Event bouts onto it before booking the whole card together. Good for a real event with an undercard building to a headliner, and for sharing one PPV across the whole night instead of just one fight.</>}
+          ? <><strong>Book One Fight</strong> books one bout at a time — pick a fighter, an opponent, and a venue, and it goes straight on the schedule. Picking Fight Night or Main Event here can also slot one more fight onto an event someone's already building, instead of starting a new one.</>
+          : <><strong>Build a Card</strong> sets up a whole event at once — pick one venue first (its site fee covers every bout you add, up to {CARD_MAX_FIGHTS}), then stack bouts onto it before booking the whole thing together.</>}
       </p>
+      <div className="fe-type-legend">
+        {Object.values(FIGHT_TYPES).map(t => (
+          <span key={t} className="fe-type-legend-item">
+            <span aria-hidden="true">{TYPE_ICONS[t]}</span> <strong>{TYPE_LABELS[t]}</strong> — {TYPE_LEGEND_SHORT[t]}
+          </span>
+        ))}
+      </div>
       {mode === 'single' ? <SingleBookingFlow /> : <CardBuilderFlow />}
     </div>
   );
@@ -540,8 +560,8 @@ function SingleBookingFlow() {
                 return (
                   <div key={c.id} className={`fe-venue-row ${cardChoice === c.id ? 'selected' : ''}`} onClick={() => { setCardChoice(c.id); setVenueId(''); }}>
                     <div>
-                      <strong>{c.venue.name}</strong>
-                      <span>{c.venue.city} · {c.weeksOut}w out · {boutCount}/{CARD_MAX_FIGHTS} bouts</span>
+                      <strong>{c.name || c.venue.name}</strong>
+                      <span>{c.venue.name}, {c.venue.city} · {c.weeksOut}w out · {boutCount}/{CARD_MAX_FIGHTS} bouts</span>
                     </div>
                     <span className="fe-venue-fee">Free</span>
                   </div>
@@ -700,6 +720,10 @@ function CardBuilderFlow() {
   const ppvBuysCount = wantsPPV ? ppvBuys(state.prestige, headliner.combined) : 0;
   const ppvEarned = wantsPPV ? ppvRevenue(ppvBuysCount, ppvPrice) : 0;
   const ppvFee = wantsPPV ? PPV_PRODUCTION_FEE : 0;
+  // Pure read of what booking right now would name this card — a Main
+  // Event bout anywhere on the card bumps it into the numbered flagship
+  // series, otherwise it joins the numbered Fight Night series.
+  const previewCardName = pendingBouts.length > 0 ? nameForCard(state, canOfferPPV).name : null;
 
   const totalCost = (venue?.fee || 0) + sanctionTotal + ppvFee;
   const canAddBout = pickFighter && pickOpponent && pendingBouts.length < CARD_MAX_FIGHTS;
@@ -813,6 +837,11 @@ function CardBuilderFlow() {
       {step === 'review' && (
       <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col fe-mf-col-3">
         {pendingBouts.length === 0 && <div className="fe-empty">No bouts added yet.</div>}
+        {previewCardName && (
+          <p className="fe-hint fe-card-preview-name">
+            Booking now makes this <strong>{previewCardName}</strong> — {canOfferPPV ? 'your numbered flagship event' : 'your numbered Fight Night'}.
+          </p>
+        )}
         <div className="fe-fight-list">
           {pendingBouts.map((b, i) => (
             <div key={i} className="fe-fight-row">

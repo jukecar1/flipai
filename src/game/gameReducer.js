@@ -503,6 +503,8 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
       totalEarnings: 0,
       titlesWon: 0,
       ppvEventsHosted: 0,
+      fightNightCount: 0,
+      numberedEventCount: 0,
       autoSkipFights: false,
       createdAt: Date.now(),
     },
@@ -638,6 +640,23 @@ export function ppvBuys(prestige, headlinerFollowers) {
 // Your cut after the platform's split and production overhead.
 export function ppvRevenue(buys, price) {
   return Math.round(buys * price * 0.45);
+}
+
+// Names a freshly-booked card the way a real promotion actually would —
+// mirroring the UFC's own split between its numbered Fight Night series
+// (ESPN cards, no PPV) and its numbered flagship series (pay-per-view,
+// e.g. "UFC 330"). A card that includes a Main Event bout joins the
+// flagship series; a card built only from Showcase bouts joins the Fight
+// Night series. Shared by CREATE_CARD and BOOK_CARD so the two booking
+// paths can never end up with two cards claiming the same number.
+export function nameForCard(state, hasMainEvent) {
+  const promo = state.meta.promotionName;
+  if (hasMainEvent) {
+    const number = (state.meta.numberedEventCount || 0) + 1;
+    return { name: `${promo} ${number}`, metaPatch: { numberedEventCount: number } };
+  }
+  const number = (state.meta.fightNightCount || 0) + 1;
+  return { name: `${promo} Fight Night ${number}`, metaPatch: { fightNightCount: number } };
 }
 
 // Shared by CREATE_CARD (a single Main Event booked as its own card) and
@@ -979,7 +998,8 @@ export function gameReducer(state, action) {
       if (state.funds < cost) return state;
       const cardId = `card${Date.now()}_${randInt(0, 9999)}`;
       const weeksOut = randInt(2, 6);
-      const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
+      const { name, metaPatch } = nameForCard(state, fightType === FIGHT_TYPES.MAIN_EVENT);
+      const card = { id: cardId, name, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week: state.week });
       const callout = resolveCallouts(state, [fight]);
       const socialFeed = wantsPPV
@@ -994,7 +1014,11 @@ export function gameReducer(state, action) {
         socialFeed,
         news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
         prestige: state.prestige + callout.prestigeBonus,
-        meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
+        meta: {
+          ...state.meta,
+          ...metaPatch,
+          ...(ppv.cardFields.isPPV ? { ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : {}),
+        },
       };
     }
 
@@ -1050,7 +1074,8 @@ export function gameReducer(state, action) {
 
       const cardId = `card${Date.now()}_${randInt(0, 9999)}`;
       const weeksOut = randInt(2, 6);
-      const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
+      const { name, metaPatch } = nameForCard(state, !!headliner);
+      const card = { id: cardId, name, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fights = resolvedBouts.map(b => buildFightRecord(state, {
         fighterId: b.fighter.id, fighter: b.fighter, opponent: b.opponent, fightType: b.fightType,
         venue, gameplan: b.gameplan, camp: b.camp, cardId, weeksOut, week: state.week,
@@ -1070,7 +1095,11 @@ export function gameReducer(state, action) {
         socialFeed,
         news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
         prestige: state.prestige + callout.prestigeBonus,
-        meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
+        meta: {
+          ...state.meta,
+          ...metaPatch,
+          ...(ppv.cardFields.isPPV ? { ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : {}),
+        },
       };
     }
 
