@@ -1803,6 +1803,17 @@ button, select, input {
   flex-shrink: 0;
 }
 
+/* Color-coded wizard steps — red → teal → gold — so the three Make Fights
+   columns read as a journey (pick / match / confirm) instead of three
+   identical grey boxes. */
+.fe-step-num-2 {
+  background: linear-gradient(135deg, var(--fe-teal), #1c8c81);
+}
+
+.fe-step-num-3 {
+  background: linear-gradient(135deg, var(--fe-gold), #c4901f);
+}
+
 .fe-make-fights {
   position: relative;
   display: grid;
@@ -1816,21 +1827,67 @@ button, select, input {
   overflow-x: auto;
 }
 
+.fe-panel.fe-mf-col-1 {
+  border-top: 3px solid var(--fe-red);
+}
+
+.fe-panel.fe-mf-col-2 {
+  border-top: 3px solid var(--fe-teal);
+}
+
+.fe-panel.fe-mf-col-3 {
+  border-top: 3px solid var(--fe-gold);
+}
+
+.fe-mf-col-1 .fe-panel-header {
+  background: linear-gradient(90deg, rgba(226, 38, 58, 0.14), var(--fe-panel-alt) 75%);
+}
+
+.fe-mf-col-2 .fe-panel-header {
+  background: linear-gradient(90deg, rgba(46, 196, 182, 0.14), var(--fe-panel-alt) 75%);
+}
+
+.fe-mf-col-3 .fe-panel-header {
+  background: linear-gradient(90deg, rgba(244, 185, 66, 0.14), var(--fe-panel-alt) 75%);
+}
+
 .fe-matchup {
-  background: var(--fe-panel-alt);
-  border: 1px solid var(--fe-border);
-  border-radius: 8px;
-  padding: 12px;
+  background: linear-gradient(160deg, var(--fe-panel-alt), var(--fe-bg-alt));
+  border: 1px solid var(--fe-border-light);
+  border-radius: 10px;
+  padding: 12px 14px;
   margin-bottom: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
 .fe-matchup-odds-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-family: var(--fe-font-display);
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 0.3px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.fe-matchup-fighter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fe-matchup-fighter-right {
+  flex-direction: row-reverse;
+}
+
+.fe-matchup-fighter b {
+  font-size: 17px;
+  flex-shrink: 0;
 }
 
 .fe-matchup-favorite {

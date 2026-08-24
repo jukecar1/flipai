@@ -59,7 +59,7 @@ export default function FightSim() {
 
   useEffect(() => {
     if (!playing || index >= ticks.length) return undefined;
-    const delay = 550 / speed;
+    const delay = 460 / speed;
     timerRef.current = setTimeout(() => {
       setIndex(i => Math.min(i + 1, ticks.length));
     }, delay);

@@ -25,9 +25,9 @@ function clamp(n, min, max) {
 // actually throwing/attempting something — tuned so a fight reads as
 // genuinely busy (more thrown strikes, more scrambles) rather than two
 // fighters mostly feeling each other out.
-const BEATS_PER_ROUND = 26;
-const IDLE_CHANCE_STANDING = 0.09;
-const IDLE_CHANCE_GROUND = 0.06;
+const BEATS_PER_ROUND = 32;
+const IDLE_CHANCE_STANDING = 0.05;
+const IDLE_CHANCE_GROUND = 0.03;
 
 const STRIKE_FLAVORS = ['jab', 'cross', 'hook', 'head kick', 'leg kick', 'body kick'];
 const GROUND_STRIKE_FLAVORS = ['ground-and-pound', 'elbow'];
@@ -166,7 +166,7 @@ function runRound(fighters, roundNum) {
     let event = null;
 
     if (position === 'standing') {
-      const pTakedown = clamp(0.14 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.012, 0.04, 0.45);
+      const pTakedown = clamp(0.16 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.012, 0.04, 0.45);
       if (rand() < pTakedown) {
         actor.stats.takedowns.thrown++;
         const successChance = clamp(0.32 + (actor.ref.stats.wrestling - opp.ref.stats.wrestling) * 0.025, 0.08, 0.85);

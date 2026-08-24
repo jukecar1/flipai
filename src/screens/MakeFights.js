@@ -121,7 +121,7 @@ function PPVToggle({ isPPV, onToggle, price, onPriceChange, buys, revenue }) {
 function StepTitle({ n, children }) {
   return (
     <>
-      <span className="fe-step-num">{n}</span>
+      <span className={`fe-step-num fe-step-num-${n}`}>{n}</span>
       {children}
     </>
   );
@@ -153,8 +153,14 @@ function MatchupCompare({ fighter, opponent }) {
   return (
     <div className="fe-matchup">
       <div className="fe-matchup-odds-row">
-        <span className={odds >= 50 ? 'fe-matchup-favorite' : 'fe-matchup-underdog'}>{firstName(fighter.name)} {odds}%</span>
-        <span className={oppOdds >= 50 ? 'fe-matchup-favorite' : 'fe-matchup-underdog'}>{oppOdds}% {firstName(opponent.name)}</span>
+        <span className={`fe-matchup-fighter ${odds >= 50 ? 'fe-matchup-favorite' : 'fe-matchup-underdog'}`}>
+          <Avatar fighter={fighter} size={24} champion={!!fighter.title} />
+          {firstName(fighter.name)} <b>{odds}%</b>
+        </span>
+        <span className={`fe-matchup-fighter fe-matchup-fighter-right ${oppOdds >= 50 ? 'fe-matchup-favorite' : 'fe-matchup-underdog'}`}>
+          <b>{oppOdds}%</b> {firstName(opponent.name)}
+          <Avatar fighter={opponent} size={24} champion={opponent.champion} />
+        </span>
       </div>
       <div className="fe-matchup-bar">
         <span className="fe-matchup-bar-fill" style={{ width: `${odds}%` }} />
@@ -347,7 +353,7 @@ function SingleBookingFlow() {
 
   return (
     <div className="fe-make-fights">
-      <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-mf-col fe-mf-col-1">
         <select value={fighterId} onChange={e => selectFighter(e.target.value)} className="fe-full-select">
           {roster.map(f => (
             <option key={f.id} value={f.id} disabled={alreadyBooked.has(f.id) || isInjured(f)}>
@@ -428,11 +434,11 @@ function SingleBookingFlow() {
         )}
       </Panel>
 
-      <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col fe-mf-col-2">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
       </Panel>
 
-      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col fe-mf-col-3">
         {fighter && opponent && (
           <>
             <div className="fe-subheading">Matchup</div>
@@ -640,12 +646,12 @@ function CardBuilderFlow() {
 
   return (
     <div className="fe-make-fights">
-      <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-mf-col fe-mf-col-1">
         <p className="fe-hint">Pick a venue to host your card — the site fee covers up to {CARD_MAX_FIGHTS} bouts, one fee for the whole night.</p>
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} onSelect={v => setVenueId(v.id)} />
       </Panel>
 
-      <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-mf-col fe-mf-col-2">
         {!venue && <div className="fe-empty">Pick a venue first.</div>}
         {venue && (
           <>
@@ -698,7 +704,7 @@ function CardBuilderFlow() {
         )}
       </Panel>
 
-      <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col">
+      <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col fe-mf-col-3">
         {pendingBouts.length === 0 && <div className="fe-empty">No bouts added yet.</div>}
         <div className="fe-fight-list">
           {pendingBouts.map((b, i) => (
