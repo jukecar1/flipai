@@ -377,35 +377,41 @@ function SingleBookingFlow() {
           </p>
         )}
 
-        <div className="fe-subheading">Gameplan</div>
-        <div className="fe-wc-tabs">
-          {GAMEPLANS.map(g => (
-            <button
-              key={g.id}
-              className={`fe-wc-tab ${gameplan === g.id ? 'active' : ''}`}
-              onClick={() => setGameplan(g.id)}
-              title={g.description}
-            >
-              {g.label}
-            </button>
-          ))}
+        <div className="fe-prep-grid">
+          <div>
+            <div className="fe-subheading">Gameplan</div>
+            <div className="fe-wc-tabs fe-prep-tabs">
+              {GAMEPLANS.map(g => (
+                <button
+                  key={g.id}
+                  className={`fe-wc-tab ${gameplan === g.id ? 'active' : ''}`}
+                  onClick={() => setGameplan(g.id)}
+                  title={g.description}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="fe-subheading">Training Camp</div>
+            <div className="fe-wc-tabs fe-prep-tabs">
+              {CAMPS.map(c => (
+                <button
+                  key={c.id}
+                  className={`fe-wc-tab ${camp === c.id ? 'active' : ''}`}
+                  onClick={() => setCamp(c.id)}
+                  title={c.description}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <p className="fe-hint">{GAMEPLANS.find(g => g.id === gameplan)?.description}</p>
-
-        <div className="fe-subheading">Training Camp</div>
-        <div className="fe-wc-tabs">
-          {CAMPS.map(c => (
-            <button
-              key={c.id}
-              className={`fe-wc-tab ${camp === c.id ? 'active' : ''}`}
-              onClick={() => setCamp(c.id)}
-              title={c.description}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-        <p className="fe-hint">{CAMPS.find(c => c.id === camp)?.description}</p>
+        <p className="fe-hint">
+          {GAMEPLANS.find(g => g.id === gameplan)?.description} {CAMPS.find(c => c.id === camp)?.description}
+        </p>
 
         {myCallouts.length > 0 && (
           <>
@@ -424,15 +430,15 @@ function SingleBookingFlow() {
 
       <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
+      </Panel>
+
+      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col">
         {fighter && opponent && (
           <>
             <div className="fe-subheading">Matchup</div>
             <MatchupCompare fighter={fighter} opponent={opponent} />
           </>
         )}
-      </Panel>
-
-      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col">
         {isCardType && bookableCards.length > 0 && (
           <>
             <div className="fe-subheading">Add to an Upcoming Card</div>

@@ -871,10 +871,22 @@ button, select, input {
   }
 }
 
-.fe-boxer-list, .fe-fight-list, .fe-opponent-list {
+.fe-boxer-list, .fe-fight-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.fe-opponent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Same treatment as .fe-venue-list — a weight class with a dozen
+     opponents shouldn't push the matchup/confirm columns clean off the
+     bottom of a short landscape-mobile viewport. */
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 4px;
 }
 
 .fe-card-group {
@@ -2300,6 +2312,19 @@ button, select, input {
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 14px;
+}
+
+/* Gameplan + Training Camp side by side instead of two full stacked
+   sections — same two decisions, about half the vertical space. */
+.fe-prep-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.fe-prep-tabs {
+  margin-bottom: 0;
 }
 
 .fe-wc-tab {
