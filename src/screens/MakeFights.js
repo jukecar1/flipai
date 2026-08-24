@@ -307,6 +307,11 @@ export default function MakeFights() {
           </span>
         </button>
       </div>
+      <p className="fe-hint fe-mode-explainer">
+        {mode === 'single'
+          ? <><strong>Book One Fight</strong> books one bout at a time — pick a fighter, an opponent, and a venue, and it goes straight on the schedule. A Single Fight (no venue fee, small halls only) is the fastest way to get someone booked; picking Showcase or Main Event here lets you either book a standalone bout or slot one more fight onto a card someone's already building.</>
+          : <><strong>Build a Card</strong> sets up a whole fight night at once — pick one venue first (its site fee covers every bout you add, up to {CARD_MAX_FIGHTS}), then stack Showcase and Main Event bouts onto it before booking the whole card together. Good for a real event with an undercard building to a headliner, and for sharing one PPV across the whole night instead of just one fight.</>}
+      </p>
       {mode === 'single' ? <SingleBookingFlow /> : <CardBuilderFlow />}
     </div>
   );

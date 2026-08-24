@@ -1747,6 +1747,16 @@ button, select, input {
   margin-bottom: 16px;
 }
 
+.fe-mode-explainer {
+  max-width: 640px;
+  margin: 0 auto 18px;
+  text-align: center;
+}
+
+.fe-mode-explainer strong {
+  color: var(--fe-text);
+}
+
 .fe-mode-tab {
   display: flex;
   align-items: center;
