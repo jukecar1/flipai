@@ -1,6 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
-import { FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE } from '../game/constants';
+import {
+  FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS,
+  PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE, isLegacyFight, isMismatchedBooking, LEGACY_FIGHT_PURSE_BONUS_PCT,
+} from '../game/constants';
 import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
@@ -255,6 +258,7 @@ function SingleBookingFlow() {
   const [venueId, setVenueId] = useState('');
   const [cardChoice, setCardChoice] = useState('');
   const [gameplan, setGameplan] = useState('balanced');
+  const [camp, setCamp] = useState('standard');
   const [isPPV, setIsPPV] = useState(false);
   const [ppvPrice, setPpvPrice] = useState(DEFAULT_PPV_PRICE);
 
@@ -304,20 +308,36 @@ function SingleBookingFlow() {
   const canConfirm = fighter && opponent && venue && state.funds >= cost && !alreadyBooked.has(fighter.id) && !isInjured(fighter);
   const isTitle = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && isTitleFight(state, fighter);
   const isDefense = isTitle && state.titles[fighter.weightClass]?.holderId === fighter.id;
+  const legacyFight = fightType === FIGHT_TYPES.MAIN_EVENT && !!fighter && isLegacyFight(fighter.age);
+  const mismatch = isMismatchedBooking(fighter, opponent, fightType);
 
   const drawMult = opponent && fighter ? drawMultiplier(fighter.followers, opponent.followers) : 1;
   const winPurse = fighter && venue && opponent
-    ? Math.round(purseForFight(fighter, opponent, fightType, venue, tierBonusPct) * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1))
+    ? Math.round(
+        purseForFight(fighter, opponent, fightType, venue, tierBonusPct)
+        * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+      )
     : 0;
+
+  // A fighter with a live callout can be booked straight into it from
+  // here — pick the exact matchup they called out and cash in on it.
+  const myCallouts = (state.callouts || []).filter(c => roster.some(f => f.id === c.fighterId));
+  const fulfillCallout = c => {
+    setFighterId(c.fighterId);
+    setFightType(FIGHT_TYPES.MAIN_EVENT);
+    setOpponentId(c.targetId);
+    setCardChoice('');
+    setVenueId('');
+  };
 
   const confirm = () => {
     if (!canConfirm) return;
     if (fightType === FIGHT_TYPES.SINGLE) {
-      dispatch({ type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType, venue, gameplan });
+      dispatch({ type: 'SCHEDULE_FIGHT', fighterId, opponent, fightType, venue, gameplan, camp });
     } else if (selectedCard) {
-      dispatch({ type: 'ADD_FIGHT_TO_CARD', cardId: selectedCard.id, fighterId, opponent, fightType, gameplan });
+      dispatch({ type: 'ADD_FIGHT_TO_CARD', cardId: selectedCard.id, fighterId, opponent, fightType, gameplan, camp });
     } else {
-      dispatch({ type: 'CREATE_CARD', venue, fighterId, opponent, fightType, gameplan, isPPV: wantsPPV, ppvPrice });
+      dispatch({ type: 'CREATE_CARD', venue, fighterId, opponent, fightType, gameplan, camp, isPPV: wantsPPV, ppvPrice });
     }
     setOpponentId('');
     setVenueId('');
@@ -371,6 +391,35 @@ function SingleBookingFlow() {
           ))}
         </div>
         <p className="fe-hint">{GAMEPLANS.find(g => g.id === gameplan)?.description}</p>
+
+        <div className="fe-subheading">Training Camp</div>
+        <div className="fe-wc-tabs">
+          {CAMPS.map(c => (
+            <button
+              key={c.id}
+              className={`fe-wc-tab ${camp === c.id ? 'active' : ''}`}
+              onClick={() => setCamp(c.id)}
+              title={c.description}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <p className="fe-hint">{CAMPS.find(c => c.id === camp)?.description}</p>
+
+        {myCallouts.length > 0 && (
+          <>
+            <div className="fe-subheading">Pending Callouts</div>
+            <div className="fe-callout-list">
+              {myCallouts.map(c => (
+                <button key={c.id} type="button" className="fe-callout-row" onClick={() => fulfillCallout(c)}>
+                  <span>📣 {c.fighterName} called out {c.targetName}</span>
+                  <span className="fe-link">Book it</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </Panel>
 
       <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col">
@@ -420,11 +469,17 @@ function SingleBookingFlow() {
 
         {fighter && opponent && venue && (
           <div className="fe-fight-poster">
-            {(isTitle || isSuperFight) && (
+            {(isTitle || isSuperFight || legacyFight) && (
               <div className="fe-fight-poster-badges">
                 {isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
                 {isSuperFight && <div className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER EVENT</div>}
+                {legacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
               </div>
+            )}
+            {mismatch && (
+              <p className="fe-hint fe-hint-warn">
+                ⚠️ {fighter.name} has a real name now — a mismatch like this beneath a Main Event will cost some loyalty even in a win.
+              </p>
             )}
             <div className="fe-fight-poster-vs">
               <div className="fe-fight-poster-side">
@@ -448,7 +503,10 @@ function SingleBookingFlow() {
               <div>
                 <span className="fe-fight-poster-stat-label">Purse to win</span>
                 <span className="fe-fight-poster-stat-value">${winPurse.toLocaleString()}</span>
-                <span className="fe-hint">${Math.round(winPurse * 0.5).toLocaleString()} draw · ${Math.round(winPurse * 0.3).toLocaleString()} loss</span>
+                <span className="fe-hint">
+                  ${Math.round(winPurse * 0.5).toLocaleString()} draw · ${Math.round(winPurse * 0.3).toLocaleString()} loss
+                  {legacyFight ? ` · +${LEGACY_FIGHT_PURSE_BONUS_PCT}% legacy bonus` : ''}
+                </span>
               </div>
               <div>
                 <span className="fe-fight-poster-stat-label">Cost to book</span>
@@ -511,8 +569,13 @@ function CardBuilderFlow() {
 
   const isTitle = pickType === FIGHT_TYPES.MAIN_EVENT && pickFighter && isTitleFight(state, pickFighter);
   const pickIsSuperFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickOpponent?.promotionId;
+  const pickLegacyFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickFighter && isLegacyFight(pickFighter.age);
+  const pickMismatch = isMismatchedBooking(pickFighter, pickOpponent, pickType);
   const pickWinPurse = pickFighter && pickOpponent && venue
-    ? Math.round(purseForFight(pickFighter, pickOpponent, pickType, venue, tierBonusPct) * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1))
+    ? Math.round(
+        purseForFight(pickFighter, pickOpponent, pickType, venue, tierBonusPct)
+        * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1) * (pickLegacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+      )
     : 0;
 
   const sanctionTotal = pendingBouts.reduce((sum, b) => sum + (b.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0), 0);
@@ -613,7 +676,12 @@ function CardBuilderFlow() {
                 {pickFighter && pickOpponent && (
                   <p className="fe-hint">
                     Purse: <span className="fe-gold">${pickWinPurse.toLocaleString()} to win</span> · ${Math.round(pickWinPurse * 0.5).toLocaleString()} on a draw · ${Math.round(pickWinPurse * 0.3).toLocaleString()} on a loss
+                    {pickLegacyFight ? ` · +${LEGACY_FIGHT_PURSE_BONUS_PCT}% legacy bonus` : ''}
                   </p>
+                )}
+                {pickLegacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
+                {pickMismatch && (
+                  <p className="fe-hint fe-hint-warn">⚠️ A mismatch like this beneath a Main Event will cost some loyalty even in a win.</p>
                 )}
                 <div className="fe-row-actions">
                   <Button variant="advance" onClick={addBout} disabled={!canAddBout}>Add Bout to Card</Button>

@@ -9,6 +9,7 @@ const CHIRP_ICONS = {
   departure: '🚪',
   signing: '✍️',
   ppv: '🎬',
+  callout: '📣',
 };
 
 const CHIRP_LABELS = {
@@ -17,6 +18,7 @@ const CHIRP_LABELS = {
   departure: 'Departure',
   signing: 'Signing',
   ppv: 'PPV hype',
+  callout: 'Callout',
 };
 
 export default function Chirp() {

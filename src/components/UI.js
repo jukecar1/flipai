@@ -51,6 +51,7 @@ const NEWS_ICONS = {
   facility: '🏋️',
   retirement: '🎗️',
   superfight: '⚔️',
+  bonus: '💰',
 };
 
 export function NewsCategoryIcon({ category }) {

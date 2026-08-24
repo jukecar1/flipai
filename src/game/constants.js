@@ -364,3 +364,99 @@ export const GAMEPLANS = [
   { id: 'patient', label: 'Play It Safe', description: '+1 chin, +1 cardio, -1 striking. Safer, slower pace.' },
   { id: 'finish', label: 'Hunt the Finish', description: '+2 submission, +1 striking, -2 chin. Aggressive, exposed.' },
 ];
+
+// A training camp is chosen once at booking time, weeks before the fight
+// actually happens — a real tradeoff made up front, distinct from the
+// pre-fight gameplan (which is a fight-night strategy, chosen right
+// before the bell). A hard camp sharpens the fighter's best tool, but
+// carries a real chance of a camp injury that quietly works against them
+// instead — see applyCamp() in gameReducer.js for how that plays out.
+export const CAMPS = [
+  { id: 'standard', label: 'Standard Camp', description: 'Balanced preparation. No real risk, no real reward.' },
+  { id: 'hard', label: 'Hard Camp', description: `Push harder in the room to sharpen your fighter's best tool — at a real risk of a camp injury instead.` },
+  { id: 'light', label: 'Light Camp', description: 'Ease off and protect the body. Walks in fresher, but without the extra edge.' },
+];
+export const HARD_CAMP_STAT_DELTA = 2;
+export const HARD_CAMP_INJURY_CHANCE = 0.18;
+export const LIGHT_CAMP_FATIGUE_RELIEF = 15;
+
+// ---------- Post-fight bonuses ----------
+// Modeled loosely on real fight-night bonuses: Performance of the Night
+// only goes to the fighter who actually delivered a finish; Fight of the
+// Night can land on either side of a fight that goes the distance — a
+// great fight is a great fight regardless of who won it. Both are a
+// chance, not a guarantee, same as the real thing.
+export const POTN_BONUS_PCT = 25;
+export const FOTN_BONUS_PCT = 20;
+
+export function potnChance(roundEnded) {
+  if (roundEnded <= 1) return 0.55;
+  if (roundEnded === 2) return 0.4;
+  return 0.25;
+}
+
+export function fotnChance(method, draw) {
+  if (draw) return 0.5;
+  if (method === 'SD' || method === 'MD') return 0.3;
+  if (method === 'UD') return 0.1;
+  return 0;
+}
+
+// ---------- Sponsorship income ----------
+// Real fighters get walkout-gear and energy-drink money on top of their
+// purse, scaled by how big a following they bring with them — paid out
+// per fight (like everything else that moves money in this game), never
+// just for existing week to week.
+export function sponsorIncome(followers = 0) {
+  return Math.round(150 + followers * 0.04);
+}
+
+// ---------- Fighter callouts ----------
+// After a big win, a fighter sometimes calls out a specific next
+// opponent — real callout culture. Book that exact matchup later and it
+// pays off; ignore it and it just quietly expires.
+export const CALLOUT_CHANCE = 0.3;
+export const CALLOUT_EXPIRY_WEEKS = 8;
+export const CALLOUT_PRESTIGE_BONUS = 10;
+
+// ---------- Judges' controversy ----------
+// A split or majority decision sometimes reads as a robbery — the winner
+// doesn't get the full credit fans think they deserved, and the fighter
+// on the wrong end of it gets a sympathy bump instead. Only close-margin
+// decision methods can trigger this; a clean unanimous decision, a
+// finish, or a draw never does.
+export function controversyChance(method) {
+  if (method === 'SD') return 0.35;
+  if (method === 'MD') return 0.2;
+  return 0;
+}
+
+// ---------- Ranked-fighter matchmaking pressure ----------
+// A fighter who's actually made a name for themselves — real skill, a
+// real following, or an actual title — starts to mind being fed an
+// obviously overmatched opponent outside of a Main Event. It doesn't
+// block the booking, it just wears on how they feel about your
+// management the same way a bad re-sign offer would.
+export const MISMATCH_OVERALL_GAP = 5;
+export const NOTABLE_FIGHTER_OVERALL = 14;
+export const NOTABLE_FIGHTER_FOLLOWERS = 5000;
+
+export function isNotableFighter(fighter) {
+  return !!fighter && (fighter.overall >= NOTABLE_FIGHTER_OVERALL || (fighter.followers || 0) >= NOTABLE_FIGHTER_FOLLOWERS || !!fighter.title);
+}
+
+export function isMismatchedBooking(fighter, opponent, fightType) {
+  if (!fighter || !opponent || fightType === FIGHT_TYPES.MAIN_EVENT) return false;
+  return isNotableFighter(fighter) && fighter.overall - opponent.overall >= MISMATCH_OVERALL_GAP;
+}
+
+// ---------- Legacy fights ----------
+// A veteran within sight of retirement headlining a Main Event is a
+// bigger draw than the same booking would be at 27 — this could be one
+// of their last walks, and everyone knows it.
+export const LEGACY_FIGHT_AGE_WINDOW = 2;
+export const LEGACY_FIGHT_PURSE_BONUS_PCT = 25;
+
+export function isLegacyFight(age) {
+  return age >= RETIREMENT_AGE - LEGACY_FIGHT_AGE_WINDOW;
+}

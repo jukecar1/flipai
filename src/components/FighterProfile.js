@@ -11,7 +11,7 @@ import { Button, WeightPill, Flag, Avatar, Followers } from './UI';
 
 const ARCHETYPE_LABELS = { striker: 'Striker', wrestler: 'Wrestler', allrounder: 'All-rounder' };
 const METHOD_LABELS = { KO: 'KO', TKO: 'TKO', SUB: 'Submission', UD: 'Decision', SD: 'Split Dec.', MD: 'Majority Dec.', DRAW: 'Draw' };
-const CHIRP_ICONS = { result: '🥊', beef: '🔥', departure: '🚪', signing: '✍️', ppv: '🎬' };
+const CHIRP_ICONS = { result: '🥊', beef: '🔥', departure: '🚪', signing: '✍️', ppv: '🎬', callout: '📣' };
 
 // One shared mini-profile for ANY fighter in the game — your own roster,
 // a rival's champion, a free agent, an amateur prospect, or just an

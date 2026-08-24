@@ -7,6 +7,10 @@ import {
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
   LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance, loyaltyStatus, poachChance,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE,
+  CAMPS, HARD_CAMP_STAT_DELTA, HARD_CAMP_INJURY_CHANCE, LIGHT_CAMP_FATIGUE_RELIEF,
+  POTN_BONUS_PCT, FOTN_BONUS_PCT, potnChance, fotnChance, sponsorIncome,
+  CALLOUT_CHANCE, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS,
+  controversyChance, isMismatchedBooking, isLegacyFight, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -65,13 +69,44 @@ function applyGameplan(fighter, gameplanId) {
   return fighter;
 }
 
+function topStatKey(stats) {
+  return STAT_KEYS.reduce((best, k) => (stats[k] > stats[best] ? k : best), STAT_KEYS[0]);
+}
+
+// Whether a hard camp's injury risk actually hit — rolled exactly ONCE
+// per fight (in PREPARE_FIGHT_SIM, when the fight actually starts) and
+// carried on activeFight from there, since a camp injury either happened
+// weeks ago or it didn't; re-rolling it every round would let the same
+// fighter flicker between "sharpened" and "hurt" mid-fight.
+function rollCampInjury(campId) {
+  return campId === 'hard' && Math.random() < HARD_CAMP_INJURY_CHANCE;
+}
+
+// Applies the already-decided camp outcome to a fighter's effective
+// stats for this fight — deterministic, safe to call every round (same
+// pattern as applyGameplan/applyAgeCurve). A hard camp sharpens the
+// fighter's best tool, unless the camp injury hit, in which case that
+// same tool is instead a little duller; a light camp just walks them in
+// less fatigued.
+function applyCampEffect(fighter, campId, campInjured) {
+  if (campId === 'hard') {
+    const key = topStatKey(fighter.stats);
+    const delta = campInjured ? -HARD_CAMP_STAT_DELTA : HARD_CAMP_STAT_DELTA;
+    return { ...fighter, stats: { ...fighter.stats, [key]: clampStat(fighter.stats[key] + delta) } };
+  }
+  if (campId === 'light') {
+    return { ...fighter, fatigue: Math.max(0, fighter.fatigue - LIGHT_CAMP_FATIGUE_RELIEF) };
+  }
+  return fighter;
+}
+
 // How a single fight shifts a fighter's loyalty — a real opportunity
 // (a title shot, a marquee crossover) is valued regardless of outcome; a
 // stay-busy squash match where they were never really tested wears thin;
 // getting thrown in as a huge underdog is either a star-making moment (if
 // it pays off) or feels like being fed to the wolves (if it doesn't); and
 // getting hurt in there on top of it reads as bad management either way.
-function loyaltyDeltaForFight({ winProbability, isTitle, isSuperFight, won, drew, injured }) {
+function loyaltyDeltaForFight({ winProbability, isTitle, isSuperFight, won, drew, injured, mismatch }) {
   let delta;
   if (isTitle) delta = won ? 12 : drew ? 3 : -2;
   else if (isSuperFight) delta = won ? 6 : drew ? 2 : -1;
@@ -79,6 +114,9 @@ function loyaltyDeltaForFight({ winProbability, isTitle, isSuperFight, won, drew
   else if (winProbability <= 0.25) delta = won ? 10 : -8;
   else delta = won ? 2 : drew ? 0 : -2;
   if (injured) delta -= 5;
+  // A notable fighter fed an obviously overmatched opponent outside of a
+  // Main Event feels like a wasted booking, win or not.
+  if (mismatch) delta -= 4;
   return delta;
 }
 
@@ -178,9 +216,29 @@ const PPV_HYPE_CHIRPS = [
   opp => `They're paying to watch me do this to ${opp}. Worth every penny.`,
 ];
 
-function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability }) {
+const WIN_CONTROVERSIAL_CHIRPS = [
+  opp => `I got the nod against ${opp} and I'll take it — but I get why people are mad. Go rewatch it.`,
+  opp => `Win's a win. Judges saw it their way against ${opp}, I'll live with it.`,
+];
+
+const LOSS_ROBBED_CHIRPS = [
+  opp => `Everybody in the building knew who really won that one against ${opp}. Judges need glasses. 🙃`,
+  opp => `That's a robbery and everybody with eyes knows it. On to the next.`,
+];
+
+const CALLOUT_CHIRPS = [
+  target => `${target}, you're next. Let's make it happen. 👀`,
+  target => `Somebody get ${target} on the phone. I'm not waiting around.`,
+  target => `Callout: ${target}. Name the date, I'll be there.`,
+];
+
+function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability, controversial }) {
   if (!fighter) return null;
   if (draw) return makeChirp(state, { fighter, category: 'result', text: pick(DRAW_CHIRPS)(opponentName) });
+  if (controversial) {
+    const template = pick(fighterWon ? WIN_CONTROVERSIAL_CHIRPS : LOSS_ROBBED_CHIRPS);
+    return makeChirp(state, { fighter, category: 'result', text: template(opponentName) });
+  }
   if (fighterWon) {
     const wasUnderdog = (winProbability ?? 0.5) <= 0.35;
     const template = pick(wasUnderdog ? WIN_UPSET_CHIRPS : WIN_HYPE_CHIRPS);
@@ -199,14 +257,63 @@ function loyaltyBeefChirp(state, fighter, loyalty) {
   return makeChirp(state, { fighter, category: 'beef', text: template() });
 }
 
+// After a win, a fighter sometimes calls out a specific name in their
+// division — the rival division champion if there is one (the biggest
+// possible fight), otherwise whoever's got the biggest following. Only
+// one live callout per fighter at a time, so the feed doesn't fill up
+// with the same fighter calling out three people in a row.
+function rollCallout(state, fighter) {
+  if ((state.callouts || []).some(c => c.fighterId === fighter.id)) return null;
+  if (Math.random() >= CALLOUT_CHANCE) return null;
+  const pool = state.worldPool[fighter.weightClass] || [];
+  const target = pool.find(f => f.champion) || pool.reduce((best, f) => (!best || (f.followers || 0) > (best.followers || 0) ? f : best), null);
+  if (!target) return null;
+  return {
+    id: `co${Date.now()}_${randInt(0, 9999)}`,
+    fighterId: fighter.id,
+    fighterName: fighter.name,
+    targetId: target.id,
+    targetName: target.name,
+    weightClass: fighter.weightClass,
+    week: state.week,
+  };
+}
+
+// If this exact matchup fulfills one (or more, for a whole card) of the
+// booked fighters' pending callouts, the payoff lands the moment it's
+// actually booked — the hype (and the bigger fight) is real as soon as
+// the card is announced, not just once it's fought.
+function resolveCallouts(state, fights) {
+  const fulfilledIds = new Set();
+  const news = [];
+  fights.forEach(fight => {
+    const callout = (state.callouts || []).find(c => c.fighterId === fight.fighterId && c.targetId === fight.opponentId);
+    if (callout && !fulfilledIds.has(callout.id)) {
+      fulfilledIds.add(callout.id);
+      news.push({
+        id: `n${Date.now()}_callout_${callout.id}`,
+        week: state.week,
+        category: 'signing',
+        title: `${callout.fighterName} follows through on their callout of ${callout.targetName}`,
+        body: `${callout.fighterName} backed up the talk — the two are officially booked.`,
+      });
+    }
+  });
+  return {
+    callouts: fulfilledIds.size ? (state.callouts || []).filter(c => !fulfilledIds.has(c.id)) : (state.callouts || []),
+    news,
+    prestigeBonus: fulfilledIds.size * CALLOUT_PRESTIGE_BONUS,
+  };
+}
+
 // Simulates one round (mode 'one', used when the player is watching and
 // gets a between-rounds gameplan check-in) or every remaining round back
 // to back (mode 'all', used for "Skip to Result" and for a fully-resolved
 // fight when autoSkipFights is on). Returns the newly-simulated round(s),
 // the final stoppage descriptor if the fight ended, and the carried-over
 // session state for whatever rounds remain after that.
-function runFightRounds(fighter, opponent, gameplanId, session, fromRound, totalRounds, mode) {
-  const gameplanFighter = applyGameplan(applyAgeCurve(fighter), gameplanId);
+function runFightRounds(fighter, opponent, gameplanId, session, fromRound, totalRounds, mode, campId, campInjured) {
+  const gameplanFighter = applyCampEffect(applyGameplan(applyAgeCurve(fighter), gameplanId), campId, campInjured);
   const ageAdjustedOpponent = applyAgeCurve(opponent);
   const roundsOut = [];
   let stoppedOut = null;
@@ -414,6 +521,7 @@ export function newCareerState({ managerName, promotionName, hq, selectedFighter
     cards: [],
     fightHistory: [],
     socialFeed: [],
+    callouts: [],
     news: [
       {
         id: 'n0',
@@ -558,9 +666,12 @@ function resolvePPV(state, { wantsPPV, ppvPrice, headlinerA, headlinerB }) {
 // Builds one scheduled-fight record — shared by every booking path
 // (Single Fight, a new card, adding to an existing card, or the
 // multi-bout card builder) so the shape never drifts between them.
-function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, cardId, weeksOut, week }) {
+function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week }) {
   const isSuperFight = !!opponent.promotionId;
   const titleFight = fightType === FIGHT_TYPES.MAIN_EVENT && isTitleFight(state, fighter);
+  // A veteran within sight of retirement headlining a Main Event could be
+  // one of their last walks — a bigger draw, same as it would be for real.
+  const legacyFight = fightType === FIGHT_TYPES.MAIN_EVENT && isLegacyFight(fighter.age);
   const fight = {
     id: `f${Date.now()}_${randInt(0, 9999)}`,
     fighterId,
@@ -570,11 +681,17 @@ function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venu
     venue,
     weeksOut,
     rounds: fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3,
-    purse: Math.round(purseForFight(fighter, opponent, fightType, venue, currentPromotionTier(state).purseBonusPct) * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1)),
+    purse: Math.round(
+      purseForFight(fighter, opponent, fightType, venue, currentPromotionTier(state).purseBonusPct)
+      * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+    ),
     isTitle: titleFight,
     isSuperFight,
+    isLegacyFight: legacyFight,
+    mismatch: isMismatchedBooking(fighter, opponent, fightType),
     winProbability: winProbability(fighter, opponent),
     gameplan: GAMEPLANS.some(g => g.id === gameplan) ? gameplan : 'balanced',
+    camp: CAMPS.some(c => c.id === camp) ? camp : 'standard',
     createdWeek: week,
   };
   if (cardId) fight.cardId = cardId;
@@ -596,6 +713,7 @@ export function gameReducer(state, action) {
         hallOfFame: action.state.hallOfFame || [],
         cards: action.state.cards || [],
         socialFeed: action.state.socialFeed || [],
+        callouts: action.state.callouts || [],
         roster: (action.state.roster || []).map(f => ({
           contractFightsLeft: DEFAULT_CONTRACT_FIGHTS,
           loyalty: LOYALTY_BASELINE,
@@ -833,21 +951,25 @@ export function gameReducer(state, action) {
     }
 
     case 'SCHEDULE_FIGHT': {
-      const { fighterId, opponent, fightType, venue, gameplan } = action;
+      const { fighterId, opponent, fightType, venue, gameplan, camp } = action;
       const fighter = state.roster.find(f => f.id === fighterId);
       if (!fighter || !opponent || fighter.injuryWeeks > 0) return state;
       const cost = costForFight(fightType, venue);
       if (state.funds < cost) return state;
-      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, weeksOut: randInt(2, 6), week: state.week });
+      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, weeksOut: randInt(2, 6), week: state.week });
+      const callout = resolveCallouts(state, [fight]);
       return {
         ...state,
         funds: state.funds - cost,
         scheduledFights: [...state.scheduledFights, fight],
+        callouts: callout.callouts,
+        news: callout.news.length ? [...callout.news, ...state.news] : state.news,
+        prestige: state.prestige + callout.prestigeBonus,
       };
     }
 
     case 'CREATE_CARD': {
-      const { venue, fighterId, opponent, fightType, gameplan, isPPV, ppvPrice } = action;
+      const { venue, fighterId, opponent, fightType, gameplan, camp, isPPV, ppvPrice } = action;
       const fighter = state.roster.find(f => f.id === fighterId);
       if (!fighter || !opponent || !venue || fighter.injuryWeeks > 0) return state;
       const sanctionFee = opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0;
@@ -858,7 +980,8 @@ export function gameReducer(state, action) {
       const cardId = `card${Date.now()}_${randInt(0, 9999)}`;
       const weeksOut = randInt(2, 6);
       const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
-      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, cardId, weeksOut, week: state.week });
+      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week: state.week });
+      const callout = resolveCallouts(state, [fight]);
       const socialFeed = wantsPPV
         ? pushChirp(state.socialFeed, makeChirp(state, { fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(opponent.name) }))
         : state.socialFeed;
@@ -867,25 +990,31 @@ export function gameReducer(state, action) {
         funds: state.funds - cost + ppv.revenue,
         cards: [...(state.cards || []), card],
         scheduledFights: [...state.scheduledFights, fight],
+        callouts: callout.callouts,
         socialFeed,
-        news: ppv.news ? [ppv.news, ...state.news] : state.news,
+        news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
+        prestige: state.prestige + callout.prestigeBonus,
         meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
       };
     }
 
     case 'ADD_FIGHT_TO_CARD': {
-      const { cardId, fighterId, opponent, fightType, gameplan } = action;
+      const { cardId, fighterId, opponent, fightType, gameplan, camp } = action;
       const card = (state.cards || []).find(c => c.id === cardId);
       const fighter = state.roster.find(f => f.id === fighterId);
       if (!card || !fighter || !opponent || fighter.injuryWeeks > 0) return state;
       if (state.scheduledFights.filter(f => f.cardId === cardId).length >= CARD_MAX_FIGHTS) return state;
       const sanctionFee = opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0;
       if (state.funds < sanctionFee) return state;
-      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue: card.venue, gameplan, cardId, weeksOut: card.weeksOut, week: state.week });
+      const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue: card.venue, gameplan, camp, cardId, weeksOut: card.weeksOut, week: state.week });
+      const callout = resolveCallouts(state, [fight]);
       return {
         ...state,
         funds: state.funds - sanctionFee,
         scheduledFights: [...state.scheduledFights, fight],
+        callouts: callout.callouts,
+        news: callout.news.length ? [...callout.news, ...state.news] : state.news,
+        prestige: state.prestige + callout.prestigeBonus,
       };
     }
 
@@ -902,7 +1031,7 @@ export function gameReducer(state, action) {
         if (seenFighterIds.has(fighter.id)) return state; // no fighter twice on one card
         seenFighterIds.add(fighter.id);
         totalCost += bout.opponent.promotionId ? SUPER_FIGHT_SANCTION_FEE : 0;
-        resolvedBouts.push({ fighter, opponent: bout.opponent, fightType: bout.fightType, gameplan: bout.gameplan });
+        resolvedBouts.push({ fighter, opponent: bout.opponent, fightType: bout.fightType, gameplan: bout.gameplan, camp: bout.camp });
       }
 
       // The headliner for PPV purposes is whichever Main Event bout on the
@@ -924,8 +1053,9 @@ export function gameReducer(state, action) {
       const card = { id: cardId, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fights = resolvedBouts.map(b => buildFightRecord(state, {
         fighterId: b.fighter.id, fighter: b.fighter, opponent: b.opponent, fightType: b.fightType,
-        venue, gameplan: b.gameplan, cardId, weeksOut, week: state.week,
+        venue, gameplan: b.gameplan, camp: b.camp, cardId, weeksOut, week: state.week,
       }));
+      const callout = resolveCallouts(state, fights);
 
       const socialFeed = wantsPPV
         ? pushChirp(state.socialFeed, makeChirp(state, { fighter: headliner.fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(headliner.opponent.name) }))
@@ -936,8 +1066,10 @@ export function gameReducer(state, action) {
         funds: state.funds - totalCost + ppv.revenue,
         cards: [...(state.cards || []), card],
         scheduledFights: [...state.scheduledFights, ...fights],
+        callouts: callout.callouts,
         socialFeed,
-        news: ppv.news ? [ppv.news, ...state.news] : state.news,
+        news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
+        prestige: state.prestige + callout.prestigeBonus,
         meta: ppv.cardFields.isPPV ? { ...state.meta, ppvEventsHosted: (state.meta.ppvEventsHosted || 0) + 1 } : state.meta,
       };
     }
@@ -953,6 +1085,9 @@ export function gameReducer(state, action) {
 
     case 'ADVANCE_WEEK': {
       const week = state.week + 1;
+      // An ignored callout just quietly fizzles after a while — no
+      // penalty, it simply stops being something you can cash in on.
+      const callouts = (state.callouts || []).filter(c => week - c.week < CALLOUT_EXPIRY_WEEKS);
       const cards = (state.cards || []).map(c => ({ ...c, weeksOut: Math.max(0, c.weeksOut - 1) }));
       const scheduledFights = state.scheduledFights.map(f => {
         if (f.cardId) {
@@ -1079,6 +1214,7 @@ export function gameReducer(state, action) {
         freeAgents,
         worldPool,
         news,
+        callouts,
         meta: { ...state.meta, brokeWeeks },
         ui: bankrupt ? { ...state.ui, screen: 'gameOver' } : state.ui,
       };
@@ -1090,16 +1226,19 @@ export function gameReducer(state, action) {
       const fighter = findFighterAnywhere(state, fight.fighterId);
       const opponent = findFighterAnywhere(state, fight.opponentId);
       const rounds = fight.rounds || 3;
+      // Whether the camp injury risk hit is decided once, right now — see
+      // rollCampInjury for why this can't just be re-rolled per round.
+      const campInjured = rollCampInjury(fight.camp);
 
       // With "auto-skip fights" on, the player never watches — resolve the
       // whole thing at once with the pre-fight gameplan locked in, same as
       // the game always worked before between-rounds adjustments existed.
       if (state.meta.autoSkipFights) {
-        const gameplanFighter = applyGameplan(applyAgeCurve(fighter), fight.gameplan);
+        const gameplanFighter = applyCampEffect(applyGameplan(applyAgeCurve(fighter), fight.gameplan), fight.camp, campInjured);
         const sim = simulateFight(gameplanFighter, applyAgeCurve(opponent), { rounds });
         return {
           ...state,
-          activeFight: { fightId: fight.id, fighterId: fighter.id, opponentId: opponent.id, gameplan: fight.gameplan, finished: true, sim },
+          activeFight: { fightId: fight.id, fighterId: fighter.id, opponentId: opponent.id, gameplan: fight.gameplan, camp: fight.camp, campInjured, finished: true, sim },
           ui: { ...state.ui, screen: 'fightSim' },
         };
       }
@@ -1108,7 +1247,7 @@ export function gameReducer(state, action) {
       // waits for ADVANCE_FIGHT_ROUND (or SKIP_FIGHT_TO_END) so the player
       // can adjust their gameplan between rounds, corner-style.
       const session = initFightSession(fighter, opponent);
-      const { roundsData, stopped, session: nextSession } = runFightRounds(fighter, opponent, fight.gameplan, session, 1, rounds, 'one');
+      const { roundsData, stopped, session: nextSession } = runFightRounds(fighter, opponent, fight.gameplan, session, 1, rounds, 'one', fight.camp, campInjured);
       const finished = !!stopped || rounds <= 1;
       const totalStats = { A: nextSession.A.stats, B: nextSession.B.stats };
       const result = finished ? computeFightResult(fighter.id, opponent.id, roundsData, stopped, rounds, totalStats) : null;
@@ -1119,6 +1258,8 @@ export function gameReducer(state, action) {
           fighterId: fighter.id,
           opponentId: opponent.id,
           gameplan: fight.gameplan,
+          camp: fight.camp,
+          campInjured,
           session: nextSession,
           stoppedAt: stopped,
           finished,
@@ -1135,7 +1276,7 @@ export function gameReducer(state, action) {
       const opponent = findFighterAnywhere(state, active.opponentId);
       const gameplan = action.gameplan || active.gameplan;
       const nextRoundNum = active.sim.roundsData.length + 1;
-      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, gameplan, active.session, nextRoundNum, active.sim.rounds, 'one');
+      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, gameplan, active.session, nextRoundNum, active.sim.rounds, 'one', active.camp, active.campInjured);
       const roundsData = [...active.sim.roundsData, ...newRounds];
       const stoppedAt = stopped || active.stoppedAt;
       const finished = !!stopped || nextRoundNum >= active.sim.rounds;
@@ -1153,7 +1294,7 @@ export function gameReducer(state, action) {
       const fighter = findFighterAnywhere(state, active.fighterId);
       const opponent = findFighterAnywhere(state, active.opponentId);
       const nextRoundNum = active.sim.roundsData.length + 1;
-      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, active.gameplan, active.session, nextRoundNum, active.sim.rounds, 'all');
+      const { roundsData: newRounds, stopped, session } = runFightRounds(fighter, opponent, active.gameplan, active.session, nextRoundNum, active.sim.rounds, 'all', active.camp, active.campInjured);
       const roundsData = [...active.sim.roundsData, ...newRounds];
       const stoppedAt = stopped || active.stoppedAt;
       const totalStats = { A: session.A.stats, B: session.B.stats };
@@ -1173,6 +1314,9 @@ export function gameReducer(state, action) {
       const draw = result.method === 'DRAW';
       const isFinish = result.method === 'KO' || result.method === 'TKO' || result.method === 'SUB';
       const fighterWon = !draw && result.winnerId === active.fighterId;
+      // A close decision sometimes reads as a robbery — decided once, the
+      // same result applies to both fighters' follower reactions below.
+      const controversial = !isFinish && !draw && Math.random() < controversyChance(result.method);
 
       // final damage taken, for injury odds — A is always the booked
       // fighter and B the opponent (see PREPARE_FIGHT_SIM below)
@@ -1197,10 +1341,16 @@ export function gameReducer(state, action) {
           let gain = randInt(80, 220) + Math.max(0, gap) * 25;
           if (finish) gain *= 1.5;
           if (titleFight) gain *= 2;
+          // Fans feel like it should've gone the other way, so the winner
+          // doesn't get full credit for it.
+          if (controversial) gain *= 0.5;
           return Math.round(gain);
         }
         let loss = randInt(40, 120) + Math.max(0, -gap) * 15;
         if (titleFight) loss *= 1.5;
+        // Public sympathy for the "robbery" softens the hit — a moral
+        // victory still shows up in the follower count.
+        if (controversial) loss = Math.max(0, loss - 150);
         return -Math.round(loss);
       };
 
@@ -1262,9 +1412,27 @@ export function gameReducer(state, action) {
         });
       });
 
+      const fighterRef = findFighterAnywhere(state, active.fighterId);
+      const oppRef = findFighterAnywhere(state, active.opponentId);
+
       const purse = fight ? fight.purse : 0;
       const earned = draw ? Math.round(purse * 0.5) : fighterWon ? purse : Math.round(purse * 0.3);
-      const funds = state.funds + earned;
+      // A standout performance sometimes earns a bonus on top of the
+      // purse — Performance of the Night only for the fighter who
+      // actually delivered a finish, Fight of the Night for either side
+      // of a fight that goes the distance and reads as a classic.
+      let bonusType = null;
+      if (fighterWon && isFinish) {
+        if (Math.random() < potnChance(result.roundEnded)) bonusType = 'potn';
+      } else if (Math.random() < fotnChance(result.method, draw)) {
+        bonusType = 'fotn';
+      }
+      const bonusAmount = bonusType ? Math.round(purse * (bonusType === 'potn' ? POTN_BONUS_PCT : FOTN_BONUS_PCT) / 100) : 0;
+      // Sponsor money on top of the purse, scaled by how big a following
+      // the fighter brings with them — paid for showing up and putting on
+      // a show, same as real walkout-gear and energy-drink deals.
+      const sponsorEarned = sponsorIncome(fighterRef?.followers || 0);
+      const funds = state.funds + earned + bonusAmount + sponsorEarned;
 
       const record = { ...state.record };
       if (draw) record.draws += 1;
@@ -1281,8 +1449,6 @@ export function gameReducer(state, action) {
       // since you were the one crashing their card.
       if (fight?.isSuperFight) prestigeDelta += fighterWon ? 30 : draw ? 5 : -3;
 
-      const fighterRef = findFighterAnywhere(state, active.fighterId);
-      const oppRef = findFighterAnywhere(state, active.opponentId);
       const oppPromo = oppRef?.promotionId ? RIVAL_PROMOTIONS.find(p => p.id === oppRef.promotionId) : null;
       const methodText = { KO: 'by knockout', TKO: 'by TKO', SUB: 'by submission', UD: 'by unanimous decision', SD: 'by split decision', MD: 'by majority decision', DRAW: 'to a draw' }[result.method];
       const headline = draw
@@ -1291,14 +1457,36 @@ export function gameReducer(state, action) {
 
       const news = [{ id: `n${Date.now()}`, week: state.week, category: 'fight', title: headline, body: 'A fight for the ages in front of the crowd.' }];
       let socialFeed = state.socialFeed;
+      let callouts = state.callouts || [];
       const reactionChirp = fightReactionChirp(state, {
         fighter: fighterRef,
         opponentName: oppRef?.name,
         fighterWon,
         draw,
         winProbability: fight?.winProbability,
+        controversial,
       });
       if (reactionChirp) socialFeed = pushChirp(socialFeed, reactionChirp);
+      if (bonusType) {
+        news.unshift({
+          id: `n${Date.now()}_bonus`,
+          week: state.week,
+          category: 'bonus',
+          title: bonusType === 'potn'
+            ? `${fighterRef?.name} takes home a Performance of the Night bonus`
+            : `Fight of the Night: ${fighterRef?.name} vs. ${oppRef?.name}`,
+          body: `An extra $${bonusAmount.toLocaleString()} for that one.`,
+        });
+      }
+      if (controversial) {
+        news.unshift({
+          id: `n${Date.now()}_controversy`,
+          week: state.week,
+          category: 'fight',
+          title: `Judges spark controversy in ${fighterRef?.name} vs. ${oppRef?.name}`,
+          body: 'Split reactions from press row — not everyone at ringside agrees with the scorecards.',
+        });
+      }
       if (fight?.isSuperFight) {
         news.unshift({
           id: `n${Date.now()}_super`,
@@ -1365,6 +1553,7 @@ export function gameReducer(state, action) {
           won: fighterWon,
           drew: draw,
           injured: fighterInjuryWeeks > 0,
+          mismatch: !!fight?.mismatch,
         });
         const loyalty = clampLoyalty((bookedFighterPostFight.loyalty ?? LOYALTY_BASELINE) + loyaltyDelta);
         if (contractFightsLeft <= 0) {
@@ -1387,6 +1576,13 @@ export function gameReducer(state, action) {
           roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft, loyalty, weeksSinceLastFight: 0 } : f));
           const beefChirp = loyaltyBeefChirp(state, bookedFighterPostFight, loyalty);
           if (beefChirp) socialFeed = pushChirp(socialFeed, beefChirp);
+          if (fighterWon) {
+            const callout = rollCallout(state, bookedFighterPostFight);
+            if (callout) {
+              callouts = [...callouts, callout];
+              socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter: bookedFighterPostFight, category: 'callout', text: pick(CALLOUT_CHIRPS)(callout.targetName) }));
+            }
+          }
         }
       }
 
@@ -1407,8 +1603,9 @@ export function gameReducer(state, action) {
         prestige,
         titles,
         cards,
-        meta: { ...state.meta, totalEarnings: (state.meta.totalEarnings || 0) + earned, titlesWon },
+        meta: { ...state.meta, totalEarnings: (state.meta.totalEarnings || 0) + earned + bonusAmount + sponsorEarned, titlesWon },
         scheduledFights: remainingFights,
+        callouts,
         fightHistory: [{
           id: active.fightId,
           week: state.week,
@@ -1419,8 +1616,14 @@ export function gameReducer(state, action) {
           fighterWeightClass: fighterRef?.weightClass,
           result,
           isTitle: !!fight?.isTitle,
+          isLegacyFight: !!fight?.isLegacyFight,
+          controversial,
           fighterFollowerDelta,
           opponentFollowerDelta,
+          earned,
+          bonus: bonusType,
+          bonusAmount,
+          sponsorEarned,
         }, ...state.fightHistory],
         news: [...news, ...state.news],
         socialFeed,

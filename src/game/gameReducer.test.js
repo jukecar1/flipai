@@ -7,6 +7,8 @@ import {
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, WEIGHT_MOVE_COST, TRAINING_XP_PER_STAT_POINT, poachCostFor, contractCost, DEFAULT_CONTRACT_FIGHTS,
   STARTING_FUNDS, ageCurveMultiplier, effectiveOverall, trainingCost, primeStatus, INACTIVE_WEEKS_BEFORE_FRUSTRATION,
   LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
+  sponsorIncome, potnChance, fotnChance, controversyChance, isMismatchedBooking, isNotableFighter, isLegacyFight,
+  LEGACY_FIGHT_PURSE_BONUS_PCT, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS, MISMATCH_OVERALL_GAP, NOTABLE_FIGHTER_OVERALL,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -1068,4 +1070,234 @@ test('findFighterAnywhere also looks in free agents and amateurs, not just the r
   expect(findFighterAnywhere(state, 'fa1')).toBe(freeAgent);
   expect(findFighterAnywhere(state, 'am1')).toBe(amateur);
   expect(findFighterAnywhere(state, 'nope')).toBeNull();
+});
+
+// ---------- Post-fight bonuses ----------
+
+test('potnChance is higher for an earlier finish than a later one', () => {
+  expect(potnChance(1)).toBeGreaterThan(potnChance(2));
+  expect(potnChance(2)).toBeGreaterThan(potnChance(3));
+});
+
+test('fotnChance favors a draw or a close decision over a clean unanimous one', () => {
+  expect(fotnChance(null, true)).toBeGreaterThan(fotnChance('UD', false));
+  expect(fotnChance('SD', false)).toBeGreaterThan(fotnChance('UD', false));
+  expect(fotnChance('MD', false)).toBeGreaterThan(fotnChance('UD', false));
+});
+
+test('a finish win can land a Performance of the Night bonus on top of the purse', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // forces the bonus roll (and everything else) to succeed
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'champ1');
+  spy.mockRestore();
+  const entry = next.fightHistory[0];
+  expect(entry.bonus).toBe('potn');
+  expect(entry.bonusAmount).toBeGreaterThan(0);
+  expect(next.funds).toBe(state.funds + entry.earned + entry.bonusAmount + entry.sponsorEarned);
+});
+
+test('losing by finish never wins Performance of the Night — only the fighter who delivered it can', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'opp1'); // the opponent gets the finish
+  spy.mockRestore();
+  expect(next.fightHistory[0].bonus).not.toBe('potn');
+});
+
+test('a split decision can land a Fight of the Night bonus even for the fighter who lost it', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'SD', 'opp1'); // champ1 loses a split decision
+  spy.mockRestore();
+  expect(next.fightHistory[0].bonus).toBe('fotn');
+});
+
+test('no bonus roll means no bonus at all', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.999);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.fightHistory[0].bonus).toBeNull();
+  expect(next.fightHistory[0].bonusAmount).toBe(0);
+});
+
+// ---------- Sponsorship income ----------
+
+test('sponsorIncome scales with followers, with a small token amount for a total unknown', () => {
+  expect(sponsorIncome(0)).toBe(150);
+  expect(sponsorIncome(10000)).toBe(Math.round(150 + 10000 * 0.04));
+});
+
+test('sponsor money is credited every fight regardless of the result', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 10000 } : f)) };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99); // keep the bonus roll out of the way
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'opp1'); // champ1 loses
+  spy.mockRestore();
+  const entry = next.fightHistory[0];
+  expect(entry.sponsorEarned).toBe(sponsorIncome(10000));
+  expect(next.funds).toBe(state.funds + entry.earned + entry.sponsorEarned);
+});
+
+// ---------- Fighter callouts ----------
+
+test('a big win can trigger a callout naming a specific opponent', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const bigName = { ...opponent, id: 'star1', followers: 90000, champion: false };
+  state = { ...state, worldPool: { ...state.worldPool, FLW: [opponent, bigName] } };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // forces the callout roll to succeed
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.callouts).toHaveLength(1);
+  expect(next.callouts[0]).toMatchObject({ fighterId: 'champ1', targetId: 'star1' });
+  expect(next.socialFeed.some(p => p.category === 'callout')).toBe(true);
+});
+
+test('a callout prefers the division\'s rival champion over just the biggest following', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const bigName = { ...opponent, id: 'star1', followers: 90000, champion: false };
+  const rivalChamp = { ...opponent, id: 'champ2', followers: 5000, champion: true };
+  state = { ...state, worldPool: { ...state.worldPool, FLW: [opponent, bigName, rivalChamp] } };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.callouts[0].targetId).toBe('champ2');
+});
+
+test('winning does not always trigger a callout', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.callouts).toHaveLength(0);
+});
+
+test('booking the exact matchup a fighter called out pays a prestige bonus and posts news', () => {
+  const state = baseState();
+  const existingCallout = { id: 'co1', fighterId: 'champ1', fighterName: 'Test Champion', targetId: 'opp1', targetName: 'Test Opponent', weightClass: 'FLW', week: 1 };
+  const stateWithCallout = { ...state, callouts: [existingCallout] };
+  const next = gameReducer(stateWithCallout, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  expect(next.callouts).toHaveLength(0);
+  expect(next.prestige).toBe(state.prestige + CALLOUT_PRESTIGE_BONUS);
+  expect(next.news.some(n => n.title.includes('follows through'))).toBe(true);
+});
+
+test('booking a different opponent leaves an existing callout untouched', () => {
+  const state = baseState();
+  const existingCallout = { id: 'co1', fighterId: 'champ1', fighterName: 'Test Champion', targetId: 'someone-else', targetName: 'Someone Else', weightClass: 'FLW', week: 1 };
+  const stateWithCallout = { ...state, callouts: [existingCallout] };
+  const next = gameReducer(stateWithCallout, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  expect(next.callouts).toHaveLength(1);
+  expect(next.prestige).toBe(state.prestige);
+});
+
+test('an unfulfilled callout quietly expires after a while', () => {
+  const state = baseState();
+  const staleCallout = { id: 'co1', fighterId: 'champ1', fighterName: 'x', targetId: 'opp1', targetName: 'y', weightClass: 'FLW', week: state.week };
+  let next = { ...state, callouts: [staleCallout] };
+  for (let i = 0; i < CALLOUT_EXPIRY_WEEKS; i++) next = gameReducer(next, { type: 'ADVANCE_WEEK' });
+  expect(next.callouts).toHaveLength(0);
+});
+
+test('a callout survives right up until it actually expires', () => {
+  const state = baseState();
+  const staleCallout = { id: 'co1', fighterId: 'champ1', fighterName: 'x', targetId: 'opp1', targetName: 'y', weightClass: 'FLW', week: state.week };
+  let next = { ...state, callouts: [staleCallout] };
+  for (let i = 0; i < CALLOUT_EXPIRY_WEEKS - 1; i++) next = gameReducer(next, { type: 'ADVANCE_WEEK' });
+  expect(next.callouts).toHaveLength(1);
+});
+
+// ---------- Fight camps ----------
+
+test('a booked fight defaults to Standard Camp, and rejects an unrecognized camp id', () => {
+  const state = baseState();
+  const next = gameReducer(state, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue, camp: 'nonsense' });
+  expect(next.scheduledFights[0].camp).toBe('standard');
+});
+
+test('a hard camp is recorded on the booked fight and carried onto activeFight once it starts', () => {
+  const state = gameReducer(withLiveOpponent(baseState()), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue, camp: 'hard' });
+  const fight = state.scheduledFights[0];
+  expect(fight.camp).toBe('hard');
+  const next = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  expect(next.activeFight.camp).toBe('hard');
+  expect(typeof next.activeFight.campInjured).toBe('boolean');
+});
+
+test('a camp injury sticks for the rest of the fight instead of being re-rolled every round', () => {
+  const state = gameReducer(withLiveOpponent(baseState()), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue, camp: 'hard' });
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // forces the camp injury to hit
+  let next = gameReducer(state, { type: 'PREPARE_FIGHT_SIM', fightId: fight.id });
+  expect(next.activeFight.campInjured).toBe(true);
+  if (!next.activeFight.finished) {
+    next = gameReducer(next, { type: 'ADVANCE_FIGHT_ROUND' });
+    expect(next.activeFight.campInjured).toBe(true); // unchanged — not re-rolled round to round
+  }
+  spy.mockRestore();
+});
+
+// ---------- Ranked-fighter matchmaking pressure ----------
+
+test('isNotableFighter recognizes overall, followers, or holding a title', () => {
+  expect(isNotableFighter({ overall: NOTABLE_FIGHTER_OVERALL, followers: 0, title: null })).toBe(true);
+  expect(isNotableFighter({ overall: 5, followers: 100000, title: null })).toBe(true);
+  expect(isNotableFighter({ overall: 5, followers: 0, title: 'Flyweight' })).toBe(true);
+  expect(isNotableFighter({ overall: 5, followers: 0, title: null })).toBe(false);
+});
+
+test('isMismatchedBooking flags a notable fighter fed a much weaker opponent, but never in a Main Event', () => {
+  const star = { overall: NOTABLE_FIGHTER_OVERALL, followers: 0, title: null };
+  const weakling = { overall: NOTABLE_FIGHTER_OVERALL - MISMATCH_OVERALL_GAP };
+  expect(isMismatchedBooking(star, weakling, FIGHT_TYPES.SHOWCASE)).toBe(true);
+  expect(isMismatchedBooking(star, weakling, FIGHT_TYPES.MAIN_EVENT)).toBe(false);
+});
+
+test('a mismatched booking costs extra loyalty on resolution, on top of the normal outcome', () => {
+  // champ1 (overall 15) vs the opponent fixture (overall 10) is a 5-point
+  // gap outside a Main Event — exactly the mismatch threshold.
+  const state = bookShowcase(baseState(), 'champ1');
+  const fight = state.scheduledFights[0];
+  expect(fight.mismatch).toBe(true);
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.99); // keep injury/bonus rolls out of the way
+  const next = resolveWithResult(withLiveOpponent(state), fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  spy.mockRestore();
+  const champ1After = next.roster.find(f => f.id === 'champ1');
+  // A win as a big enough favorite already costs loyalty (-3, per
+  // loyaltyDeltaForFight); the mismatch penalty stacks another -4.
+  expect(champ1After.loyalty).toBe(LOYALTY_BASELINE - 3 - 4);
+});
+
+// ---------- Legacy fights ----------
+
+test('isLegacyFight flags a fighter within a couple years of the mandatory retirement age', () => {
+  expect(isLegacyFight(RETIREMENT_AGE - 1)).toBe(true);
+  expect(isLegacyFight(RETIREMENT_AGE - 5)).toBe(false);
+});
+
+test('a Main Event for a fighter nearing retirement books as a Legacy Fight with a purse bonus', () => {
+  const state = baseState();
+  const veteran = { ...state.roster[0], age: RETIREMENT_AGE - 1 };
+  const stateWithVeteran = { ...state, roster: [veteran, ...state.roster.slice(1)] };
+  const next = gameReducer(stateWithVeteran, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  const fight = next.scheduledFights[0];
+  expect(fight.isLegacyFight).toBe(true);
+  const basePurse = purseForFight(veteran, opponent, FIGHT_TYPES.MAIN_EVENT, venue, currentPromotionTier(stateWithVeteran).purseBonusPct);
+  expect(fight.purse).toBe(Math.round(basePurse * 1.6 * (1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100)));
+});
+
+test('a Showcase fight for the same veteran is never flagged as a Legacy Fight', () => {
+  const state = baseState();
+  const veteran = { ...state.roster[0], age: RETIREMENT_AGE - 1 };
+  const stateWithVeteran = { ...state, roster: [veteran, ...state.roster.slice(1)] };
+  const next = gameReducer(stateWithVeteran, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE, venue });
+  expect(next.scheduledFights[0].isLegacyFight).toBe(false);
 });

@@ -776,6 +776,37 @@ button, select, input {
   color: #fff;
 }
 
+.fe-legacy-badge {
+  background: linear-gradient(90deg, #6b7280, #374151);
+  color: #fff;
+}
+
+.fe-callout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.fe-callout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(244, 185, 66, 0.1);
+  border: 1px solid rgba(244, 185, 66, 0.35);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--fe-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fe-callout-row:hover {
+  border-color: var(--fe-gold);
+}
+
 .fe-row-actions {
   display: flex;
   gap: 10px;
@@ -1482,6 +1513,7 @@ button, select, input {
 .fe-profile-chirp.fe-chirp-departure { border-left-color: #f2622e; }
 .fe-profile-chirp.fe-chirp-signing { border-left-color: var(--fe-blue); }
 .fe-profile-chirp.fe-chirp-ppv { border-left-color: #8338ec; }
+.fe-profile-chirp.fe-chirp-callout { border-left-color: var(--fe-gold); }
 
 .fe-profile-chirp .fe-chirp-category {
   flex-shrink: 0;
@@ -2681,6 +2713,9 @@ button, select, input {
 .fe-chirp-ppv {
   border-left-color: #8338ec;
 }
+.fe-chirp-callout {
+  border-left-color: var(--fe-gold);
+}
 
 .fe-chirp-body {
   flex: 1;
@@ -2736,6 +2771,18 @@ button, select, input {
 .fe-result-sub {
   color: var(--fe-text-dim);
   font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.fe-result-payout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 13px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border);
+  border-radius: 7px;
+  padding: 8px 12px;
   margin-bottom: 16px;
 }
 
