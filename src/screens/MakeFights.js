@@ -318,6 +318,11 @@ function SingleBookingFlow() {
   const { roster, worldPool, meta } = state;
   const tierBonusPct = currentPromotionTier(state).purseBonusPct;
 
+  // Booking a fight is a 3-step wizard — one full screen per step, not
+  // three columns crammed side by side — so it reads as "choose your
+  // fighter, THEN pick an opponent, THEN pick a venue" instead of
+  // everything happening at once.
+  const [step, setStep] = useState('fighter');
   const [fighterId, setFighterId] = useState(roster[0]?.id || '');
   const [fightType, setFightType] = useState(FIGHT_TYPES.SINGLE);
   const [opponentId, setOpponentId] = useState('');
@@ -394,6 +399,7 @@ function SingleBookingFlow() {
     setOpponentId(c.targetId);
     setCardChoice('');
     setVenueId('');
+    setStep('venue');
   };
 
   const confirm = () => {
@@ -409,10 +415,14 @@ function SingleBookingFlow() {
     setVenueId('');
     setCardChoice('');
     setIsPPV(false);
+    setStep('fighter');
   };
 
+  const fighterReady = !!fighter && !isInjured(fighter) && !alreadyBooked.has(fighter.id);
+
   return (
-    <div className="fe-make-fights">
+    <div className="fe-mf-wizard">
+      {step === 'fighter' && (
       <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-mf-col fe-mf-col-1">
         <select value={fighterId} onChange={e => selectFighter(e.target.value)} className="fe-full-select">
           {roster.map(f => (
@@ -492,12 +502,23 @@ function SingleBookingFlow() {
             </div>
           </>
         )}
+        <div className="fe-wizard-actions">
+          <Button variant="advance" onClick={() => setStep('opponent')} disabled={!fighterReady}>Continue</Button>
+        </div>
       </Panel>
+      )}
 
+      {step === 'opponent' && (
       <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col fe-mf-col-2">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
+        <div className="fe-wizard-actions">
+          <Button variant="secondary" onClick={() => setStep('fighter')}>Back</Button>
+          <Button variant="advance" onClick={() => setStep('venue')} disabled={!opponent}>Continue</Button>
+        </div>
       </Panel>
+      )}
 
+      {step === 'venue' && (
       <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col fe-mf-col-3">
         {fighter && opponent && (
           <>
@@ -597,10 +618,14 @@ function SingleBookingFlow() {
           </div>
         )}
 
-        <Button variant="advance" onClick={confirm} disabled={!canConfirm} className="fe-confirm-btn">
-          {isCardType ? (selectedCard ? 'Add to Card' : 'Book New Card') : 'Book Fight'}
-        </Button>
+        <div className="fe-wizard-actions">
+          <Button variant="secondary" onClick={() => setStep('opponent')}>Back</Button>
+          <Button variant="advance" onClick={confirm} disabled={!canConfirm} className="fe-confirm-btn">
+            {isCardType ? (selectedCard ? 'Add to Card' : 'Book New Card') : 'Book Fight'}
+          </Button>
+        </div>
       </Panel>
+      )}
     </div>
   );
 }
@@ -611,6 +636,10 @@ function CardBuilderFlow() {
   const { roster, worldPool, meta } = state;
   const tierBonusPct = currentPromotionTier(state).purseBonusPct;
 
+  // Same idea as SingleBookingFlow: one full screen per step. Step 2 (Add
+  // Bouts) is the exception — it loops on itself as bouts are added, and
+  // only "Continue to Review" moves you on to step 3.
+  const [step, setStep] = useState('venue');
   const [venueId, setVenueId] = useState('');
   const [pendingBouts, setPendingBouts] = useState([]);
   const [isPPV, setIsPPV] = useState(false);
@@ -702,15 +731,22 @@ function CardBuilderFlow() {
     setPendingBouts([]);
     setVenueId('');
     setIsPPV(false);
+    setStep('venue');
   };
 
   return (
-    <div className="fe-make-fights">
+    <div className="fe-mf-wizard">
+      {step === 'venue' && (
       <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-mf-col fe-mf-col-1">
         <p className="fe-hint">Pick a venue to host your card — the site fee covers up to {CARD_MAX_FIGHTS} bouts, one fee for the whole night.</p>
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} onSelect={v => setVenueId(v.id)} />
+        <div className="fe-wizard-actions">
+          <Button variant="advance" onClick={() => setStep('bouts')} disabled={!venue}>Continue</Button>
+        </div>
       </Panel>
+      )}
 
+      {step === 'bouts' && (
       <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-mf-col fe-mf-col-2">
         {!venue && <div className="fe-empty">Pick a venue first.</div>}
         {venue && (
@@ -762,8 +798,14 @@ function CardBuilderFlow() {
             )}
           </>
         )}
+        <div className="fe-wizard-actions">
+          <Button variant="secondary" onClick={() => setStep('venue')}>Back</Button>
+          <Button variant="advance" onClick={() => setStep('review')} disabled={pendingBouts.length === 0}>Continue to Review</Button>
+        </div>
       </Panel>
+      )}
 
+      {step === 'review' && (
       <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col fe-mf-col-3">
         {pendingBouts.length === 0 && <div className="fe-empty">No bouts added yet.</div>}
         <div className="fe-fight-list">
@@ -818,10 +860,14 @@ function CardBuilderFlow() {
             </div>
           </div>
         )}
-        <Button variant="advance" onClick={bookCard} disabled={!canBookCard} className="fe-confirm-btn">
-          Book Card ({pendingBouts.length} bout{pendingBouts.length === 1 ? '' : 's'})
-        </Button>
+        <div className="fe-wizard-actions">
+          <Button variant="secondary" onClick={() => setStep('bouts')}>Back</Button>
+          <Button variant="advance" onClick={bookCard} disabled={!canBookCard} className="fe-confirm-btn">
+            Book Card ({pendingBouts.length} bout{pendingBouts.length === 1 ? '' : 's'})
+          </Button>
+        </div>
       </Panel>
+      )}
     </div>
   );
 }

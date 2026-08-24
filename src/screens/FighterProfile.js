@@ -7,19 +7,21 @@ import {
   loyaltyStatus, LOYALTY_BASELINE, trainingCost, RIVAL_PROMOTIONS, poachCostFor, freeAgentCost,
   AMATEUR_PROMOTION_WINS, rosterLimitForGym,
 } from '../game/constants';
-import { Button, WeightPill, Flag, Avatar, Followers } from './UI';
+import { Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
 
 const ARCHETYPE_LABELS = { striker: 'Striker', wrestler: 'Wrestler', allrounder: 'All-rounder' };
 const METHOD_LABELS = { KO: 'KO', TKO: 'TKO', SUB: 'Submission', UD: 'Decision', SD: 'Split Dec.', MD: 'Majority Dec.', DRAW: 'Draw' };
 const CHIRP_ICONS = { result: '🥊', beef: '🔥', departure: '🚪', signing: '✍️', ppv: '🎬', callout: '📣' };
 
-// One shared mini-profile for ANY fighter in the game — your own roster,
-// a rival's champion, a free agent, an amateur prospect, or just an
-// independent name on the regional scene. What it shows (and which
-// actions are on offer) adapts to where the fighter currently lives; only
-// your own signed roster gets contract renewal, training, and retirement.
-// Mounted once at the app root — see FighterProfileContext.
-export default function FighterProfileModal() {
+// A full screen for any fighter in the game — your own roster, a rival's
+// champion, a free agent, an amateur prospect, or just an independent
+// name on the regional scene. What it shows (and which actions are on
+// offer) adapts to where the fighter currently lives; only your own
+// signed roster gets contract renewal, training, and retirement.
+// Rendered in place of the current screen's content whenever a fighter
+// is open — see useFighterProfile/App.js — with "Back" simply closing it
+// and returning to whatever screen was underneath.
+export default function FighterProfileScreen() {
   const { fighterId, close } = useFighterProfile();
   const state = useGameState();
   const dispatch = useGameDispatch();
@@ -70,10 +72,9 @@ export default function FighterProfileModal() {
     : null;
 
   return (
-    <div className="fe-modal-backdrop" onClick={close}>
-      <div className="fe-modal fe-profile-modal" onClick={e => e.stopPropagation()}>
-        <button className="fe-modal-close" onClick={close} title="Close">✕</button>
-
+    <div className="fe-profile-screen">
+      <button type="button" className="fe-back-link" onClick={close}>← Back</button>
+      <div className="fe-profile-card">
         <div className="fe-profile-head">
           <Avatar fighter={f} size={56} champion={!!f.title || !!f.champion} />
           <div className="fe-profile-head-text">

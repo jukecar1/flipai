@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameProvider, useGameState } from './context/GameContext';
-import { FighterProfileProvider } from './context/FighterProfileContext';
-import FighterProfileModal from './components/FighterProfile';
+import { FighterProfileProvider, useFighterProfile } from './context/FighterProfileContext';
+import FighterProfileScreen from './screens/FighterProfile';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import StartScreen from './screens/StartScreen';
@@ -29,6 +29,13 @@ import './styles/fightEmpire.css';
 function Router() {
   const state = useGameState();
   const screen = state.ui.screen;
+  const { fighterId, close: closeFighterProfile } = useFighterProfile();
+
+  // A fighter profile is its own screen, not tied to state.ui.screen — it
+  // just covers whatever screen is underneath. Navigating anywhere else
+  // (sidebar, a "Back" button that changes screen, etc.) should drop it
+  // rather than leave it stuck on top of the new screen.
+  useEffect(() => { closeFighterProfile(); }, [screen, closeFighterProfile]);
 
   if (screen === 'start') return <StartScreen />;
   if (screen.startsWith('create-')) {
@@ -45,23 +52,27 @@ function Router() {
       <div className="fe-main">
         <TopBar showAdvance={!inFightSim} />
         <div className="fe-content">
-          {screen === 'hub' && <Hub />}
-          {screen === 'roster' && <Roster />}
-          {screen === 'makeFights' && <MakeFights />}
-          {screen === 'rankings' && <Rankings />}
-          {screen === 'promotions' && <Promotions />}
-          {screen === 'news' && <News />}
-          {screen === 'chirp' && <Chirp />}
-          {screen === 'fightSim' && <FightSim />}
-          {screen === 'fightResult' && <FightResult />}
-          {screen === 'gyms' && <Gyms />}
-          {screen === 'titles' && <Titles />}
-          {screen === 'bouts' && <Bouts />}
-          {screen === 'hallOfFame' && <HallOfFame />}
-          {screen === 'amateurs' && <Amateurs />}
-          {screen === 'leaderboards' && <Leaderboards />}
-          {screen === 'careerStats' && <CareerStats />}
-          {screen === 'settings' && <Settings />}
+          {fighterId ? <FighterProfileScreen /> : (
+            <>
+              {screen === 'hub' && <Hub />}
+              {screen === 'roster' && <Roster />}
+              {screen === 'makeFights' && <MakeFights />}
+              {screen === 'rankings' && <Rankings />}
+              {screen === 'promotions' && <Promotions />}
+              {screen === 'news' && <News />}
+              {screen === 'chirp' && <Chirp />}
+              {screen === 'fightSim' && <FightSim />}
+              {screen === 'fightResult' && <FightResult />}
+              {screen === 'gyms' && <Gyms />}
+              {screen === 'titles' && <Titles />}
+              {screen === 'bouts' && <Bouts />}
+              {screen === 'hallOfFame' && <HallOfFame />}
+              {screen === 'amateurs' && <Amateurs />}
+              {screen === 'leaderboards' && <Leaderboards />}
+              {screen === 'careerStats' && <CareerStats />}
+              {screen === 'settings' && <Settings />}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -87,7 +98,6 @@ export default function App() {
       <FighterProfileProvider>
         <RotateOverlay />
         <Router />
-        <FighterProfileModal />
       </FighterProfileProvider>
     </GameProvider>
   );

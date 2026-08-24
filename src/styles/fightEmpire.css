@@ -1238,61 +1238,45 @@ button, select, input {
   color: var(--fe-red);
 }
 
-/* ---------- Modal (fighter profile) ---------- */
+/* ---------- Fighter profile screen ---------- */
 
-.fe-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 900;
-  background: rgba(8, 9, 12, 0.72);
-  display: flex;
+.fe-profile-screen {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 4px 0 32px;
+  animation: fe-profile-screen-in 0.15s ease;
+}
+
+@keyframes fe-profile-screen-in {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.fe-back-link {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
-  animation: fe-modal-backdrop-in 0.15s ease;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--fe-text-dim);
+  font-family: var(--fe-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
 }
 
-@keyframes fe-modal-backdrop-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+.fe-back-link:hover {
+  color: var(--fe-text);
 }
 
-.fe-modal {
-  position: relative;
+.fe-profile-card {
   background: var(--fe-panel);
   border: 1px solid var(--fe-border-light);
   border-radius: var(--fe-radius);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
   padding: 20px;
-  width: 100%;
-  max-width: 460px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: fe-modal-in 0.2s ease;
-}
-
-@keyframes fe-modal-in {
-  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.fe-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: var(--fe-panel-alt);
-  border: 1px solid var(--fe-border);
-  color: var(--fe-text-dim);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.fe-modal-close:hover {
-  color: var(--fe-text);
-  border-color: var(--fe-border-light);
 }
 
 .fe-profile-head {
@@ -1300,7 +1284,6 @@ button, select, input {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 14px;
-  padding-right: 24px;
 }
 
 .fe-profile-head-text {
@@ -1814,17 +1797,23 @@ button, select, input {
   background: linear-gradient(135deg, var(--fe-gold), #c4901f);
 }
 
-.fe-make-fights {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  align-items: start;
-  min-width: 0;
-  /* Safety net: if a column's contents ever refuse to shrink to their
-     track width, scroll instead of silently clipping — never let this
-     grid force the page itself wider than the viewport. */
-  overflow-x: auto;
+/* Booking a fight is a step wizard now — one panel on screen at a time,
+   centered like the other step flows (see .fe-draft-screen) instead of
+   three columns shown together. */
+.fe-mf-wizard {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.fe-wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.fe-wizard-actions > button:only-child {
+  margin-left: auto;
 }
 
 .fe-panel.fe-mf-col-1 {
@@ -3488,7 +3477,7 @@ button, select, input {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1100px) {
-  .fe-hub, .fe-make-fights, .fe-news-screen, .fe-promotions {
+  .fe-hub, .fe-news-screen, .fe-promotions {
     grid-template-columns: 1fr;
   }
   .fe-mode-tabs {
