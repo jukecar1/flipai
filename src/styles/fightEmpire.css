@@ -34,6 +34,17 @@
   --fe-radius: 10px;
   --fe-font-display: 'Bebas Neue', 'Oswald', 'Arial Narrow', sans-serif;
   --fe-font-body: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  /* Shared background "atmosphere" — a faint grain (so panels don't read
+     as flat vector-generated rectangles), a barely-there diagonal
+     crosshatch (a nod to cage mesh, not literal), and a vignette that
+     darkens the edges like a room lit from the middle. Reused by both
+     `body` (start/create-career screens) and `.fe-app-shell` (everything
+     else), which layers its own accent-color glows on top. */
+  --fe-atmosphere:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 26px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 26px),
+    radial-gradient(ellipse 1400px 1000px at 50% 10%, transparent 30%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 * {
@@ -46,10 +57,14 @@ html, body {
 
 body {
   margin: 0;
-  background: var(--fe-bg);
   color: var(--fe-text);
   font-family: var(--fe-font-body);
   -webkit-font-smoothing: antialiased;
+  background-color: var(--fe-bg);
+  background-image: var(--fe-atmosphere);
+  background-repeat: repeat, repeat, repeat, no-repeat;
+  background-size: 90px 90px, auto, auto, auto;
+  background-attachment: fixed;
 }
 
 button, select, input {
@@ -61,10 +76,13 @@ button, select, input {
 .fe-app-shell {
   display: flex;
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(226, 38, 58, 0.08), transparent 60%),
-    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(244, 185, 66, 0.05), transparent 60%),
-    var(--fe-bg);
+  background-color: var(--fe-bg);
+  background-image:
+    var(--fe-atmosphere),
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(226, 38, 58, 0.13), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(244, 185, 66, 0.08), transparent 60%);
+  background-repeat: repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 90px 90px, auto, auto, auto, auto, auto;
 }
 
 .fe-main {
@@ -244,6 +262,8 @@ button, select, input {
 /* ---------- Buttons ---------- */
 
 .fe-btn {
+  position: relative;
+  overflow: hidden;
   font-family: var(--fe-font-display);
   border: none;
   border-radius: 8px;
@@ -252,6 +272,17 @@ button, select, input {
   letter-spacing: 0.4px;
   cursor: pointer;
   transition: filter 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* A thin top-edge highlight — reads as a real embossed button rather than
+   a flat filled rectangle. */
+.fe-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent);
+  pointer-events: none;
 }
 
 .fe-btn:disabled {
@@ -294,13 +325,15 @@ button, select, input {
 /* ---------- Panels ---------- */
 
 .fe-panel {
-  background: var(--fe-panel);
+  background: linear-gradient(165deg, var(--fe-panel), var(--fe-bg-alt));
   border: 1px solid var(--fe-border);
   border-radius: var(--fe-radius);
   margin-bottom: 16px;
   overflow: hidden;
   min-width: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  /* A hairline top highlight plus the drop shadow gives a panel a little
+     real material thickness instead of reading as a flat vector rectangle. */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .fe-panel-header {
@@ -310,6 +343,7 @@ button, select, input {
   padding: 11px 16px;
   background: var(--fe-panel-alt);
   border-bottom: 1px solid var(--fe-border);
+  border-left: 3px solid var(--fe-red);
   font-family: var(--fe-font-display);
   font-size: 16px;
   letter-spacing: 0.8px;
@@ -1830,14 +1864,17 @@ button, select, input {
 
 .fe-mf-col-1 .fe-panel-header {
   background: linear-gradient(90deg, rgba(226, 38, 58, 0.14), var(--fe-panel-alt) 75%);
+  border-left-color: var(--fe-red);
 }
 
 .fe-mf-col-2 .fe-panel-header {
   background: linear-gradient(90deg, rgba(46, 196, 182, 0.14), var(--fe-panel-alt) 75%);
+  border-left-color: var(--fe-teal);
 }
 
 .fe-mf-col-3 .fe-panel-header {
   background: linear-gradient(90deg, rgba(244, 185, 66, 0.14), var(--fe-panel-alt) 75%);
+  border-left-color: var(--fe-gold);
 }
 
 .fe-matchup {
@@ -2755,12 +2792,24 @@ button, select, input {
 }
 
 .fe-subheading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--fe-text-dim);
   margin: 4px 0 8px;
+}
+
+.fe-subheading::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  background: var(--fe-red);
+  border-radius: 1px;
 }
 
 .fe-your-titles {
