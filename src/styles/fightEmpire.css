@@ -1913,6 +1913,85 @@ button, select, input {
   border-radius: 3px;
 }
 
+.fe-radar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 12px;
+}
+
+.fe-radar {
+  width: 148px;
+  height: 148px;
+}
+
+.fe-radar-ring {
+  fill: none;
+  stroke: var(--fe-border);
+  stroke-width: 1;
+}
+
+.fe-radar-axis {
+  stroke: var(--fe-border);
+  stroke-width: 1;
+}
+
+.fe-radar-shape {
+  stroke-width: 1.5;
+  fill-opacity: 0.28;
+}
+
+.fe-radar-shape-fighter {
+  stroke: var(--fe-teal);
+  fill: var(--fe-teal);
+}
+
+.fe-radar-shape-opponent {
+  stroke: var(--fe-red);
+  fill: var(--fe-red);
+}
+
+.fe-radar-label {
+  fill: var(--fe-text-dim);
+  font-family: var(--fe-font-body);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.fe-radar-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--fe-text-dim);
+}
+
+.fe-radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fe-radar-legend-item i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fe-radar-legend-fighter i {
+  background: var(--fe-teal);
+}
+
+.fe-radar-legend-opponent i {
+  background: var(--fe-red);
+}
+
 .fe-matchup-stats {
   display: flex;
   flex-direction: column;

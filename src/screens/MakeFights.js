@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import {
-  FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS,
+  FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, MAX_STAT,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE, isLegacyFight, isMismatchedBooking, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from '../game/constants';
 import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier } from '../game/gameReducer';
@@ -145,6 +145,65 @@ const TYPE_DESCRIPTIONS = {
   [FIGHT_TYPES.MAIN_EVENT]: 'Your biggest stage — headline a full arena or stadium, biggest purse, title-eligible if your fighter qualifies. 5 rounds.',
 };
 
+// Short axis labels for the radar chart — the full STAT_LABELS ("Submission")
+// don't fit around a small pentagon.
+const RADAR_LABELS = { striking: 'STR', wrestling: 'WR', submission: 'SUB', chin: 'CHIN', cardio: 'CAR' };
+const RADAR_SIZE = 168;
+const RADAR_CENTER = RADAR_SIZE / 2;
+const RADAR_RADIUS = 56;
+
+// Point on the pentagon for axis `index` (of `total`), at `value`/`maxValue`
+// of the way out from center — same math for the grid rings, the axis
+// spokes, and each fighter's stat shape.
+function radarPoint(index, total, value, maxValue, cx, cy, r) {
+  const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
+  const dist = (Math.max(0, value) / maxValue) * r;
+  return [cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist];
+}
+
+// The "two bubbles" — an overlapping stat radar so a fighter's shape (fast
+// hands but a weak chin, say) reads as a shape at a glance instead of a
+// column of numbers you have to read one by one.
+function FighterRadar({ fighter, opponent }) {
+  const total = STAT_KEYS.length;
+  const cx = RADAR_CENTER;
+  const cy = RADAR_CENTER;
+  const r = RADAR_RADIUS;
+  const toPath = pts => pts.map(p => p.join(',')).join(' ');
+  const ringLevels = [0.25, 0.5, 0.75, 1];
+  const fighterPoints = STAT_KEYS.map((stat, i) => radarPoint(i, total, fighter.stats[stat], MAX_STAT, cx, cy, r));
+  const opponentPoints = STAT_KEYS.map((stat, i) => radarPoint(i, total, opponent.stats[stat], MAX_STAT, cx, cy, r));
+  const firstName = n => (n || '').split(' ')[0];
+
+  return (
+    <div className="fe-radar-wrap">
+      <svg className="fe-radar" viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} role="img" aria-label="Stat comparison radar chart">
+        {ringLevels.map(level => (
+          <polygon key={level} points={toPath(STAT_KEYS.map((_, i) => radarPoint(i, total, MAX_STAT * level, MAX_STAT, cx, cy, r)))} className="fe-radar-ring" />
+        ))}
+        {STAT_KEYS.map((_, i) => {
+          const [x, y] = radarPoint(i, total, MAX_STAT, MAX_STAT, cx, cy, r);
+          return <line key={i} x1={cx} y1={cy} x2={x} y2={y} className="fe-radar-axis" />;
+        })}
+        <polygon points={toPath(fighterPoints)} className="fe-radar-shape fe-radar-shape-fighter" />
+        <polygon points={toPath(opponentPoints)} className="fe-radar-shape fe-radar-shape-opponent" />
+        {STAT_KEYS.map((stat, i) => {
+          const [x, y] = radarPoint(i, total, MAX_STAT * 1.26, MAX_STAT, cx, cy, r);
+          return (
+            <text key={stat} x={x} y={y} className="fe-radar-label" textAnchor="middle" dominantBaseline="middle">
+              {RADAR_LABELS[stat]}
+            </text>
+          );
+        })}
+      </svg>
+      <div className="fe-radar-legend">
+        <span className="fe-radar-legend-item fe-radar-legend-fighter"><i />{firstName(fighter.name)}</span>
+        <span className="fe-radar-legend-item fe-radar-legend-opponent"><i />{firstName(opponent.name)}</span>
+      </div>
+    </div>
+  );
+}
+
 function MatchupCompare({ fighter, opponent }) {
   if (!fighter || !opponent) return null;
   const odds = Math.round(winProbability(fighter, opponent) * 100);
@@ -165,6 +224,7 @@ function MatchupCompare({ fighter, opponent }) {
       <div className="fe-matchup-bar">
         <span className="fe-matchup-bar-fill" style={{ width: `${odds}%` }} />
       </div>
+      <FighterRadar fighter={fighter} opponent={opponent} />
       <div className="fe-matchup-stats">
         {STAT_KEYS.map(stat => (
           <div key={stat} className="fe-matchup-stat-row">
