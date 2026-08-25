@@ -16,6 +16,20 @@ export function Panel({ title, children, className = '', right }) {
   );
 }
 
+// Turns a plain panel title into a numbered step in a wizard — a small
+// colored badge instead of a hardcoded "1." in the text. Shared by every
+// multi-step flow (Make Fights, Create Career) so a step count always
+// reads the same way; pair with a matching .fe-step-col-N (or reuse it
+// directly) for the panel's own accent color.
+export function StepTitle({ n, children }) {
+  return (
+    <>
+      <span className={`fe-step-num fe-step-num-${n}`}>{n}</span>
+      {children}
+    </>
+  );
+}
+
 export function Button({ children, variant = 'primary', onClick, disabled, className = '', type = 'button', title }) {
   return (
     <button

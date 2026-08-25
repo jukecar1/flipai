@@ -36,6 +36,7 @@ export default function Bouts() {
                 <span className="fe-fight-title">
                   {fighter ? <FighterNameButton fighter={fighter}>{fh.fighterName}</FighterNameButton> : (fh.fighterName || 'Your fighter')} v{' '}
                   {opponent ? <FighterNameButton fighter={opponent}>{fh.opponentName}</FighterNameButton> : (fh.opponentName || 'Unknown')}
+                  {fh.eventName && <span className="fe-hint"> · {fh.eventName}</span>}
                 </span>
                 <span className={`fe-bout-result fe-bout-${draw ? 'draw' : won ? 'win' : 'loss'}`}>
                   {draw ? 'DRAW' : won ? 'WIN' : 'LOSS'} · {METHOD_LABELS[fh.result.method] || fh.result.method}

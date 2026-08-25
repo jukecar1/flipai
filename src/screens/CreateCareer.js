@@ -3,7 +3,8 @@ import { useGameActions } from '../context/GameContext';
 import { CITIES, cityLabel, suggestPromotionNames } from '../game/namePool';
 import { makeRosterCandidates } from '../game/generateFighter';
 import { GYM_LEVELS, STARTING_FUNDS, cityTierForPopulation, startingFundsForPopulation } from '../game/constants';
-import { Button, Panel, WeightPill, Flag, Avatar } from '../components/UI';
+import { Button, Panel, WeightPill, Flag, Avatar, StepTitle } from '../components/UI';
+import Logomark from '../components/Logomark';
 
 const ROSTER_SIZE = GYM_LEVELS[0].rosterLimit;
 // Defensive fallback only (should never actually surface — hq always
@@ -22,6 +23,21 @@ const ARCHETYPE_LABELS = {
 };
 
 const TIER_ICON = { town: '🏘️', city: '🏙️', metro: '🌆', megacity: '🌃' };
+
+// A small consistent header for every step of onboarding — same brand
+// mark as the start screen, so launching a promotion doesn't feel like
+// a detour into an unrelated setup wizard.
+function CreateCareerHeader() {
+  return (
+    <div className="fe-cc-header">
+      <Logomark size={40} />
+      <div>
+        <span className="fe-eyebrow">Fight Empire</span>
+        <div className="fe-cc-header-title">Launch Your Promotion</div>
+      </div>
+    </div>
+  );
+}
 
 export default function CreateCareer({ slot }) {
   const { startNewCareer, goTo } = useGameActions();
@@ -80,7 +96,8 @@ export default function CreateCareer({ slot }) {
     const drafted = pool.filter(f => selectedIds.includes(f.id));
     return (
       <div className="fe-draft-screen">
-        <Panel title="NAME YOUR CHAMPION (OPTIONAL)" className="fe-draft-panel">
+        <CreateCareerHeader />
+        <Panel title={<StepTitle n={3}>NAME YOUR CHAMPION (OPTIONAL)</StepTitle>} className="fe-draft-panel fe-step-col-3">
           <p className="fe-hint">
             Start with one of your drafted fighters already holding their division's belt — or skip and let every
             title open vacant, up for grabs the normal way.
@@ -110,7 +127,7 @@ export default function CreateCareer({ slot }) {
               );
             })}
           </div>
-          <div className="fe-row-actions">
+          <div className="fe-wizard-actions">
             <Button variant="secondary" onClick={() => setStep('roster')}>Back</Button>
             <Button variant="advance" onClick={handleStart}>
               {championId ? 'Start Career with Champion' : 'Start Career (No Champion)'}
@@ -124,9 +141,10 @@ export default function CreateCareer({ slot }) {
   if (step === 'roster') {
     return (
       <div className="fe-draft-screen">
+        <CreateCareerHeader />
         <Panel
-          title={`DRAFT YOUR ROSTER (${selectedIds.length}/${ROSTER_SIZE})`}
-          className="fe-draft-panel"
+          title={<StepTitle n={2}>{`DRAFT YOUR ROSTER (${selectedIds.length}/${ROSTER_SIZE})`}</StepTitle>}
+          className="fe-draft-panel fe-step-col-2"
           right={<button type="button" className="fe-link" onClick={rerollPool}>🎲 New Prospects</button>}
         >
           <p className="fe-hint">
@@ -166,7 +184,7 @@ export default function CreateCareer({ slot }) {
               );
             })}
           </div>
-          <div className="fe-row-actions">
+          <div className="fe-wizard-actions">
             <Button variant="secondary" onClick={() => setStep('details')}>Back</Button>
             <Button variant="advance" onClick={() => canStart && setStep('champion')} disabled={!canStart}>
               Continue {canStart ? '' : `(${selectedIds.length}/${ROSTER_SIZE})`}
@@ -178,65 +196,72 @@ export default function CreateCareer({ slot }) {
   }
 
   return (
-    <div className="fe-start-screen">
-      <Panel title="New Promotion" className="fe-create-panel">
-        <label className="fe-field">
-          <span>Manager name</span>
-          <input
-            value={managerName}
-            onChange={e => { setManagerName(e.target.value); rerollSuggestions(e.target.value, selectedCity.city); }}
-            placeholder="e.g. Jordan Reyes"
-            maxLength={30}
-          />
-        </label>
-        <label className="fe-field">
-          <span>Promotion name</span>
-          <input value={promotionName} onChange={e => setPromotionName(e.target.value)} placeholder="e.g. Reyes Fighting Championship" maxLength={40} />
-        </label>
-        <div className="fe-suggestion-chips">
-          {suggestions.map(s => (
-            <button key={s} type="button" className="fe-chip" onClick={() => setPromotionName(s)}>{s}</button>
-          ))}
-          <button type="button" className="fe-chip fe-chip-reroll" onClick={() => rerollSuggestions()}>🎲 More</button>
-        </div>
-
-        <div className="fe-subheading">Headquarters City</div>
-        <p className="fe-hint">Any city in the country — the bigger the market, the more you launch with.</p>
-        <div className="fe-hq-selected">
-          <span className="fe-hq-selected-icon">{TIER_ICON[hqTier.id]}</span>
+    <div className="fe-draft-screen">
+      <CreateCareerHeader />
+      <Panel title={<StepTitle n={1}>NEW PROMOTION</StepTitle>} className="fe-draft-panel fe-step-col-1">
+        <div className="fe-cc-details-grid">
           <div>
-            <strong>{cityLabel(selectedCity)}</strong>
-            <span className="fe-hint">{hqTier.label} · {selectedCity.pop.toLocaleString()} residents</span>
+            <label className="fe-field">
+              <span>Manager name</span>
+              <input
+                value={managerName}
+                onChange={e => { setManagerName(e.target.value); rerollSuggestions(e.target.value, selectedCity.city); }}
+                placeholder="e.g. Jordan Reyes"
+                maxLength={30}
+              />
+            </label>
+            <label className="fe-field">
+              <span>Promotion name</span>
+              <input value={promotionName} onChange={e => setPromotionName(e.target.value)} placeholder="e.g. Reyes Fighting Championship" maxLength={40} />
+            </label>
+            <div className="fe-suggestion-chips">
+              {suggestions.map(s => (
+                <button key={s} type="button" className="fe-chip" onClick={() => setPromotionName(s)}>{s}</button>
+              ))}
+              <button type="button" className="fe-chip fe-chip-reroll" onClick={() => rerollSuggestions()}>🎲 More</button>
+            </div>
+            <p className="fe-hint">You'll start with ${hqFunds.toLocaleString()} (base ${STARTING_FUNDS.toLocaleString()}) and draft {ROSTER_SIZE} fighters to build your roster.</p>
           </div>
-          <span className="fe-hq-funds">${hqFunds.toLocaleString()}<span className="fe-hint"> starting funds</span></span>
-        </div>
-        <input
-          className="fe-full-select fe-hq-search"
-          value={citySearch}
-          onChange={e => setCitySearch(e.target.value)}
-          placeholder="Search any US city — or a state, e.g. TX"
-        />
-        <div className="fe-venue-list fe-hq-list">
-          {filteredCities.length === 0 && <div className="fe-empty">No city matches "{citySearch}".</div>}
-          {filteredCities.map(c => {
-            const tier = cityTierForPopulation(c.pop);
-            return (
-              <div
-                key={c.id}
-                className={`fe-venue-row ${hq === c.id ? 'selected' : ''}`}
-                onClick={() => { setHq(c.id); rerollSuggestions(managerName, c.city); }}
-              >
-                <div>
-                  <strong>{cityLabel(c)}</strong>
-                  <span>{TIER_ICON[tier.id]} {tier.label} · {c.pop.toLocaleString()} residents</span>
-                </div>
-                <span className="fe-venue-fee">${startingFundsForPopulation(c.pop).toLocaleString()}</span>
+
+          <div>
+            <div className="fe-subheading">Headquarters City</div>
+            <p className="fe-hint">Any city in the country — the bigger the market, the more you launch with.</p>
+            <div className="fe-hq-selected">
+              <span className="fe-hq-selected-icon">{TIER_ICON[hqTier.id]}</span>
+              <div>
+                <strong>{cityLabel(selectedCity)}</strong>
+                <span className="fe-hint">{hqTier.label} · {selectedCity.pop.toLocaleString()} residents</span>
               </div>
-            );
-          })}
+              <span className="fe-hq-funds">${hqFunds.toLocaleString()}<span className="fe-hint"> starting funds</span></span>
+            </div>
+            <input
+              className="fe-full-select fe-hq-search"
+              value={citySearch}
+              onChange={e => setCitySearch(e.target.value)}
+              placeholder="Search any US city — or a state, e.g. TX"
+            />
+            <div className="fe-venue-list fe-hq-list">
+              {filteredCities.length === 0 && <div className="fe-empty">No city matches "{citySearch}".</div>}
+              {filteredCities.map(c => {
+                const tier = cityTierForPopulation(c.pop);
+                return (
+                  <div
+                    key={c.id}
+                    className={`fe-venue-row ${hq === c.id ? 'selected' : ''}`}
+                    onClick={() => { setHq(c.id); rerollSuggestions(managerName, c.city); }}
+                  >
+                    <div>
+                      <strong>{cityLabel(c)}</strong>
+                      <span>{TIER_ICON[tier.id]} {tier.label} · {c.pop.toLocaleString()} residents</span>
+                    </div>
+                    <span className="fe-venue-fee">${startingFundsForPopulation(c.pop).toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <p className="fe-hint">You'll start with ${hqFunds.toLocaleString()} (base ${STARTING_FUNDS.toLocaleString()}) and draft {ROSTER_SIZE} fighters to build your roster.</p>
-        <div className="fe-row-actions">
+        <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => goTo('start')}>Back</Button>
           <Button variant="advance" onClick={() => canContinue && setStep('roster')} disabled={!canContinue}>Continue</Button>
         </div>

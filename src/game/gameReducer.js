@@ -1617,6 +1617,10 @@ export function gameReducer(state, action) {
 
       const prestige = Math.max(0, state.prestige + prestigeDelta);
       const remainingFights = state.scheduledFights.filter(f => f.id !== active.fightId);
+      // Grab the event name (if any) before the card record potentially
+      // drops off below — a resolved fight otherwise has no way to say
+      // which Fight Night or numbered Main Event it actually happened at.
+      const eventCard = fight?.cardId ? (state.cards || []).find(c => c.id === fight.cardId) : null;
       // A card with no bouts left on it (this was the last one) drops off —
       // its venue fee was already spent, nothing left to track.
       const cards = fight?.cardId && !remainingFights.some(f => f.cardId === fight.cardId)
@@ -1643,6 +1647,7 @@ export function gameReducer(state, action) {
           fighterName: fighterRef?.name,
           opponentName: oppRef?.name,
           fighterWeightClass: fighterRef?.weightClass,
+          eventName: eventCard?.name || null,
           result,
           isTitle: !!fight?.isTitle,
           isLegacyFight: !!fight?.isLegacyFight,

@@ -6,7 +6,7 @@ import {
 } from '../game/constants';
 import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle } from '../components/UI';
 
 const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
 const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️', stadium: '🏙️' };
@@ -113,17 +113,6 @@ function PPVToggle({ isPPV, onToggle, price, onPriceChange, buys, revenue }) {
         </>
       )}
     </div>
-  );
-}
-
-// Turns a plain panel title into a numbered step in the booking wizard —
-// a small badge instead of a hardcoded "1." in the text.
-function StepTitle({ n, children }) {
-  return (
-    <>
-      <span className={`fe-step-num fe-step-num-${n}`}>{n}</span>
-      {children}
-    </>
   );
 }
 
@@ -448,7 +437,7 @@ function SingleBookingFlow() {
   return (
     <div className="fe-mf-wizard">
       {step === 'fighter' && (
-      <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-mf-col fe-mf-col-1">
+      <Panel title={<StepTitle n={1}>SELECT YOUR FIGHTER</StepTitle>} className="fe-step-col fe-step-col-1">
         <select value={fighterId} onChange={e => selectFighter(e.target.value)} className="fe-full-select">
           {roster.map(f => (
             <option key={f.id} value={f.id} disabled={alreadyBooked.has(f.id) || isInjured(f)}>
@@ -517,7 +506,7 @@ function SingleBookingFlow() {
       )}
 
       {step === 'type' && (
-      <Panel title={<StepTitle n={2}>CHOOSE YOUR EVENT</StepTitle>} className="fe-mf-col fe-mf-col-2">
+      <Panel title={<StepTitle n={2}>CHOOSE YOUR EVENT</StepTitle>} className="fe-step-col fe-step-col-2">
         <div className="fe-type-tabs">
           {Object.values(FIGHT_TYPES).map(t => (
             <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => selectType(t)}>
@@ -542,7 +531,7 @@ function SingleBookingFlow() {
       )}
 
       {step === 'opponent' && (
-      <Panel title={<StepTitle n={3}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col fe-mf-col-3">
+      <Panel title={<StepTitle n={3}>PICK AN OPPONENT</StepTitle>} className="fe-step-col fe-step-col-3">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
         <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => setStep('type')}>Back</Button>
@@ -552,7 +541,7 @@ function SingleBookingFlow() {
       )}
 
       {step === 'venue' && (
-      <Panel title={<StepTitle n={4}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col fe-mf-col-4">
+      <Panel title={<StepTitle n={4}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-step-col fe-step-col-4">
         {fighter && opponent && (
           <>
             <div className="fe-subheading">Matchup</div>
@@ -774,7 +763,7 @@ function CardBuilderFlow() {
   return (
     <div className="fe-mf-wizard">
       {step === 'venue' && (
-      <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-mf-col fe-mf-col-1">
+      <Panel title={<StepTitle n={1}>VENUE</StepTitle>} className="fe-step-col fe-step-col-1">
         <p className="fe-hint">Pick a venue to host your card — the site fee covers up to {CARD_MAX_FIGHTS} bouts, one fee for the whole night.</p>
         <VenueGroups home={homeVenues} regional={regionalVenues} away={awayVenues} venueId={venueId} onSelect={v => setVenueId(v.id)} />
         <div className="fe-wizard-actions">
@@ -784,7 +773,7 @@ function CardBuilderFlow() {
       )}
 
       {step === 'bouts' && (
-      <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-mf-col fe-mf-col-2">
+      <Panel title={<StepTitle n={2}>{`ADD BOUTS (${pendingBouts.length}/${CARD_MAX_FIGHTS})`}</StepTitle>} className="fe-step-col fe-step-col-2">
         {!venue && <div className="fe-empty">Pick a venue first.</div>}
         {venue && (
           <>
@@ -843,7 +832,7 @@ function CardBuilderFlow() {
       )}
 
       {step === 'review' && (
-      <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-mf-col fe-mf-col-3">
+      <Panel title={<StepTitle n={3}>REVIEW & BOOK</StepTitle>} className="fe-step-col fe-step-col-3">
         {pendingBouts.length === 0 && <div className="fe-empty">No bouts added yet.</div>}
         {previewCardName && (
           <p className="fe-hint fe-card-preview-name">

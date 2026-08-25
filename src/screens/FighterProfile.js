@@ -165,7 +165,10 @@ export default function FighterProfileScreen() {
                 <div key={fh.id} className="fe-bout-row">
                   <span className="fe-news-week">W{fh.week}</span>
                   {fh.isTitle && <span title="Title fight">🏆</span>}
-                  <span className="fe-fight-title">vs {opponentName || 'Unknown'}</span>
+                  <span className="fe-fight-title">
+                    vs {opponentName || 'Unknown'}
+                    {fh.eventName && <span className="fe-hint"> · {fh.eventName}</span>}
+                  </span>
                   <span className={`fe-bout-result fe-bout-${draw ? 'draw' : won ? 'win' : 'loss'}`}>
                     {draw ? 'DRAW' : won ? 'WIN' : 'LOSS'} · {METHOD_LABELS[fh.result.method] || fh.result.method}
                   </span>

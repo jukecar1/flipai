@@ -679,6 +679,28 @@ test('the Fight Night and numbered flagship series count up independently across
   expect(afterThird.cards[2].name).toBe('Test FC Fight Night 2');
 });
 
+test('a resolved fight remembers which numbered event it happened at', () => {
+  let state = withLiveOpponent(baseState());
+  state = gameReducer(state, { type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT });
+  const fight = state.scheduledFights[0];
+  expect(state.cards[0].name).toBe('Test FC 1');
+
+  const next = resolveWithResult(state, fight.id, 'champ1', opponent.id, 'KO', 'champ1');
+  expect(next.fightHistory[0].eventName).toBe('Test FC 1');
+  // that was the only bout on the card, so it drops off once resolved —
+  // the event's name still lives on in fightHistory even though the
+  // live card record itself is gone.
+  expect(next.cards).toHaveLength(0);
+});
+
+test('a Single Fight (no card) leaves eventName null in fight history', () => {
+  let state = withLiveOpponent(baseState());
+  state = bookShowcase(state, 'champ1'); // SCHEDULE_FIGHT — no card involved
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', opponent.id, 'KO', 'champ1');
+  expect(next.fightHistory[0].eventName).toBeNull();
+});
+
 test('BOOK_CARD refuses to book the same fighter twice on one card', () => {
   const state = baseState();
   const bouts = [
