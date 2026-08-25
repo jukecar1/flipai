@@ -461,23 +461,6 @@ function SingleBookingFlow() {
         )}
         {fighter && <div className="fe-row-actions"><Followers count={fighter.followers} /><span className="fe-hint">following</span></div>}
 
-        <div className="fe-type-tabs">
-          {Object.values(FIGHT_TYPES).map(t => (
-            <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => selectType(t)}>
-              <span className="fe-type-tab-top">
-                <span className="fe-type-tab-icon" aria-hidden="true">{TYPE_ICONS[t]}</span>
-                <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
-              </span>
-              <span className="fe-type-tab-desc">{TYPE_DESCRIPTIONS[t]}</span>
-            </button>
-          ))}
-        </div>
-        {isTitle && (
-          <p className="fe-hint fe-hint-title">
-            🏆 {isDefense ? `Title defense — ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship` : `Title fight for the vacant ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship`}
-          </p>
-        )}
-
         <div className="fe-prep-grid">
           <div>
             <div className="fe-subheading">Gameplan</div>
@@ -528,23 +511,48 @@ function SingleBookingFlow() {
           </>
         )}
         <div className="fe-wizard-actions">
-          <Button variant="advance" onClick={() => setStep('opponent')} disabled={!fighterReady}>Continue</Button>
+          <Button variant="advance" onClick={() => setStep('type')} disabled={!fighterReady}>Continue</Button>
+        </div>
+      </Panel>
+      )}
+
+      {step === 'type' && (
+      <Panel title={<StepTitle n={2}>CHOOSE YOUR EVENT</StepTitle>} className="fe-mf-col fe-mf-col-2">
+        <div className="fe-type-tabs">
+          {Object.values(FIGHT_TYPES).map(t => (
+            <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => selectType(t)}>
+              <span className="fe-type-tab-top">
+                <span className="fe-type-tab-icon" aria-hidden="true">{TYPE_ICONS[t]}</span>
+                <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
+              </span>
+              <span className="fe-type-tab-desc">{TYPE_DESCRIPTIONS[t]}</span>
+            </button>
+          ))}
+        </div>
+        {isTitle && (
+          <p className="fe-hint fe-hint-title">
+            🏆 {isDefense ? `Title defense — ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship` : `Title fight for the vacant ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship`}
+          </p>
+        )}
+        <div className="fe-wizard-actions">
+          <Button variant="secondary" onClick={() => setStep('fighter')}>Back</Button>
+          <Button variant="advance" onClick={() => setStep('opponent')}>Continue</Button>
         </div>
       </Panel>
       )}
 
       {step === 'opponent' && (
-      <Panel title={<StepTitle n={2}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col fe-mf-col-2">
+      <Panel title={<StepTitle n={3}>PICK AN OPPONENT</StepTitle>} className="fe-mf-col fe-mf-col-3">
         <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
         <div className="fe-wizard-actions">
-          <Button variant="secondary" onClick={() => setStep('fighter')}>Back</Button>
+          <Button variant="secondary" onClick={() => setStep('type')}>Back</Button>
           <Button variant="advance" onClick={() => setStep('venue')} disabled={!opponent}>Continue</Button>
         </div>
       </Panel>
       )}
 
       {step === 'venue' && (
-      <Panel title={<StepTitle n={3}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col fe-mf-col-3">
+      <Panel title={<StepTitle n={4}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-mf-col fe-mf-col-4">
         {fighter && opponent && (
           <>
             <div className="fe-subheading">Matchup</div>

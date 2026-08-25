@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameProvider, useGameState } from './context/GameContext';
 import { FighterProfileProvider, useFighterProfile } from './context/FighterProfileContext';
 import FighterProfileScreen from './screens/FighterProfile';
+import LoadingScreen from './screens/LoadingScreen';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import StartScreen from './screens/StartScreen';
@@ -92,7 +93,24 @@ function RotateOverlay() {
   );
 }
 
+// A one-time branded splash on cold open, ahead of anything else — the
+// game boots instantly (everything's local), so this is a deliberate
+// beat rather than an actual load, timed to feel like a real app
+// starting up instead of a blank-then-flash. Skipped in tests (no
+// timers) so it never has to be waited out to see the real screen.
+const BOOT_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 1400;
+
 export default function App() {
+  const [booting, setBooting] = useState(BOOT_DELAY_MS > 0);
+
+  useEffect(() => {
+    if (BOOT_DELAY_MS === 0) return undefined;
+    const timer = setTimeout(() => setBooting(false), BOOT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (booting) return <LoadingScreen />;
+
   return (
     <GameProvider>
       <FighterProfileProvider>
