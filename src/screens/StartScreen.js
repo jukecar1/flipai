@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { listSaves, loadFromSlot, deleteSlot } from '../game/storage';
 import { useGameActions } from '../context/GameContext';
 import { Button, Panel } from '../components/UI';
+import Logomark from '../components/Logomark';
 
 // A short, honest "what's new" note — real shipped changes, not filler.
 // Update this line as the game changes; there's no changelog data store
@@ -29,10 +30,10 @@ export default function StartScreen() {
   return (
     <div className="fe-start-screen">
       <div className="fe-start-brand-row">
-        <span className="fe-hero-fe fe-start-brand-fe">FE</span>
+        <Logomark size={72} className="fe-logomark-glow" />
         <div>
           <span className="fe-eyebrow">MMA Promotion Sim</span>
-          <h1 className="fe-start-wordmark">FIGHT EMPIRE</h1>
+          <h1 className="fe-start-wordmark fe-wordmark-3d">FIGHT EMPIRE</h1>
         </div>
       </div>
       <p className="fe-tagline fe-start-tagline">Sign the roster. Book the cards. Outgrow the giants.</p>

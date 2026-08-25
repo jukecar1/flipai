@@ -118,19 +118,6 @@ button, select, input {
   padding: 0 6px;
 }
 
-.fe-logo-fe {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--fe-red), var(--fe-orange));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 14px;
-  color: #fff;
-}
-
 .fe-logo-text {
   font-family: var(--fe-font-display);
   font-size: 17px;
@@ -496,19 +483,9 @@ button, select, input {
   padding: 0 20px;
 }
 
-.fe-hero-fe {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--fe-red), var(--fe-orange));
-  font-family: var(--fe-font-display);
-  font-size: 32px;
-  color: #fff;
-  box-shadow: 0 8px 28px rgba(226, 38, 58, 0.4);
+.fe-logomark-glow {
   flex-shrink: 0;
+  filter: drop-shadow(0 8px 20px rgba(226, 38, 58, 0.45));
 }
 
 .fe-start-brand-row {
@@ -523,6 +500,25 @@ button, select, input {
   font-size: 40px;
   letter-spacing: 2px;
   margin: 0;
+}
+
+/* A chunky, beveled "extruded" wordmark treatment — a gold gradient fill
+   plus a stack of solid-color shadow layers standing in for a 3D bevel,
+   the same trick real 3D text uses, done entirely in CSS. Reserved for
+   the big hero placements (start/loading screens); the small sidebar
+   logotype stays flat so it doesn't turn to mush at 17px. */
+.fe-wordmark-3d {
+  background: linear-gradient(180deg, #fff6df 0%, var(--fe-gold) 55%, #b9791a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 0 #7a4a0f,
+    0 3px 0 #7a4a0f,
+    0 4px 0 #6b400c,
+    0 6px 10px rgba(0, 0, 0, 0.45);
 }
 
 .fe-eyebrow {

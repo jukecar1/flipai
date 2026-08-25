@@ -1,4 +1,5 @@
 import React from 'react';
+import Logomark from '../components/Logomark';
 
 // A brief branded splash shown once, right when the app first opens —
 // before there's any save data to show, so the player sees something
@@ -7,8 +8,8 @@ import React from 'react';
 export default function LoadingScreen() {
   return (
     <div className="fe-loading-screen">
-      <div className="fe-hero-fe fe-loading-fe">FE</div>
-      <h1 className="fe-loading-title">FIGHT EMPIRE</h1>
+      <Logomark size={72} className="fe-logomark-glow fe-loading-fe" />
+      <h1 className="fe-loading-title fe-wordmark-3d">FIGHT EMPIRE</h1>
       <div className="fe-loading-bar"><span className="fe-loading-bar-fill" /></div>
       <p className="fe-loading-text">Setting up the cage…</p>
     </div>

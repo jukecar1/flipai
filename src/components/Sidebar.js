@@ -5,6 +5,7 @@ import {
   GymsIcon, TitlesIcon, BoutsIcon, HallOfFameIcon, AmateursIcon, LeaderboardsIcon,
   StatsIcon, SettingsIcon, ChirpIcon,
 } from './icons';
+import Logomark from './Logomark';
 
 const NAV_ITEMS = [
   { id: 'hub', label: 'Hub', Icon: HomeIcon },
@@ -30,7 +31,7 @@ export default function Sidebar() {
   return (
     <div className="fe-sidebar">
       <div className="fe-logo">
-        <span className="fe-logo-fe">FE</span>
+        <Logomark size={36} />
         <span className="fe-logo-text">FIGHT<br />EMPIRE</span>
       </div>
       <nav>
