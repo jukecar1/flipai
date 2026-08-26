@@ -430,6 +430,13 @@ export const VIRAL_FOLLOWER_BONUS = 300;
 // of anything you actually booked that week.
 export const RIVAL_CHIRP_CHANCE = 0.15;
 
+// ---------- Rival promotions' own cards ----------
+// Each rival promotion independently rolls this chance, every week, to
+// host a card of its own — a background fight between two world-pool
+// fighters that moves real records and followers, and can even change
+// hands who holds a division's #1 spot, all without you touching it.
+export const RIVAL_CARD_CHANCE = 0.2;
+
 // ---------- Judges' controversy ----------
 // A split or majority decision sometimes reads as a robbery — the winner
 // doesn't get the full credit fans think they deserved, and the fighter

@@ -162,11 +162,15 @@ test('winning a fight grows followers; losing shrinks them (floored at 0)', () =
   const loseState = { ...baseState() };
   const loseStateWithFollowers = { ...loseState, roster: loseState.roster.map(f => (f.id === 'champ1' ? { ...f, followers: 5 } : f)) };
   const bookedLoss = bookMainEvent(loseStateWithFollowers, 'champ1');
+  // A bad title-fight loss can (rightly) sour loyalty enough to also fire a
+  // beef chirp alongside the loss-reaction chirp, and either — or both —
+  // can independently go viral; pinning the roll keeps this assertion about
+  // the core follower-loss mechanic, not every possible chirp combination.
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
   const lost = resolveWithResult(bookedLoss, bookedLoss.scheduledFights[0].id, 'champ1', 'opp1', 'KO', 'opp1');
+  spy.mockRestore();
   expect(lost.roster.find(f => f.id === 'champ1').followers).toBeGreaterThanOrEqual(0);
-  // A loss reaction chirp can rarely go viral (likes >= VIRAL_CHIRP_LIKES) and add a
-  // further one-time bump on top — this still bounds out runaway growth from a loss.
-  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeLessThan(6 + VIRAL_FOLLOWER_BONUS);
+  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeLessThan(6); // a tiny starting base can't go negative
 });
 
 test('drawMultiplier scales purse potential with combined followers, capped', () => {
@@ -1186,6 +1190,57 @@ test('losing to a rival champion does not trigger the champ-falls reaction', () 
   const next = resolveWithResult(state, fight.id, 'champ1', 'fallen-champ2', 'UD', 'fallen-champ2'); // champ1 loses
   spy.mockRestore();
   expect(next.socialFeed.some(p => p.fighterId === 'teammate2')).toBe(false);
+});
+
+// ---------- Rival promotions' own background cards ----------
+
+test('a rival promotion can run its own card during a week advance, crowning a new champion in a vacant division', () => {
+  const host = { ...opponent, id: 'host1', name: 'Host Fighter', promotionId: 'apex', overall: 15, followers: 1000 };
+  const foe = { ...opponent, id: 'foe1', name: 'Foe Fighter', overall: 8, followers: 500 };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [host, foe] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // guarantees the card fires and the far-better host wins
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  const updatedHost = next.worldPool.FLW.find(f => f.id === 'host1');
+  const updatedFoe = next.worldPool.FLW.find(f => f.id === 'foe1');
+  expect(updatedHost.record.wins).toBe(1);
+  expect(updatedFoe.record.losses).toBe(1);
+  expect(updatedHost.champion).toBe(true); // the division was vacant — host claims it
+  expect(next.news.some(n => n.category === 'rival' && n.title.includes('Host Fighter'))).toBe(true);
+  expect(next.socialFeed.some(p => p.fighterId === 'host1')).toBe(true);
+});
+
+test('a reigning champion who successfully defends in a background card keeps the belt', () => {
+  const champ = { ...opponent, id: 'champ-x', name: 'Reigning Champ', promotionId: 'apex', overall: 18, followers: 2000, champion: true };
+  const foe = { ...opponent, id: 'foe-x', name: 'Overmatched Foe', overall: 6, followers: 200 };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [champ, foe] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // card fires; the far-better champ wins comfortably
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  expect(next.worldPool.FLW.find(f => f.id === 'champ-x').champion).toBe(true);
+});
+
+test('a reigning champion who loses a background card is dethroned', () => {
+  const champ = { ...opponent, id: 'champ-y', name: 'Fading Champ', overall: 6, followers: 2000, champion: true };
+  const foe = { ...opponent, id: 'foe-y', name: 'Rising Foe', promotionId: 'apex', overall: 18, followers: 200 };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [champ, foe] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // card fires; the far-better challenger (the promoted "host") wins
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  expect(next.worldPool.FLW.find(f => f.id === 'foe-y').champion).toBe(true);
+  expect(next.worldPool.FLW.find(f => f.id === 'champ-y').champion).toBe(false);
+});
+
+test('a rival promotion with no contracted fighters simply does not host a card', () => {
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: emptyPools };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // would fire every promotion's roll if anyone were around to fight
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  expect(next.news.some(n => n.id.includes('_rivalcard_'))).toBe(false);
 });
 
 // ---------- Promotion tier ladder ----------

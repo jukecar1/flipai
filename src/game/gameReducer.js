@@ -10,7 +10,7 @@ import {
   CAMPS, HARD_CAMP_STAT_DELTA, HARD_CAMP_INJURY_CHANCE, LIGHT_CAMP_FATIGUE_RELIEF,
   POTN_BONUS_PCT, FOTN_BONUS_PCT, potnChance, fotnChance, sponsorIncome,
   CALLOUT_CHANCE, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS,
-  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, RIVAL_CHIRP_CHANCE, isNotableFighter,
+  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, RIVAL_CHIRP_CHANCE, RIVAL_CARD_CHANCE, isNotableFighter,
   controversyChance, isMismatchedBooking, isLegacyFight, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
@@ -338,6 +338,89 @@ function rollRivalChirp(state) {
     return makeChirp(state, { fighter, category: 'rival', text: pick(RIVAL_SHADE_CHIRPS)(yourChamp.name) });
   }
   return makeChirp(state, { fighter, category: 'rival', text: pick(RIVAL_HYPE_CHIRPS)() });
+}
+
+const RIVAL_CARD_WIN_CHIRPS = [
+  opp => `Took care of business against ${opp} tonight. On to the next one.`,
+  opp => `${opp} didn't have the answers. Business as usual for me.`,
+  opp => `Another one in the win column. ${opp} fought hard, wasn't enough.`,
+];
+
+const RIVAL_TITLE_WIN_CHIRPS = [
+  champ => `Just took the crown from ${champ}. This is only the beginning. 👑`,
+  champ => `They said ${champ} couldn't be beat. Somebody forgot to tell me.`,
+];
+
+// Rival promotions run their own cards on their own schedule, entirely
+// independent of anything you do — a fighter from their roster steps in
+// against someone in their division (in-house or not), records and
+// followers move for real, and a division's #1 spot can even change
+// hands. Deliberately lighter-weight than a real simulated fight: this
+// is background noise, never something the player watches round by round.
+function simulateRivalCard(state, promo, worldPool) {
+  const theirRoster = Object.values(worldPool).flat().filter(f => f.promotionId === promo.id);
+  if (theirRoster.length === 0) return null;
+  const host = pick(theirRoster);
+  const pool = worldPool[host.weightClass] || [];
+  const candidates = pool.filter(f => f.id !== host.id);
+  if (candidates.length === 0) return null;
+  const opponent = pick(candidates);
+
+  const hostWon = Math.random() < winProbability(host, opponent);
+  const winner = hostWon ? host : opponent;
+  const loser = hostWon ? opponent : host;
+  const isFinish = Math.random() < 0.3;
+
+  const gap = loser.overall - winner.overall;
+  const winnerGain = Math.round(randInt(60, 180) + Math.max(0, gap) * 20 * (isFinish ? 1.3 : 1));
+  const loserLoss = Math.round(randInt(30, 90) + Math.max(0, -gap) * 12);
+
+  const currentChamp = pool.find(f => f.champion);
+  const vacant = !currentChamp;
+  // A title implication only exists if this fight actually involved the
+  // reigning #1 (or there wasn't one) — an unrelated undercard result
+  // never touches who holds the division.
+  const titleChanges = vacant || currentChamp.id === loser.id;
+
+  const updateFighter = (f, isWinner) => {
+    const record = { ...f.record };
+    if (isWinner) {
+      record.wins += 1;
+      if (isFinish) { if (Math.random() < 0.5) record.kos += 1; else record.subs += 1; }
+    } else {
+      record.losses += 1;
+    }
+    return { ...f, record, followers: Math.max(0, (f.followers || 0) + (isWinner ? winnerGain : -loserLoss)) };
+  };
+
+  let updatedWinner = updateFighter(winner, true);
+  let updatedLoser = updateFighter(loser, false);
+  if (titleChanges) {
+    updatedWinner = { ...updatedWinner, champion: true, followers: updatedWinner.followers + randInt(5000, 15000) };
+    updatedLoser = { ...updatedLoser, champion: false };
+  }
+
+  const methodText = isFinish ? 'by finish' : 'by decision';
+  const wcName = WEIGHT_CLASS_MAP[host.weightClass]?.name;
+  const news = {
+    id: `n${Date.now()}_rivalcard_${host.id}`,
+    week: state.week,
+    category: 'rival',
+    title: titleChanges
+      ? `${winner.name} becomes the new #1 ${wcName} in the world at a ${promo.name} card`
+      : `${winner.name} defeats ${loser.name} ${methodText} at a ${promo.name} card`,
+    body: titleChanges
+      ? `${winner.name} takes down ${loser.name} in a ${promo.name} showcase — nothing to do with your promotion, but the ${wcName} division just got a new top dog.`
+      : `${winner.name} gets the job done against ${loser.name} on a ${promo.name} card, entirely outside your promotion.`,
+  };
+
+  const chirp = makeChirp(state, {
+    fighter: updatedWinner,
+    category: 'rival',
+    text: titleChanges ? pick(RIVAL_TITLE_WIN_CHIRPS)(loser.name) : pick(RIVAL_CARD_WIN_CHIRPS)(loser.name),
+  });
+
+  return { weightClass: host.weightClass, winnerUpdate: updatedWinner, loserUpdate: updatedLoser, news, chirp };
 }
 
 // After a win, a fighter sometimes calls out a specific name in their
@@ -1334,6 +1417,25 @@ export function gameReducer(state, action) {
         const rivalChirp = rollRivalChirp(state);
         if (rivalChirp) socialFeed = pushChirp(socialFeed, rivalChirp);
       }
+
+      // Every rival promotion independently rolls a chance to run its own
+      // card this week — real background fights with real consequences,
+      // so there's genuinely more going on than whatever you booked.
+      RIVAL_PROMOTIONS.forEach(promo => {
+        if (Math.random() >= RIVAL_CARD_CHANCE) return;
+        const result = simulateRivalCard(state, promo, worldPool);
+        if (!result) return;
+        worldPool = {
+          ...worldPool,
+          [result.weightClass]: worldPool[result.weightClass].map(f => {
+            if (f.id === result.winnerUpdate.id) return result.winnerUpdate;
+            if (f.id === result.loserUpdate.id) return result.loserUpdate;
+            return f;
+          }),
+        };
+        news.unshift(result.news);
+        socialFeed = pushChirp(socialFeed, result.chirp);
+      });
 
       return {
         ...state,
