@@ -32,6 +32,7 @@ export default function FightResult() {
   return (
     <div className="fe-fight-result">
       <Panel title="FIGHT RESULT" className="fe-result-panel">
+        {last.eventName && <div className="fe-result-event-name">{last.eventName}</div>}
         {last.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
         {last.isLegacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
         <div className="fe-result-headline">

@@ -862,6 +862,12 @@ button, select, input {
   font-weight: 700;
 }
 
+.fe-gameover-screen {
+  max-width: 640px;
+  margin: 60px auto;
+  padding: 0 20px;
+}
+
 .fe-gameover-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3169,6 +3175,15 @@ button, select, input {
 .fe-result-panel {
   max-width: 640px;
   margin: 0 auto;
+}
+
+.fe-result-event-name {
+  font-family: var(--fe-font-display);
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--fe-gold);
+  margin-bottom: 4px;
 }
 
 .fe-result-headline {

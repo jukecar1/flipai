@@ -190,7 +190,7 @@ export default function FightSim() {
           <div>{opponent.name} <Flag nationality={opponent.nationality} /> {opponent.record.wins}-{opponent.record.losses}-{opponent.record.draws}</div>
         </div>
         <div className="fe-fs-header-right">
-          {eventCard && <div className="fe-fs-event-name">{eventCard.name}</div>}
+          {eventCard?.name && <div className="fe-fs-event-name">{eventCard.name}</div>}
           {fightMeta && <div>{fightMeta.venue.name}, {fightMeta.venue.city}</div>}
           <div>Week {state.week}</div>
         </div>

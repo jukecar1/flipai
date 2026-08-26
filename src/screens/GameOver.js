@@ -2,14 +2,22 @@ import React from 'react';
 import { useGameState, useGameActions } from '../context/GameContext';
 import { currentPromotionTier } from '../game/gameReducer';
 import { Panel, Button } from '../components/UI';
+import Logomark from '../components/Logomark';
 
 export default function GameOver() {
   const state = useGameState();
   const { backToStart } = useGameActions();
 
   return (
-    <div className="fe-start-screen">
-      <Panel title="PROMOTION CLOSED" className="fe-create-panel">
+    <div className="fe-gameover-screen">
+      <div className="fe-start-brand-row">
+        <Logomark size={56} className="fe-logomark-glow" />
+        <div>
+          <span className="fe-eyebrow">Fight Empire</span>
+          <div className="fe-cc-header-title">Promotion Closed</div>
+        </div>
+      </div>
+      <Panel className="fe-create-panel">
         <p className="fe-hint">
           {state.meta.promotionName} has run out of money and can't cover the bills — the bank has shut you down
           after too many weeks in the red.
