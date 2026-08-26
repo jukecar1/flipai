@@ -1107,6 +1107,87 @@ test('a rival fighter can call out your division champion instead of just hyping
   expect(post.text).toMatch(/Test Champion/);
 });
 
+test('a bigger following gives the same-luck chirp more engagement, compounding a hot streak', () => {
+  const r = 0.5;
+  const smallOpp = { ...opponent, id: 'small-opp', promotionId: 'apex', followers: 0 };
+  const bigOpp = { ...opponent, id: 'big-opp', promotionId: 'apex', followers: 100000 };
+  let spy = jest.spyOn(Math, 'random').mockReturnValue(r);
+  const stateSmall = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: smallOpp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  spy.mockRestore();
+  spy = jest.spyOn(Math, 'random').mockReturnValue(r);
+  const stateBig = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: bigOpp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  spy.mockRestore();
+  const smallChirp = stateSmall.socialFeed.find(p => p.fighterId === 'small-opp');
+  const bigChirp = stateBig.socialFeed.find(p => p.fighterId === 'big-opp');
+  expect(bigChirp.likes - smallChirp.likes).toBe(Math.round(100000 * 0.01));
+});
+
+test('booking a rival-contracted opponent gets a pre-fight reaction from them', () => {
+  const rivalOpp = { ...opponent, id: 'rival-opp', promotionId: 'apex' };
+  const next = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: rivalOpp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  expect(next.socialFeed.some(p => p.category === 'callout' && p.fighterId === 'rival-opp')).toBe(true);
+});
+
+test('booking an ordinary free agent does not trigger an unearned pre-fight reaction', () => {
+  const next = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  expect(next.socialFeed.some(p => p.fighterId === 'opp1')).toBe(false);
+});
+
+test('CREATE_CARD posts a pre-fight reaction from a rival-contracted opponent too', () => {
+  const rivalOpp = { ...opponent, id: 'rival-opp-card', promotionId: 'apex' };
+  const next = gameReducer(baseState(), { type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent: rivalOpp, fightType: FIGHT_TYPES.MAIN_EVENT });
+  expect(next.socialFeed.some(p => p.category === 'callout' && p.fighterId === 'rival-opp-card')).toBe(true);
+});
+
+test('ADD_FIGHT_TO_CARD posts a pre-fight reaction from a rival-contracted opponent', () => {
+  const state = gameReducer(baseState(), { type: 'CREATE_CARD', venue, fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE });
+  const card = state.cards[0];
+  const rivalOpp = { ...opponent, id: 'rival-opp-add', promotionId: 'apex' };
+  const next = gameReducer(state, { type: 'ADD_FIGHT_TO_CARD', cardId: card.id, fighterId: state.roster[1].id, opponent: rivalOpp, fightType: FIGHT_TYPES.SHOWCASE });
+  expect(next.socialFeed.some(p => p.category === 'callout' && p.fighterId === 'rival-opp-add')).toBe(true);
+});
+
+test('BOOK_CARD posts a pre-fight reaction chirp for each rival-contracted bout', () => {
+  const rivalOpp1 = { ...opponent, id: 'rival-1', promotionId: 'apex' };
+  const rivalOpp2 = { ...opponent, id: 'rival-2', promotionId: 'vantage' };
+  const state = baseState();
+  const bouts = [
+    { fighterId: state.roster[0].id, opponent: rivalOpp1, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+    { fighterId: state.roster[1].id, opponent: rivalOpp2, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+  ];
+  const next = gameReducer(state, { type: 'BOOK_CARD', venue, bouts });
+  expect(next.socialFeed.some(p => p.fighterId === 'rival-1')).toBe(true);
+  expect(next.socialFeed.some(p => p.fighterId === 'rival-2')).toBe(true);
+});
+
+test('beating a rival division champion can trigger a teammate reacting to the fall', () => {
+  const fallenChamp = { ...opponent, id: 'fallen-champ', promotionId: 'apex', champion: true };
+  const teammate = { ...opponent, id: 'teammate', promotionId: 'apex', name: 'Teammate Fighter' };
+  // Empty out every other weight class so this rival promotion's fighter
+  // pool is unambiguous — otherwise the pre-seeded world pool can also
+  // hold other 'apex' fighters and the teammate pick isn't deterministic.
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  let state = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: fallenChamp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  state = { ...state, worldPool: { ...emptyPools, FLW: [fallenChamp, teammate] } };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // guarantees the reaction roll fires and the teammate pick is deterministic
+  const next = resolveWithResult(state, fight.id, 'champ1', 'fallen-champ', 'UD', 'champ1');
+  spy.mockRestore();
+  expect(next.socialFeed.some(p => p.category === 'rival' && p.fighterId === 'teammate')).toBe(true);
+});
+
+test('losing to a rival champion does not trigger the champ-falls reaction', () => {
+  const fallenChamp = { ...opponent, id: 'fallen-champ2', promotionId: 'apex', champion: true };
+  const teammate = { ...opponent, id: 'teammate2', promotionId: 'apex' };
+  let state = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: fallenChamp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  state = { ...state, worldPool: { ...state.worldPool, FLW: [fallenChamp, teammate] } };
+  const fight = state.scheduledFights[0];
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = resolveWithResult(state, fight.id, 'champ1', 'fallen-champ2', 'UD', 'fallen-champ2'); // champ1 loses
+  spy.mockRestore();
+  expect(next.socialFeed.some(p => p.fighterId === 'teammate2')).toBe(false);
+});
+
 // ---------- Promotion tier ladder ----------
 
 test('a fresh promotion starts at the bottom of the ladder', () => {

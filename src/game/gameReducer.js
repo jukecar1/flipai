@@ -145,7 +145,10 @@ function chirpHandle(name) {
 }
 
 function makeChirp(state, { fighter, text, category }) {
-  const likes = randInt(40, 6000);
+  // A bigger following makes engagement easier to come by — a real star's
+  // posts start closer to the viral line before the dice are even rolled,
+  // so a hot streak keeps compounding instead of resetting every post.
+  const likes = randInt(40, 6000) + Math.round((fighter.followers || 0) * 0.01);
   return {
     id: `sp${Date.now()}_${randInt(0, 999999)}`,
     week: state.week,
@@ -238,6 +241,18 @@ const PPV_HYPE_CHIRPS = [
   opp => `They're paying to watch me do this to ${opp}. Worth every penny.`,
 ];
 
+const PRE_FIGHT_TRASH_TALK_CHIRPS = [
+  opp => `Just got the call. ${opp}'s about to find out this ain't the level they're used to. 😤`,
+  opp => `Booked against ${opp}. Appreciate the easy payday, honestly.`,
+  opp => `${opp} really said yes to this fight. Bold. Foolish, but bold.`,
+];
+
+const RIVAL_CHAMP_FALLS_CHIRPS = [
+  (champ, winner) => `Can't believe ${champ} just dropped that belt. ${winner} really did that. Rough night for us.`,
+  champ => `${champ} losing that title stings. We'll get it back.`,
+  (champ, winner) => `Not gonna lie, ${winner} looked serious tonight. ${champ} never really had an answer.`,
+];
+
 const WIN_CONTROVERSIAL_CHIRPS = [
   opp => `I got the nod against ${opp} and I'll take it — but I get why people are mad. Go rewatch it.`,
   opp => `Win's a win. Judges saw it their way against ${opp}, I'll live with it.`,
@@ -289,6 +304,25 @@ function loyaltyBeefChirp(state, fighter, loyalty) {
   if (Math.random() >= 0.4) return null; // not every unhappy fighter vents every single time out
   const template = pick(tier === 'resentful' ? LOYALTY_RESENTFUL_CHIRPS : LOYALTY_FRUSTRATED_CHIRPS);
   return makeChirp(state, { fighter, category: 'beef', text: template() });
+}
+
+// The moment you book someone else's fighter, they hear about it too —
+// a rival-contracted name or a real notable talks trash the same way
+// your own PPV headliner would. A total unknown just shows up quiet.
+function bookingReactionChirp(state, opponent, fighterName) {
+  if (!opponent || !(opponent.promotionId || isNotableFighter(opponent))) return null;
+  return makeChirp(state, { fighter: opponent, category: 'callout', text: pick(PRE_FIGHT_TRASH_TALK_CHIRPS)(fighterName) });
+}
+
+// Beating a rival's actual division champion is real news back at their
+// own promotion — sometimes a locker-room ally posts about the fall
+// instead of the champ just quietly disappearing from the rankings.
+function rivalChampFallsChirp(state, fallenChamp, winnerName) {
+  if (Math.random() >= 0.4) return null;
+  const teammates = Object.values(state.worldPool).flat().filter(f => f.promotionId === fallenChamp.promotionId && f.id !== fallenChamp.id);
+  if (teammates.length === 0) return null;
+  const fighter = pick(teammates);
+  return makeChirp(state, { fighter, category: 'rival', text: pick(RIVAL_CHAMP_FALLS_CHIRPS)(fallenChamp.name, winnerName) });
 }
 
 // A rival-contracted fighter occasionally posts on their own, with
@@ -1032,11 +1066,13 @@ export function gameReducer(state, action) {
       if (state.funds < cost) return state;
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, weeksOut: randInt(2, 6), week: state.week });
       const callout = resolveCallouts(state, [fight]);
+      const bookingChirp = bookingReactionChirp(state, opponent, fighter.name);
       return {
         ...state,
         funds: state.funds - cost,
         scheduledFights: [...state.scheduledFights, fight],
         callouts: callout.callouts,
+        socialFeed: bookingChirp ? pushChirp(state.socialFeed, bookingChirp) : state.socialFeed,
         news: callout.news.length ? [...callout.news, ...state.news] : state.news,
         prestige: state.prestige + callout.prestigeBonus,
       };
@@ -1057,8 +1093,11 @@ export function gameReducer(state, action) {
       const card = { id: cardId, name, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week: state.week });
       const callout = resolveCallouts(state, [fight]);
+      const bookingChirp = bookingReactionChirp(state, opponent, fighter.name);
       const ppvChirp = wantsPPV ? makeChirp(state, { fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(opponent.name) }) : null;
-      const socialFeed = ppvChirp ? pushChirp(state.socialFeed, ppvChirp) : state.socialFeed;
+      let socialFeed = state.socialFeed;
+      if (bookingChirp) socialFeed = pushChirp(socialFeed, bookingChirp);
+      if (ppvChirp) socialFeed = pushChirp(socialFeed, ppvChirp);
       return {
         ...state,
         funds: state.funds - cost + ppv.revenue,
@@ -1087,11 +1126,13 @@ export function gameReducer(state, action) {
       if (state.funds < sanctionFee) return state;
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue: card.venue, gameplan, camp, cardId, weeksOut: card.weeksOut, week: state.week });
       const callout = resolveCallouts(state, [fight]);
+      const bookingChirp = bookingReactionChirp(state, opponent, fighter.name);
       return {
         ...state,
         funds: state.funds - sanctionFee,
         scheduledFights: [...state.scheduledFights, fight],
         callouts: callout.callouts,
+        socialFeed: bookingChirp ? pushChirp(state.socialFeed, bookingChirp) : state.socialFeed,
         news: callout.news.length ? [...callout.news, ...state.news] : state.news,
         prestige: state.prestige + callout.prestigeBonus,
       };
@@ -1137,8 +1178,10 @@ export function gameReducer(state, action) {
       }));
       const callout = resolveCallouts(state, fights);
 
+      const bookingChirps = resolvedBouts.map(b => bookingReactionChirp(state, b.opponent, b.fighter.name)).filter(Boolean);
       const ppvChirp = wantsPPV ? makeChirp(state, { fighter: headliner.fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(headliner.opponent.name) }) : null;
-      const socialFeed = ppvChirp ? pushChirp(state.socialFeed, ppvChirp) : state.socialFeed;
+      let socialFeed = bookingChirps.reduce((feed, chirp) => pushChirp(feed, chirp), state.socialFeed);
+      if (ppvChirp) socialFeed = pushChirp(socialFeed, ppvChirp);
 
       return {
         ...state,
@@ -1572,8 +1615,15 @@ export function gameReducer(state, action) {
         controversial,
       }) : null;
       if (opponentReactionChirp) socialFeed = pushChirp(socialFeed, opponentReactionChirp);
+      // Beating an actual division champion from a rival promotion is
+      // real news back home — sometimes a teammate posts about it too.
+      const champFallsChirp = (fighterWon && oppRef?.champion && oppRef?.promotionId)
+        ? rivalChampFallsChirp(state, oppRef, fighterRef?.name)
+        : null;
+      if (champFallsChirp) socialFeed = pushChirp(socialFeed, champFallsChirp);
       ({ roster, worldPool } = viralBumpAcrossPools(reactionChirp, roster, worldPool));
       ({ roster, worldPool } = viralBumpAcrossPools(opponentReactionChirp, roster, worldPool));
+      ({ roster, worldPool } = viralBumpAcrossPools(champFallsChirp, roster, worldPool));
       if (bonusType) {
         news.unshift({
           id: `n${Date.now()}_bonus`,
