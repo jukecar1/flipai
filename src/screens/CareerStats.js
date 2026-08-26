@@ -51,7 +51,7 @@ export default function CareerStats() {
           <div className="fe-empty">No fights yet — your biggest night is still ahead of you.</div>
         ) : (
           <p className="fe-hint">
-            Week {biggestNight.week}: <strong>{biggestNight.fighterName}</strong> vs <strong>{biggestNight.opponentName}</strong>
+            Week {biggestNight.week}{biggestNight.eventName ? ` (${biggestNight.eventName})` : ''}: <strong>{biggestNight.fighterName}</strong> vs <strong>{biggestNight.opponentName}</strong>
             {biggestNight.isTitle ? ' — a title fight' : ''} moved {biggestNight.hype.toLocaleString()} combined followers overnight,
             the biggest reaction your promotion has drawn.
           </p>
