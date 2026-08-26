@@ -750,6 +750,45 @@ test('poaching a rival fighter succeeds when the roll favors you and removes the
   expect(next.funds).toBe(stateWithRival.funds - poachCostFor(rivalFighter));
 });
 
+test('poaching a rival division champion immediately crowns the best fighter left behind', () => {
+  const champ = { ...opponent, id: 'champ-poach', name: 'Old Champ', promotionId: 'apex', overall: 18, champion: true, title: 'Flyweight' };
+  const nextBest = { ...opponent, id: 'nextbest', name: 'Next Best', overall: 14, followers: 1000 };
+  const weakest = { ...opponent, id: 'weakest', name: 'Weakest Link', overall: 8, followers: 200 };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [champ, nextBest, weakest] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // always succeeds
+  const next = gameReducer(state, { type: 'POACH_FIGHTER', fighterId: 'champ-poach' });
+  spy.mockRestore();
+  expect(next.roster.some(f => f.id === 'champ-poach')).toBe(true);
+  expect(next.worldPool.FLW.find(f => f.id === 'nextbest').champion).toBe(true);
+  expect(next.worldPool.FLW.find(f => f.id === 'weakest').champion).toBe(false);
+  expect(next.news.some(n => n.title.includes('Next Best'))).toBe(true);
+  expect(next.socialFeed.some(p => p.fighterId === 'nextbest' && p.category === 'rival')).toBe(true);
+});
+
+test('poaching a non-champion rival fighter does not trigger a succession', () => {
+  const nonChamp = { ...opponent, id: 'gatekeeper-poach', promotionId: 'apex', overall: 12, champion: false };
+  const other = { ...opponent, id: 'bystander', overall: 16, followers: 500 };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [nonChamp, other] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = gameReducer(state, { type: 'POACH_FIGHTER', fighterId: 'gatekeeper-poach' });
+  spy.mockRestore();
+  expect(next.worldPool.FLW.find(f => f.id === 'bystander').champion).toBe(false);
+  expect(next.socialFeed.some(p => p.fighterId === 'bystander')).toBe(false);
+});
+
+test('poaching the last fighter in a division leaves it vacant without crashing', () => {
+  const soleChamp = { ...opponent, id: 'lone-champ', promotionId: 'apex', overall: 15, champion: true };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [soleChamp] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0);
+  const next = gameReducer(state, { type: 'POACH_FIGHTER', fighterId: 'lone-champ' });
+  spy.mockRestore();
+  expect(next.worldPool.FLW).toHaveLength(0);
+  expect(next.roster.some(f => f.id === 'lone-champ')).toBe(true);
+});
+
 test('a failed poach attempt costs nothing and leaves the fighter with the rival', () => {
   const state = baseState();
   const rivalFighter = { ...opponent, id: 'rival3', promotionId: 'apex', purseFloor: 1000 };

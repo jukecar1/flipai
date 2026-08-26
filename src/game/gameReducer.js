@@ -351,6 +351,11 @@ const RIVAL_TITLE_WIN_CHIRPS = [
   champ => `They said ${champ} couldn't be beat. Somebody forgot to tell me.`,
 ];
 
+const RIVAL_SUCCESSION_CHIRPS = [
+  prev => `${prev} left the door wide open and I'm walking through it. #1 in the division now. 👑`,
+  prev => `Somebody had to step up after ${prev} bounced. Might as well be me.`,
+];
+
 // Rival promotions run their own cards on their own schedule, entirely
 // independent of anything you do — a fighter from their roster steps in
 // against someone in their division (in-house or not), records and
@@ -977,12 +982,37 @@ export function gameReducer(state, action) {
       const poachBody = targetLoyalty < 35
         ? `${target.name} was already unhappy at ${rivalPromo?.name || 'their old promotion'} and jumps at the chance to join ${state.meta.promotionName}.`
         : `${target.name} leaves ${rivalPromo?.name || 'their promotion'} to join ${state.meta.promotionName}.`;
+      let worldPool = { ...state.worldPool, [targetWc]: state.worldPool[targetWc].filter(f => f.id !== fighterId) };
+      const news = [{ id: `n${Date.now()}_poach`, week: state.week, category: 'signing', title: `${state.meta.promotionName} poaches ${target.name} from ${rivalPromo?.name || 'a rival'}`, body: poachBody }, ...state.news];
+      let socialFeed = state.socialFeed;
+
+      // Poaching the reigning #1 doesn't leave the division sitting empty —
+      // the best fighter left in the pool steps straight up to fill it,
+      // same as a rival card would eventually do, just immediate here since
+      // there's no vacancy to just quietly wait out.
+      if (champion) {
+        const successor = worldPool[targetWc].reduce((best, f) => (!best || f.overall > best.overall ? f : best), null);
+        if (successor) {
+          const crownedSuccessor = { ...successor, champion: true, followers: (successor.followers || 0) + randInt(5000, 15000) };
+          worldPool = { ...worldPool, [targetWc]: worldPool[targetWc].map(f => (f.id === successor.id ? crownedSuccessor : f)) };
+          news.unshift({
+            id: `n${Date.now()}_succession`,
+            week: state.week,
+            category: 'rival',
+            title: `${successor.name} steps up as the new #1 ${WEIGHT_CLASS_MAP[targetWc]?.name} in the world`,
+            body: `With ${target.name} gone to ${state.meta.promotionName}, ${successor.name} moves into the vacancy atop the division.`,
+          });
+          socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter: crownedSuccessor, category: 'rival', text: pick(RIVAL_SUCCESSION_CHIRPS)(target.name) }));
+        }
+      }
+
       return {
         ...state,
         funds: state.funds - cost,
         roster: [...state.roster, signed],
-        worldPool: { ...state.worldPool, [targetWc]: state.worldPool[targetWc].filter(f => f.id !== fighterId) },
-        news: [{ id: `n${Date.now()}_poach`, week: state.week, category: 'signing', title: `${state.meta.promotionName} poaches ${target.name} from ${rivalPromo?.name || 'a rival'}`, body: poachBody }, ...state.news],
+        worldPool,
+        news,
+        socialFeed,
       };
     }
 
