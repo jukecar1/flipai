@@ -419,6 +419,17 @@ export const CALLOUT_CHANCE = 0.3;
 export const CALLOUT_EXPIRY_WEEKS = 8;
 export const CALLOUT_PRESTIGE_BONUS = 10;
 
+// ---------- Chirp (social media) ----------
+// A chirp that clears this like count "goes viral" — its poster gets a
+// modest, one-time follower bump on top of whatever the underlying
+// event (a win, a loss, a callout) already earned them.
+export const VIRAL_CHIRP_LIKES = 4500;
+export const VIRAL_FOLLOWER_BONUS = 300;
+// Per-week chance a rival-contracted fighter posts something unprompted
+// — hyping their own run or shading your current champion — independent
+// of anything you actually booked that week.
+export const RIVAL_CHIRP_CHANCE = 0.15;
+
 // ---------- Judges' controversy ----------
 // A split or majority decision sometimes reads as a robbery — the winner
 // doesn't get the full credit fans think they deserved, and the fighter

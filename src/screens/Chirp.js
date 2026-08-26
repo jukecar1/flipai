@@ -10,6 +10,7 @@ const CHIRP_ICONS = {
   signing: '✍️',
   ppv: '🎬',
   callout: '📣',
+  rival: '🗯️',
 };
 
 const CHIRP_LABELS = {
@@ -19,6 +20,7 @@ const CHIRP_LABELS = {
   signing: 'Signing',
   ppv: 'PPV hype',
   callout: 'Callout',
+  rival: 'Rival chatter',
 };
 
 export default function Chirp() {

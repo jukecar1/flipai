@@ -10,6 +10,7 @@ import {
   CAMPS, HARD_CAMP_STAT_DELTA, HARD_CAMP_INJURY_CHANCE, LIGHT_CAMP_FATIGUE_RELIEF,
   POTN_BONUS_PCT, FOTN_BONUS_PCT, potnChance, fotnChance, sponsorIncome,
   CALLOUT_CHANCE, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS,
+  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, RIVAL_CHIRP_CHANCE, isNotableFighter,
   controversyChance, isMismatchedBooking, isLegacyFight, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
@@ -144,6 +145,7 @@ function chirpHandle(name) {
 }
 
 function makeChirp(state, { fighter, text, category }) {
+  const likes = randInt(40, 6000);
   return {
     id: `sp${Date.now()}_${randInt(0, 999999)}`,
     week: state.week,
@@ -153,12 +155,32 @@ function makeChirp(state, { fighter, text, category }) {
     handle: chirpHandle(fighter.name),
     text,
     category,
-    likes: randInt(40, 6000),
+    likes,
+    viral: likes >= VIRAL_CHIRP_LIKES,
   };
 }
 
 function pushChirp(feed, chirp, cap = 100) {
   return [chirp, ...(feed || [])].slice(0, cap);
+}
+
+// A chirp that blows up nudges its poster's own follower count — a flat,
+// one-time bump layered on top of whatever the underlying event already
+// did to their followers. Only touches the one fighter list it's given.
+function viralBump(list, chirp) {
+  if (!chirp?.viral) return list;
+  return list.map(f => (f.id === chirp.fighterId ? { ...f, followers: (f.followers || 0) + VIRAL_FOLLOWER_BONUS } : f));
+}
+
+// Same idea, but for spots where the poster could be on either your
+// roster or living somewhere in the world pool (a rival-contracted
+// fight opponent, say) — checks both, only rewrites whichever one hits.
+function viralBumpAcrossPools(chirp, roster, worldPool) {
+  if (!chirp?.viral) return { roster, worldPool };
+  if (roster.some(f => f.id === chirp.fighterId)) return { roster: viralBump(roster, chirp), worldPool };
+  const wc = Object.keys(worldPool).find(k => worldPool[k].some(f => f.id === chirp.fighterId));
+  if (!wc) return { roster, worldPool };
+  return { roster, worldPool: { ...worldPool, [wc]: viralBump(worldPool[wc], chirp) } };
 }
 
 const WIN_HYPE_CHIRPS = [
@@ -232,6 +254,18 @@ const CALLOUT_CHIRPS = [
   target => `Callout: ${target}. Name the date, I'll be there.`,
 ];
 
+const RIVAL_HYPE_CHIRPS = [
+  () => `Another week, another reminder I'm the best in this division. Not up for debate. 💪`,
+  () => `Been putting in the work while everybody else is talking. Nobody's ready for what's coming.`,
+  () => `Still undefeated in my own head. Book somebody who can actually test that. 😤`,
+];
+
+const RIVAL_SHADE_CHIRPS = [
+  target => `Heard ${target} is still ducking real competition. Typical champion behavior.`,
+  target => `${target} can keep dodging me. The whole division sees it.`,
+  target => `Somebody tell ${target} the belt looks better on someone who actually defends it.`,
+];
+
 function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability, controversial }) {
   if (!fighter) return null;
   if (draw) return makeChirp(state, { fighter, category: 'result', text: pick(DRAW_CHIRPS)(opponentName) });
@@ -255,6 +289,21 @@ function loyaltyBeefChirp(state, fighter, loyalty) {
   if (Math.random() >= 0.4) return null; // not every unhappy fighter vents every single time out
   const template = pick(tier === 'resentful' ? LOYALTY_RESENTFUL_CHIRPS : LOYALTY_FRUSTRATED_CHIRPS);
   return makeChirp(state, { fighter, category: 'beef', text: template() });
+}
+
+// A rival-contracted fighter occasionally posts on their own, with
+// nothing you did prompting it — hype about their own run, or shade
+// aimed at whoever holds their division's belt in your promotion, if
+// anyone does. Only fighters with some real name value bother.
+function rollRivalChirp(state) {
+  const rivalFighters = Object.values(state.worldPool).flat().filter(f => f.promotionId && isNotableFighter(f));
+  if (rivalFighters.length === 0) return null;
+  const fighter = pick(rivalFighters);
+  const yourChamp = state.titles[fighter.weightClass] ? state.roster.find(f => f.id === state.titles[fighter.weightClass].holderId) : null;
+  if (yourChamp && Math.random() < 0.5) {
+    return makeChirp(state, { fighter, category: 'rival', text: pick(RIVAL_SHADE_CHIRPS)(yourChamp.name) });
+  }
+  return makeChirp(state, { fighter, category: 'rival', text: pick(RIVAL_HYPE_CHIRPS)() });
 }
 
 // After a win, a fighter sometimes calls out a specific name in their
@@ -911,10 +960,12 @@ export function gameReducer(state, action) {
       // away from the table rather than sign back up.
       if (Math.random() >= renewalAcceptChance(loyalty)) {
         let socialFeed = state.socialFeed;
-        if (loyalty < 35) socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter, category: 'beef', text: pick(CONTRACT_REFUSAL_CHIRPS)() }));
+        const refusalChirp = loyalty < 35 ? makeChirp(state, { fighter, category: 'beef', text: pick(CONTRACT_REFUSAL_CHIRPS)() }) : null;
+        if (refusalChirp) socialFeed = pushChirp(socialFeed, refusalChirp);
         return {
           ...state,
           socialFeed,
+          roster: viralBump(state.roster, refusalChirp),
           news: [{
             id: `n${Date.now()}_contractrefused`,
             week: state.week,
@@ -928,14 +979,18 @@ export function gameReducer(state, action) {
       }
 
       let socialFeed = state.socialFeed;
-      if (loyalty >= 80) socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter, category: 'signing', text: pick(LOYAL_RENEWAL_CHIRPS)() }));
+      const renewalChirp = loyalty >= 80 ? makeChirp(state, { fighter, category: 'signing', text: pick(LOYAL_RENEWAL_CHIRPS)() }) : null;
+      if (renewalChirp) socialFeed = pushChirp(socialFeed, renewalChirp);
+      const viralRenewalBonus = renewalChirp?.viral ? VIRAL_FOLLOWER_BONUS : 0;
 
       return {
         ...state,
         funds: state.funds - cost,
         socialFeed,
         // Locking in more fights together is itself a vote of confidence.
-        roster: state.roster.map(f => (f.id === fighter.id ? { ...f, contractFightsLeft: fights, loyalty: clampLoyalty(loyalty + 5) } : f)),
+        roster: state.roster.map(f => (f.id === fighter.id
+          ? { ...f, contractFightsLeft: fights, loyalty: clampLoyalty(loyalty + 5), followers: (f.followers || 0) + viralRenewalBonus }
+          : f)),
       };
     }
 
@@ -1002,9 +1057,8 @@ export function gameReducer(state, action) {
       const card = { id: cardId, name, venue, weeksOut, createdWeek: state.week, ...ppv.cardFields };
       const fight = buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week: state.week });
       const callout = resolveCallouts(state, [fight]);
-      const socialFeed = wantsPPV
-        ? pushChirp(state.socialFeed, makeChirp(state, { fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(opponent.name) }))
-        : state.socialFeed;
+      const ppvChirp = wantsPPV ? makeChirp(state, { fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(opponent.name) }) : null;
+      const socialFeed = ppvChirp ? pushChirp(state.socialFeed, ppvChirp) : state.socialFeed;
       return {
         ...state,
         funds: state.funds - cost + ppv.revenue,
@@ -1012,6 +1066,7 @@ export function gameReducer(state, action) {
         scheduledFights: [...state.scheduledFights, fight],
         callouts: callout.callouts,
         socialFeed,
+        roster: viralBump(state.roster, ppvChirp),
         news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
         prestige: state.prestige + callout.prestigeBonus,
         meta: {
@@ -1082,9 +1137,8 @@ export function gameReducer(state, action) {
       }));
       const callout = resolveCallouts(state, fights);
 
-      const socialFeed = wantsPPV
-        ? pushChirp(state.socialFeed, makeChirp(state, { fighter: headliner.fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(headliner.opponent.name) }))
-        : state.socialFeed;
+      const ppvChirp = wantsPPV ? makeChirp(state, { fighter: headliner.fighter, category: 'ppv', text: pick(PPV_HYPE_CHIRPS)(headliner.opponent.name) }) : null;
+      const socialFeed = ppvChirp ? pushChirp(state.socialFeed, ppvChirp) : state.socialFeed;
 
       return {
         ...state,
@@ -1093,6 +1147,7 @@ export function gameReducer(state, action) {
         scheduledFights: [...state.scheduledFights, ...fights],
         callouts: callout.callouts,
         socialFeed,
+        roster: viralBump(state.roster, ppvChirp),
         news: [...callout.news, ...(ppv.news ? [ppv.news] : []), ...state.news],
         prestige: state.prestige + callout.prestigeBonus,
         meta: {
@@ -1229,6 +1284,14 @@ export function gameReducer(state, action) {
         news.unshift({ id: `n${Date.now()}_flavor`, week, category: 'rival', title: `${promo.name} announces a new card`, body: `${promo.name} continues to expand its reach as a ${promo.tier.toLowerCase()} organization.` });
       }
 
+      // A rival fighter occasionally pipes up on their own — no fight of
+      // yours prompted it, they just felt like posting.
+      let socialFeed = state.socialFeed;
+      if (Math.random() < RIVAL_CHIRP_CHANCE) {
+        const rivalChirp = rollRivalChirp(state);
+        if (rivalChirp) socialFeed = pushChirp(socialFeed, rivalChirp);
+      }
+
       return {
         ...state,
         week,
@@ -1243,6 +1306,7 @@ export function gameReducer(state, action) {
         freeAgents,
         worldPool,
         news,
+        socialFeed,
         callouts,
         meta: { ...state.meta, brokeWeeks },
         ui: bankrupt ? { ...state.ui, screen: 'gameOver' } : state.ui,
@@ -1415,7 +1479,7 @@ export function gameReducer(state, action) {
       let fighterFollowerDelta = 0;
       let opponentFollowerDelta = 0;
 
-      const roster = state.roster.map(f => {
+      let roster = state.roster.map(f => {
         if (f.id === active.fighterId) {
           const oppOverall = findFighterAnywhere(state, active.opponentId)?.overall || f.overall;
           const { fighter: updated, followerDelta } = updateRecord(f, fighterWon, draw, isFinish ? result.method : null, damageTakenA, oppOverall);
@@ -1426,7 +1490,7 @@ export function gameReducer(state, action) {
         return f;
       });
 
-      const worldPool = { ...state.worldPool };
+      let worldPool = { ...state.worldPool };
       Object.keys(worldPool).forEach(wc => {
         worldPool[wc] = worldPool[wc].map(f => {
           if (f.id === active.opponentId) {
@@ -1496,6 +1560,20 @@ export function gameReducer(state, action) {
         controversial,
       });
       if (reactionChirp) socialFeed = pushChirp(socialFeed, reactionChirp);
+      // The other side of the fight reacts too, when they're someone real —
+      // a rival-contracted fighter or a name notable enough that fans
+      // actually expect to hear from them. A total unknown stays quiet.
+      const opponentReactionChirp = (oppRef?.promotionId || isNotableFighter(oppRef)) ? fightReactionChirp(state, {
+        fighter: oppRef,
+        opponentName: fighterRef?.name,
+        fighterWon: !fighterWon && !draw,
+        draw,
+        winProbability: fight?.winProbability != null ? 1 - fight.winProbability : undefined,
+        controversial,
+      }) : null;
+      if (opponentReactionChirp) socialFeed = pushChirp(socialFeed, opponentReactionChirp);
+      ({ roster, worldPool } = viralBumpAcrossPools(reactionChirp, roster, worldPool));
+      ({ roster, worldPool } = viralBumpAcrossPools(opponentReactionChirp, roster, worldPool));
       if (bonusType) {
         news.unshift({
           id: `n${Date.now()}_bonus`,
@@ -1600,16 +1678,23 @@ export function gameReducer(state, action) {
             title: `${bookedFighterPostFight.name}'s contract is up — signs with ${promo.name}`,
             body: departureFlavor(bookedFighterPostFight.name, promo.name, loyalty),
           });
-          socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter: bookedFighterPostFight, category: 'departure', text: pick(DEPARTURE_CHIRPS)(promo.name) }));
+          const departureChirp = makeChirp(state, { fighter: bookedFighterPostFight, category: 'departure', text: pick(DEPARTURE_CHIRPS)(promo.name) });
+          socialFeed = pushChirp(socialFeed, departureChirp);
+          ({ roster: roster2, worldPool } = viralBumpAcrossPools(departureChirp, roster2, worldPool));
         } else {
           roster2 = roster2.map(f => (f.id === bookedFighterPostFight.id ? { ...f, contractFightsLeft, loyalty, weeksSinceLastFight: 0 } : f));
           const beefChirp = loyaltyBeefChirp(state, bookedFighterPostFight, loyalty);
-          if (beefChirp) socialFeed = pushChirp(socialFeed, beefChirp);
+          if (beefChirp) {
+            socialFeed = pushChirp(socialFeed, beefChirp);
+            ({ roster: roster2, worldPool } = viralBumpAcrossPools(beefChirp, roster2, worldPool));
+          }
           if (fighterWon) {
             const callout = rollCallout(state, bookedFighterPostFight);
             if (callout) {
               callouts = [...callouts, callout];
-              socialFeed = pushChirp(socialFeed, makeChirp(state, { fighter: bookedFighterPostFight, category: 'callout', text: pick(CALLOUT_CHIRPS)(callout.targetName) }));
+              const calloutChirp = makeChirp(state, { fighter: bookedFighterPostFight, category: 'callout', text: pick(CALLOUT_CHIRPS)(callout.targetName) });
+              socialFeed = pushChirp(socialFeed, calloutChirp);
+              ({ roster: roster2, worldPool } = viralBumpAcrossPools(calloutChirp, roster2, worldPool));
             }
           }
         }

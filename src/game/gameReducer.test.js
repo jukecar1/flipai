@@ -9,6 +9,7 @@ import {
   LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
   sponsorIncome, potnChance, fotnChance, controversyChance, isMismatchedBooking, isNotableFighter, isLegacyFight,
   LEGACY_FIGHT_PURSE_BONUS_PCT, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS, MISMATCH_OVERALL_GAP, NOTABLE_FIGHTER_OVERALL,
+  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -163,7 +164,9 @@ test('winning a fight grows followers; losing shrinks them (floored at 0)', () =
   const bookedLoss = bookMainEvent(loseStateWithFollowers, 'champ1');
   const lost = resolveWithResult(bookedLoss, bookedLoss.scheduledFights[0].id, 'champ1', 'opp1', 'KO', 'opp1');
   expect(lost.roster.find(f => f.id === 'champ1').followers).toBeGreaterThanOrEqual(0);
-  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeLessThan(6); // a tiny starting base can't go negative
+  // A loss reaction chirp can rarely go viral (likes >= VIRAL_CHIRP_LIKES) and add a
+  // further one-time bump on top — this still bounds out runaway growth from a loss.
+  expect(lost.roster.find(f => f.id === 'champ1').followers).toBeLessThan(6 + VIRAL_FOLLOWER_BONUS);
 });
 
 test('drawMultiplier scales purse potential with combined followers, capped', () => {
@@ -1037,6 +1040,71 @@ test('the social feed is capped so it never grows unbounded over a long career',
   const next = gameReducer({ ...resentfulState, socialFeed: seeded }, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
   spy.mockRestore();
   expect(next.socialFeed.length).toBeLessThanOrEqual(100);
+});
+
+test('a rival-contracted opponent posts a reaction chirp of their own', () => {
+  const rivalOpp = { ...opponent, id: 'rival-opp', promotionId: 'apex' };
+  let state = gameReducer(baseState(), { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent: rivalOpp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+  state = { ...state, worldPool: { ...state.worldPool, FLW: [rivalOpp] } };
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'rival-opp', 'UD', 'champ1');
+  expect(next.socialFeed.some(p => p.category === 'result' && p.fighterId === 'rival-opp')).toBe(true);
+});
+
+test('an ordinary free-agent opponent does not get an unearned reaction chirp', () => {
+  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(next.socialFeed.some(p => p.fighterId === 'opp1')).toBe(false);
+});
+
+test('a loyal renewal chirp that goes viral gives the fighter a follower bump', () => {
+  const state = baseState();
+  const loyalState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 90, followers: 500 } : f)) };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.9); // accepts the renewal and pushes the chirp's likes past the viral threshold
+  const next = gameReducer(loyalState, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
+  spy.mockRestore();
+  const chirp = next.socialFeed.find(p => p.category === 'signing' && p.fighterId === 'champ1');
+  expect(chirp.viral).toBe(true);
+  expect(chirp.likes).toBeGreaterThanOrEqual(VIRAL_CHIRP_LIKES);
+  expect(next.roster.find(f => f.id === 'champ1').followers).toBe(500 + VIRAL_FOLLOWER_BONUS);
+});
+
+test('a renewal chirp well under the viral threshold leaves followers untouched', () => {
+  const state = baseState();
+  const loyalState = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 90, followers: 500 } : f)) };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0.01); // accepts the renewal, but likes stay far below the viral threshold
+  const next = gameReducer(loyalState, { type: 'RENEW_CONTRACT', fighterId: 'champ1', fights: 3 });
+  spy.mockRestore();
+  const chirp = next.socialFeed.find(p => p.category === 'signing' && p.fighterId === 'champ1');
+  expect(chirp.viral).toBe(false);
+  expect(next.roster.find(f => f.id === 'champ1').followers).toBe(500);
+});
+
+test('a rival-contracted fighter can post unprompted while a week advances', () => {
+  const rivalStar = { ...opponent, id: 'rival-star', promotionId: 'apex', overall: NOTABLE_FIGHTER_OVERALL };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = { ...baseState(), worldPool: { ...emptyPools, FLW: [rivalStar] } };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // guarantees the weekly roll fires and the candidate pick is deterministic
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  expect(next.socialFeed.some(p => p.category === 'rival' && p.fighterId === 'rival-star')).toBe(true);
+});
+
+test('a rival fighter can call out your division champion instead of just hyping themselves', () => {
+  const rivalStar = { ...opponent, id: 'rival-star', promotionId: 'apex', overall: NOTABLE_FIGHTER_OVERALL };
+  const emptyPools = Object.fromEntries(Object.keys(baseState().worldPool).map(k => [k, []]));
+  const state = {
+    ...baseState(),
+    worldPool: { ...emptyPools, FLW: [rivalStar] },
+    titles: { FLW: { holderId: 'champ1', holderName: 'Test Champion', defenses: 0 } },
+  };
+  const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // both the roll-to-post and the shade-vs-hype coinflip land on shade
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  spy.mockRestore();
+  const post = next.socialFeed.find(p => p.fighterId === 'rival-star');
+  expect(post.category).toBe('rival');
+  expect(post.text).toMatch(/Test Champion/);
 });
 
 // ---------- Promotion tier ladder ----------
