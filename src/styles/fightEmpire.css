@@ -3293,6 +3293,105 @@ button, select, input {
   gap: 12px;
 }
 
+/* ---------- Weigh-in / face-off ---------- */
+
+.fe-weighin {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--fe-panel);
+  border: 1px solid var(--fe-border);
+  border-radius: var(--fe-radius);
+}
+
+.fe-weighin-billing {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.fe-weighin-event {
+  font-family: var(--fe-font-display);
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--fe-gold);
+}
+
+.fe-weighin-wc {
+  font-family: var(--fe-font-display);
+  letter-spacing: 0.5px;
+  margin: 0 0 24px;
+  color: var(--fe-text-dim);
+  font-size: 16px;
+}
+
+.fe-weighin-faceoff {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.fe-weighin-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 200px;
+}
+
+.fe-weighin-name {
+  font-family: var(--fe-font-display);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fe-weighin-record {
+  color: var(--fe-text-dim);
+  font-size: 13px;
+}
+
+.fe-weighin-odds {
+  font-family: var(--fe-font-display);
+  font-size: 22px;
+  color: var(--fe-gold);
+  margin-top: 4px;
+}
+
+.fe-weighin-vs {
+  font-family: var(--fe-font-display);
+  font-size: 28px;
+  color: var(--fe-red);
+  letter-spacing: 1px;
+}
+
+.fe-weighin-hint {
+  max-width: 480px;
+  margin: 0 auto 20px;
+}
+
+.fe-weighin-begin {
+  min-width: 240px;
+}
+
+@media (max-width: 640px) {
+  .fe-weighin-faceoff {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .fe-weighin-vs {
+    transform: rotate(90deg);
+  }
+}
+
 .fe-fs-header {
   display: flex;
   justify-content: space-between;

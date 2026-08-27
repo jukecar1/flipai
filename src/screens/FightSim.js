@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASS_MAP, GAMEPLANS } from '../game/constants';
-import { Panel, Button, Flag } from '../components/UI';
+import { winProbability } from '../game/gameReducer';
+import { Panel, Button, Flag, Avatar, Followers, StreakBadge } from '../components/UI';
 
 const SPEEDS = [1, 2, 4, 8];
 const LANDED_TYPES = new Set(['landed', 'knockdown', 'takedown', 'submission']);
@@ -49,8 +50,12 @@ export default function FightSim() {
   const finished = !!activeFight?.finished;
   const ticks = useMemo(() => (activeFight ? buildTicks(activeFight.sim, finished) : []), [activeFight, finished]);
 
+  // Auto-skip means the player already opted out of watching — go
+  // straight to the live/skip-to-end flow rather than making them click
+  // through a staredown for a fight they won't see anyway.
+  const [phase, setPhase] = useState(state.meta.autoSkipFights ? 'live' : 'weighin');
   const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(phase === 'live');
   const [speed, setSpeed] = useState(1);
   const [statsView, setStatsView] = useState('round'); // 'round' | 'fight'
   const [log, setLog] = useState([]);
@@ -120,6 +125,20 @@ export default function FightSim() {
         <Panel title="No active fight">
           <p>Return to the hub to book a fight.</p>
         </Panel>
+      </div>
+    );
+  }
+
+  if (phase === 'weighin') {
+    return (
+      <div className="fe-fight-sim">
+        <WeighInView
+          fighter={fighter}
+          opponent={opponent}
+          fightMeta={fightMeta}
+          eventCard={eventCard}
+          onBegin={() => { setPhase('live'); setPlaying(true); }}
+        />
       </div>
     );
   }
@@ -323,6 +342,45 @@ export default function FightSim() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// The staredown — real MMA's most recognizable pre-fight ritual. Pure
+// presentation: no dispatch happens here until "Let's Get It On!" hands
+// control back to the actual simulation.
+function WeighInView({ fighter, opponent, fightMeta, eventCard, onBegin }) {
+  const wc = WEIGHT_CLASS_MAP[fighter.weightClass];
+  const odds = Math.round(winProbability(fighter, opponent) * 100);
+  return (
+    <div className="fe-weighin">
+      <div className="fe-weighin-billing">
+        {eventCard?.name && <span className="fe-weighin-event">{eventCard.name}</span>}
+        {fightMeta?.isTitle && <span className="fe-title-fight-badge">🏆 TITLE FIGHT</span>}
+        {fightMeta?.isRematch && <span className="fe-title-fight-badge fe-rematch-badge">🔁 REMATCH</span>}
+        {fightMeta?.isSuperFight && <span className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER</span>}
+      </div>
+      <h2 className="fe-weighin-wc">{wc?.name} · {fightMeta?.rounds || fighter.rounds || 3} Rounds</h2>
+      <div className="fe-weighin-faceoff">
+        <WeighInFighter fighter={fighter} odds={odds} align="left" />
+        <div className="fe-weighin-vs">VS</div>
+        <WeighInFighter fighter={opponent} odds={100 - odds} align="right" />
+      </div>
+      <p className="fe-hint fe-weighin-hint">Both fighters make weight. Cameras flash, the stare-down holds, the referee gives final instructions.</p>
+      <Button variant="advance" className="fe-weighin-begin" onClick={onBegin}>Let's Get It On! 🔔</Button>
+    </div>
+  );
+}
+
+function WeighInFighter({ fighter, odds, align }) {
+  return (
+    <div className={`fe-weighin-side fe-weighin-side-${align}`}>
+      <Avatar fighter={fighter} size={88} champion={fighter.champion || !!fighter.title} />
+      <div className="fe-weighin-name">{fighter.name} <Flag nationality={fighter.nationality} /></div>
+      <div className="fe-weighin-record">{fighter.record.wins}-{fighter.record.losses}-{fighter.record.draws}</div>
+      <StreakBadge fighter={fighter} />
+      <Followers count={fighter.followers} />
+      <div className="fe-weighin-odds">{odds}%</div>
     </div>
   );
 }
