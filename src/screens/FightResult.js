@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGameState, useGameActions } from '../context/GameContext';
+import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
 import { Panel, Button, Followers } from '../components/UI';
 
 const METHOD_TEXT = {
@@ -14,6 +14,7 @@ const METHOD_TEXT = {
 
 export default function FightResult() {
   const state = useGameState();
+  const dispatch = useGameDispatch();
   const { goTo } = useGameActions();
   const last = state.fightHistory[0];
 
@@ -21,6 +22,13 @@ export default function FightResult() {
     goTo('hub');
     return null;
   }
+
+  // The last bout resolved is already off scheduledFights by the time we
+  // land here — if another one (say, the next slot on the same card) is
+  // already due, offer to jump straight into it instead of a detour
+  // through Hub just to click the same FIGHT button again.
+  const nextReady = state.scheduledFights.find(f => f.weeksOut <= 0);
+  const nextFight = () => dispatch({ type: 'PREPARE_FIGHT_SIM', fightId: nextReady.id });
 
   const fighter = state.roster.find(f => f.id === last.fighterId);
   const opponent = Object.values(state.worldPool).flat().find(f => f.id === last.opponentId);
@@ -61,7 +69,12 @@ export default function FightResult() {
           <StatBlock label={fighter?.name} stats={result.totalStats.A} followers={fighter?.followers} delta={last.fighterFollowerDelta} />
           <StatBlock label={opponent?.name} stats={result.totalStats.B} followers={opponent?.followers} delta={last.opponentFollowerDelta} />
         </div>
-        <Button variant="advance" onClick={() => goTo('hub')} className="fe-confirm-btn">Back to Hub</Button>
+        <div className="fe-wizard-actions">
+          <Button variant={nextReady ? 'secondary' : 'advance'} onClick={() => goTo('hub')} className={nextReady ? '' : 'fe-confirm-btn'}>Back to Hub</Button>
+          {nextReady && (
+            <Button variant="advance" onClick={nextFight} className="fe-confirm-btn">Next Fight ▶</Button>
+          )}
+        </div>
       </Panel>
     </div>
   );

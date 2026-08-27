@@ -809,6 +809,21 @@ function CardBuilderFlow() {
   };
   const removeBout = i => setPendingBouts(prev => prev.filter((_, idx) => idx !== i));
 
+  // Shared by the "Add Bouts" step (so you can see and prune what's
+  // already on the card without leaving to Review) and Review itself.
+  const renderBoutRow = (b, i) => (
+    <div key={i} className="fe-fight-row">
+      <Avatar fighter={{ name: b.fighterName, weightClass: b.fighterWeightClass }} size={26} />
+      <WeightPill id={b.fighterWeightClass} />
+      {b.isTitle && <span title="Title fight">🏆</span>}
+      {b.isInterimTitle && <span title="Interim title fight">🥈</span>}
+      {b.opponent.promotionId && <span title="Crossover event">⚔️</span>}
+      <span className="fe-fight-title">{b.fighterName} v {b.opponent.name} <span className="fe-hint">({TYPE_LABELS[b.fightType]})</span></span>
+      {venue && <CrowdMeter combinedFollowers={(b.fighterFollowers || 0) + (b.opponent.followers || 0)} capacity={venue.capacity} compact />}
+      <button className="fe-retire-btn" onClick={() => removeBout(i)}>Remove</button>
+    </div>
+  );
+
   const bookCard = () => {
     if (!canBookCard) return;
     dispatch({
@@ -889,6 +904,14 @@ function CardBuilderFlow() {
             )}
           </>
         )}
+        {pendingBouts.length > 0 && (
+          <>
+            <div className="fe-subheading">Bouts on This Card ({pendingBouts.length}/{CARD_MAX_FIGHTS})</div>
+            <div className="fe-fight-list">
+              {pendingBouts.map(renderBoutRow)}
+            </div>
+          </>
+        )}
         <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => setStep('venue')}>Back</Button>
           <Button variant="advance" onClick={() => setStep('review')} disabled={pendingBouts.length === 0}>Continue to Review</Button>
@@ -905,18 +928,7 @@ function CardBuilderFlow() {
           </p>
         )}
         <div className="fe-fight-list">
-          {pendingBouts.map((b, i) => (
-            <div key={i} className="fe-fight-row">
-              <Avatar fighter={{ name: b.fighterName, weightClass: b.fighterWeightClass }} size={26} />
-              <WeightPill id={b.fighterWeightClass} />
-              {b.isTitle && <span title="Title fight">🏆</span>}
-              {b.isInterimTitle && <span title="Interim title fight">🥈</span>}
-              {b.opponent.promotionId && <span title="Crossover event">⚔️</span>}
-              <span className="fe-fight-title">{b.fighterName} v {b.opponent.name} <span className="fe-hint">({TYPE_LABELS[b.fightType]})</span></span>
-              {venue && <CrowdMeter combinedFollowers={(b.fighterFollowers || 0) + (b.opponent.followers || 0)} capacity={venue.capacity} compact />}
-              <button className="fe-retire-btn" onClick={() => removeBout(i)}>Remove</button>
-            </div>
-          ))}
+          {pendingBouts.map(renderBoutRow)}
         </div>
         {canOfferPPV && (
           <PPVToggle

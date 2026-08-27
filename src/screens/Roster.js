@@ -61,7 +61,19 @@ export default function Roster() {
       dispatch({ type: 'RETIRE_FIGHTER', fighterId: fighter.id });
     }
   };
-  const moveWeight = (fighter, direction) => dispatch({ type: 'MOVE_WEIGHT_CLASS', fighterId: fighter.id, direction });
+  const moveWeight = (fighter, direction) => {
+    const idx = WEIGHT_CLASSES.findIndex(w => w.id === fighter.weightClass);
+    const target = WEIGHT_CLASSES[direction === 'heavier' ? idx - 1 : idx + 1];
+    if (!target) return;
+    // Their raw stats don't change at all — this only moves who they
+    // compete against, and it isn't free: real money plus a fatigue hit
+    // from the cut/gain, so it's worth a beat to confirm before spending.
+    const ok = window.confirm(
+      `Move ${fighter.name} to ${target.name} for $${WEIGHT_MOVE_COST.toLocaleString()}? Their stats stay the same — this just changes who they compete against — but the cut/gain adds a fatigue hit, so give them time to recover before booking their next fight.`
+    );
+    if (!ok) return;
+    dispatch({ type: 'MOVE_WEIGHT_CLASS', fighterId: fighter.id, direction });
+  };
 
   return (
     <div className="fe-roster">
@@ -160,8 +172,8 @@ export default function Roster() {
                 </button>
                 <span>${f.purseFloor.toLocaleString()}</span>
                 <span className="fe-roster-actions">
-                  <button className="fe-move-btn" disabled={!canMoveUp} onClick={() => moveWeight(f, 'heavier')} title={`Move up a weight class ($${WEIGHT_MOVE_COST.toLocaleString()})`}>▲</button>
-                  <button className="fe-move-btn" disabled={!canMoveDown} onClick={() => moveWeight(f, 'lighter')} title={`Move down a weight class ($${WEIGHT_MOVE_COST.toLocaleString()})`}>▼</button>
+                  <button className="fe-move-btn" disabled={!canMoveUp} onClick={() => moveWeight(f, 'heavier')} title={`Move up a weight class ($${WEIGHT_MOVE_COST.toLocaleString()}) — adds a fatigue hit`}>▲</button>
+                  <button className="fe-move-btn" disabled={!canMoveDown} onClick={() => moveWeight(f, 'lighter')} title={`Move down a weight class ($${WEIGHT_MOVE_COST.toLocaleString()}) — adds a fatigue hit`}>▼</button>
                   <button className="fe-retire-btn" onClick={() => retire(f)} title={`Retire ${f.name}`}>Retire</button>
                 </span>
               </div>
