@@ -1,7 +1,7 @@
 import {
   gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue,
   currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere, headToHeadRecord,
-  divisionRankings, titleImplications, attentionItems,
+  divisionRankings, titleImplications, attentionItems, poachOddsFor,
 } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
@@ -873,6 +873,15 @@ test('freshly generated fighters get a varied, in-bounds loyalty reading', () =>
     expect(f.loyalty).toBeLessThanOrEqual(LOYALTY_MAX);
   });
   expect(new Set(fighters.map(f => f.loyalty)).size).toBeGreaterThan(1);
+});
+
+test('poachOddsFor matches poachChance for the state\'s actual prestige gap and the target\'s own loyalty', () => {
+  const state = baseState();
+  const rival = state.rivals.find(r => r.id === 'apex');
+  const target = { ...opponent, id: 'poach-target', promotionId: 'apex', loyalty: 20 };
+  const withTarget = { ...state, worldPool: { ...state.worldPool, FLW: [...state.worldPool.FLW, target] } };
+  const expected = poachChance(withTarget.prestige - rival.prestige, 20);
+  expect(poachOddsFor(withTarget, target)).toBe(expected);
 });
 
 test('poachChance rewards a target who is already unhappy with their current promotion', () => {

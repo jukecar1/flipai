@@ -1,7 +1,8 @@
 import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, poachCostFor, rosterLimitForGym } from '../game/constants';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
+import { poachOddsFor } from '../game/gameReducer';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton, PoachOdds } from '../components/UI';
 
 export default function Titles() {
   const state = useGameState();
@@ -49,6 +50,7 @@ export default function Titles() {
                       ) : (
                         <>
                           <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
+                          <PoachOdds chance={poachOddsFor(state, holder)} />
                           <Button
                             variant="secondary"
                             className="fe-scout-sign-btn"

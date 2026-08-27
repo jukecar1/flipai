@@ -1,8 +1,8 @@
 import React from 'react';
 import { useGameState, useGameDispatch } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS, PROMOTION_TIERS, freeAgentCost, poachCostFor, rosterLimitForGym } from '../game/constants';
-import { currentPromotionTier, promotionTierProgress } from '../game/gameReducer';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, formatFollowers, FighterNameButton } from '../components/UI';
+import { currentPromotionTier, promotionTierProgress, poachOddsFor } from '../game/gameReducer';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, formatFollowers, FighterNameButton, PoachOdds } from '../components/UI';
 
 export default function Promotions() {
   const state = useGameState();
@@ -144,6 +144,7 @@ export default function Promotions() {
                     <span className="fe-champ-record">{champ.record.wins}-{champ.record.losses}-{champ.record.draws}</span>
                     <Followers count={champ.followers} />
                     <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
+                    <PoachOdds chance={poachOddsFor(state, champ)} />
                     <Button
                       variant="secondary"
                       className="fe-scout-sign-btn"

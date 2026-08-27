@@ -824,6 +824,15 @@ export function attentionItems(state) {
   return items.sort((a, b) => a.priority - b.priority);
 }
 
+// Odds a poach attempt actually lands — shared by every screen with a
+// Poach button so the player sees the same number the reducer is about
+// to roll against, instead of spending a scouting-cost sum blind.
+export function poachOddsFor(state, target) {
+  const rivalPromo = state.rivals.find(r => r.id === target.promotionId);
+  const targetLoyalty = target.loyalty ?? LOYALTY_BASELINE;
+  return poachChance(state.prestige - (rivalPromo?.prestige || 0), targetLoyalty);
+}
+
 // Combined social following of both fighters drives ticket/PPV demand —
 // a bigger draw fills more seats and pushes the gate (and everyone's cut
 // of it) up, on top of what the venue and card type already set.

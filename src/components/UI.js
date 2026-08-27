@@ -150,6 +150,20 @@ export function ContractBadge({ fighter }) {
   );
 }
 
+// A poach attempt is a real dice roll (poachChance in constants.js) —
+// this surfaces the exact number the reducer is about to check Math.random()
+// against, so spending a buyout fee is an informed bet, not a blind one.
+export function PoachOdds({ chance }) {
+  if (chance == null) return null;
+  const pct = Math.round(chance * 100);
+  const tier = pct < 25 ? 'danger' : pct < 50 ? 'warn' : 'safe';
+  return (
+    <span className={`fe-contract-pill fe-contract-pill-${tier}`} title="Chance the poach succeeds — it costs nothing if it fails">
+      {pct}% odds
+    </span>
+  );
+}
+
 // Every fighter's name is clickable everywhere they show up — this is the
 // one place that wiring lives, so a screen just swaps a plain <span> for
 // this and gets the shared mini-profile popup for free (see
