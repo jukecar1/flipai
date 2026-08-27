@@ -1260,6 +1260,36 @@ button, select, input {
   font-size: 12px;
 }
 
+/* A compact stat + OVR readout for scout/amateur candidate rows — you
+   shouldn't have to sign someone blind just to see what they're made of. */
+.fe-stat-readout {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fe-stat-readout-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.fe-stat-readout-label {
+  color: var(--fe-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.fe-stat-readout-value {
+  color: var(--fe-text);
+  font-weight: 700;
+}
+
+.fe-stat-readout-ovr .fe-stat-readout-value {
+  color: var(--fe-gold);
+}
+
 .fe-empty {
   color: var(--fe-text-dim);
   font-size: 13px;
@@ -2013,6 +2043,14 @@ button, select, input {
 .fe-scout-candidate:hover {
   transform: none;
   border-color: transparent;
+}
+
+.fe-scout-candidate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
 }
 
 .fe-scout-sign-btn {

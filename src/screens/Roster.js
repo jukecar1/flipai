@@ -3,7 +3,7 @@ import { useGameState, useGameDispatch, useGameActions } from '../context/GameCo
 import { useFighterProfile } from '../context/FighterProfileContext';
 import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, WEIGHT_MOVE_COST, primeStatus, loyaltyStatus, LOYALTY_BASELINE } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton, StreakBadge } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton, StreakBadge, StatReadout } from '../components/UI';
 
 const ARCHETYPE_LABELS = {
   striker: 'Striker',
@@ -193,8 +193,11 @@ export default function Roster() {
                     <Avatar fighter={f} size={26} />
                     <WeightPill id={f.weightClass} />
                     <Flag nationality={f.nationality} />
-                    <span className="fe-boxer-name" title={f.name}>{f.name}</span>
-                    <span className="fe-boxer-record">{ARCHETYPE_LABELS[f.archetype]} · Age {f.age}</span>
+                    <div className="fe-scout-candidate-info">
+                      <span className="fe-boxer-name" title={f.name}>{f.name}</span>
+                      <span className="fe-boxer-record">{ARCHETYPE_LABELS[f.archetype]} · Age {f.age}</span>
+                      <StatReadout fighter={f} />
+                    </div>
                     <Button
                       variant="secondary"
                       className="fe-scout-sign-btn"

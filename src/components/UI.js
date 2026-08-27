@@ -1,6 +1,8 @@
 import React from 'react';
-import { WEIGHT_CLASS_MAP } from '../game/constants';
+import { WEIGHT_CLASS_MAP, STAT_KEYS } from '../game/constants';
 import { useFighterProfile } from '../context/FighterProfileContext';
+
+const SHORT_STAT_LABELS = { striking: 'STR', wrestling: 'WR', submission: 'SUB', chin: 'CHIN', cardio: 'CAR' };
 
 export function Panel({ title, children, className = '', right }) {
   return (
@@ -111,6 +113,27 @@ export function StreakBadge({ fighter }) {
   if (win >= 3) return <span className="fe-streak-badge fe-streak-win" title={`Won ${win} in a row`}>🔥{win}W</span>;
   if (loss >= 3) return <span className="fe-streak-badge fe-streak-loss" title={`Lost ${loss} in a row`}>❄️{loss}L</span>;
   return null;
+}
+
+// A compact stat + OVR line for anywhere you're sizing up a fighter you
+// don't own yet (scout candidates, amateurs) — a bare archetype/age label
+// doesn't tell you what you're actually signing.
+export function StatReadout({ fighter }) {
+  if (!fighter?.stats) return null;
+  return (
+    <span className="fe-stat-readout">
+      {STAT_KEYS.map(k => (
+        <span key={k} className="fe-stat-readout-item" title={k}>
+          <span className="fe-stat-readout-label">{SHORT_STAT_LABELS[k]}</span>
+          <span className="fe-stat-readout-value">{fighter.stats[k]}</span>
+        </span>
+      ))}
+      <span className="fe-stat-readout-item fe-stat-readout-ovr" title="Overall">
+        <span className="fe-stat-readout-label">OVR</span>
+        <span className="fe-stat-readout-value">{fighter.overall}</span>
+      </span>
+    </span>
+  );
 }
 
 // A quick red/orange/green read on how much runway is left on a
