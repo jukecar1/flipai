@@ -66,6 +66,10 @@ export function makeFighter({ weightClassId, level = 'prospect', seedId } = {}) 
     stats,
     overall: clamp(overall, 1, 20),
     record: { wins, losses, draws, kos, subs },
+    // A freshly generated fighter's streak starts neutral — we don't know
+    // their real recent form, just their career-to-date record.
+    winStreak: 0,
+    lossStreak: 0,
     followers,
     fatigue: 0,
     injuryWeeks: 0,

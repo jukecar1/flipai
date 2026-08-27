@@ -7,7 +7,7 @@ import {
   loyaltyStatus, LOYALTY_BASELINE, trainingCost, RIVAL_PROMOTIONS, poachCostFor, freeAgentCost,
   AMATEUR_PROMOTION_WINS, rosterLimitForGym,
 } from '../game/constants';
-import { Button, WeightPill, Flag, Avatar, Followers } from '../components/UI';
+import { Button, WeightPill, Flag, Avatar, Followers, StreakBadge } from '../components/UI';
 
 const ARCHETYPE_LABELS = { striker: 'Striker', wrestler: 'Wrestler', allrounder: 'All-rounder' };
 const METHOD_LABELS = { KO: 'KO', TKO: 'TKO', SUB: 'Submission', UD: 'Decision', SD: 'Split Dec.', MD: 'Majority Dec.', DRAW: 'Draw' };
@@ -84,7 +84,7 @@ export default function FighterProfileScreen() {
               {(f.title || f.champion) && <span className="fe-belt-badge" title="Champion">🏆</span>}
             </div>
             <div className="fe-profile-sub">
-              {ARCHETYPE_LABELS[f.archetype] || 'Fighter'} · Age {f.age} · {f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)
+              {ARCHETYPE_LABELS[f.archetype] || 'Fighter'} · Age {f.age} · {f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB) <StreakBadge fighter={f} />
             </div>
           </div>
           <div className="fe-profile-badges">
@@ -165,6 +165,7 @@ export default function FighterProfileScreen() {
                 <div key={fh.id} className="fe-bout-row">
                   <span className="fe-news-week">W{fh.week}</span>
                   {fh.isTitle && <span title="Title fight">🏆</span>}
+                  {fh.isRematch && <span title="Rematch">🔁</span>}
                   <span className="fe-fight-title">
                     vs {opponentName || 'Unknown'}
                     {fh.eventName && <span className="fe-hint"> · {fh.eventName}</span>}

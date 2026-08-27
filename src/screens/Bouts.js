@@ -33,6 +33,7 @@ export default function Bouts() {
                 <span className="fe-news-week">W{fh.week}</span>
                 {fh.fighterWeightClass && <WeightPill id={fh.fighterWeightClass} />}
                 {fh.isTitle && <span title="Title fight">🏆</span>}
+                {fh.isRematch && <span title="Rematch">🔁</span>}
                 <span className="fe-fight-title">
                   {fighter ? <FighterNameButton fighter={fighter}>{fh.fighterName}</FighterNameButton> : (fh.fighterName || 'Your fighter')} v{' '}
                   {opponent ? <FighterNameButton fighter={opponent}>{fh.opponentName}</FighterNameButton> : (fh.opponentName || 'Unknown')}

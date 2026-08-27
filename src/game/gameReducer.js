@@ -12,6 +12,7 @@ import {
   CALLOUT_CHANCE, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS,
   VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, RIVAL_CHIRP_CHANCE, RIVAL_CARD_CHANCE, isNotableFighter,
   controversyChance, isMismatchedBooking, isLegacyFight, LEGACY_FIGHT_PURSE_BONUS_PCT,
+  REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -281,7 +282,13 @@ const RIVAL_SHADE_CHIRPS = [
   target => `Somebody tell ${target} the belt looks better on someone who actually defends it.`,
 ];
 
-function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability, controversial }) {
+const WIN_STREAK_CHIRPS = [
+  (opp, streak) => `${streak} in a row now after taking care of ${opp}. Somebody get in line.`,
+  (opp, streak) => `That's ${streak} straight. Been saying it the whole time — I'm the best in this division.`,
+  (opp, streak) => `${opp} makes ${streak} in a row. Ain't stopping any time soon.`,
+];
+
+function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, winProbability, controversial, winStreak = 0 }) {
   if (!fighter) return null;
   if (draw) return makeChirp(state, { fighter, category: 'result', text: pick(DRAW_CHIRPS)(opponentName) });
   if (controversial) {
@@ -289,6 +296,11 @@ function fightReactionChirp(state, { fighter, opponentName, fighterWon, draw, wi
     return makeChirp(state, { fighter, category: 'result', text: template(opponentName) });
   }
   if (fighterWon) {
+    // A real streak is the story of the fight — commentary always leads
+    // with it once a run gets long enough to actually mean something.
+    if (winStreak >= NOTABLE_STREAK_LENGTH) {
+      return makeChirp(state, { fighter, category: 'result', text: pick(WIN_STREAK_CHIRPS)(opponentName, winStreak) });
+    }
     const wasUnderdog = (winProbability ?? 0.5) <= 0.35;
     const template = pick(wasUnderdog ? WIN_UPSET_CHIRPS : WIN_HYPE_CHIRPS);
     return makeChirp(state, { fighter, category: 'result', text: template(opponentName) });
@@ -395,7 +407,13 @@ function simulateRivalCard(state, promo, worldPool) {
     } else {
       record.losses += 1;
     }
-    return { ...f, record, followers: Math.max(0, (f.followers || 0) + (isWinner ? winnerGain : -loserLoss)) };
+    return {
+      ...f,
+      record,
+      winStreak: isWinner ? (f.winStreak || 0) + 1 : 0,
+      lossStreak: isWinner ? 0 : (f.lossStreak || 0) + 1,
+      followers: Math.max(0, (f.followers || 0) + (isWinner ? winnerGain : -loserLoss)),
+    };
   };
 
   let updatedWinner = updateFighter(winner, true);
@@ -853,6 +871,23 @@ function resolvePPV(state, { wantsPPV, ppvPrice, headlinerA, headlinerB }) {
   return { productionFee: PPV_PRODUCTION_FEE, revenue, news, cardFields: { isPPV: true, ppvPrice: price, ppvBuys: buys, ppvRevenue: revenue } };
 }
 
+// Tallies every prior meeting between two fighters straight off fight
+// history — no separate state to keep in sync, just read the record.
+export function headToHeadRecord(fightHistory, idA, idB) {
+  const meetings = (fightHistory || []).filter(fh =>
+    (fh.fighterId === idA && fh.opponentId === idB) || (fh.fighterId === idB && fh.opponentId === idA)
+  );
+  let winsA = 0;
+  let winsB = 0;
+  let draws = 0;
+  meetings.forEach(fh => {
+    if (fh.result.method === 'DRAW') { draws += 1; return; }
+    if (fh.result.winnerId === idA) winsA += 1;
+    else if (fh.result.winnerId === idB) winsB += 1;
+  });
+  return { meetings: meetings.length, winsA, winsB, draws };
+}
+
 // Builds one scheduled-fight record — shared by every booking path
 // (Single Fight, a new card, adding to an existing card, or the
 // multi-bout card builder) so the shape never drifts between them.
@@ -862,6 +897,10 @@ function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venu
   // A veteran within sight of retirement headlining a Main Event could be
   // one of their last walks — a bigger draw, same as it would be for real.
   const legacyFight = fightType === FIGHT_TYPES.MAIN_EVENT && isLegacyFight(fighter.age);
+  // Unfinished business draws a bigger crowd than a fresh matchup — same
+  // bump real MMA gives a rubber match or a rematch of a close decision.
+  const h2h = headToHeadRecord(state.fightHistory, fighterId, opponent.id);
+  const isRematch = h2h.meetings > 0;
   const fight = {
     id: `f${Date.now()}_${randInt(0, 9999)}`,
     fighterId,
@@ -874,10 +913,13 @@ function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venu
     purse: Math.round(
       purseForFight(fighter, opponent, fightType, venue, currentPromotionTier(state).purseBonusPct)
       * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+      * (isRematch ? 1 + REMATCH_PURSE_BONUS_PCT / 100 : 1)
     ),
     isTitle: titleFight,
     isSuperFight,
     isLegacyFight: legacyFight,
+    isRematch,
+    priorMeetings: h2h.meetings,
     mismatch: isMismatchedBooking(fighter, opponent, fightType),
     winProbability: winProbability(fighter, opponent),
     gameplan: GAMEPLANS.some(g => g.id === gameplan) ? gameplan : 'balanced',
@@ -1636,10 +1678,16 @@ export function gameReducer(state, action) {
         const lostByFinish = !drew && !won && isFinish;
         const injuryWeeks = rollInjuryWeeks(damageTaken, lostByFinish);
         const followerDelta = followerChange(won, drew, opponentOverall, fighter.overall, isFinish, !!fight?.isTitle);
+        // A draw breaks either streak — same as it would for real; nobody's
+        // "on a run" through a fight nobody actually won.
+        const winStreak = drew ? 0 : won ? (fighter.winStreak || 0) + 1 : 0;
+        const lossStreak = drew ? 0 : won ? 0 : (fighter.lossStreak || 0) + 1;
         return {
           fighter: {
             ...fighter,
             record,
+            winStreak,
+            lossStreak,
             xp: fighter.xp + randInt(400, 900),
             fatigue: Math.min(100, fighter.fatigue + 40),
             injuryWeeks: Math.max(fighter.injuryWeeks || 0, injuryWeeks),
@@ -1653,6 +1701,8 @@ export function gameReducer(state, action) {
       let opponentInjuryWeeks = 0;
       let fighterFollowerDelta = 0;
       let opponentFollowerDelta = 0;
+      let fighterWinStreak = 0;
+      let opponentWinStreak = 0;
 
       let roster = state.roster.map(f => {
         if (f.id === active.fighterId) {
@@ -1660,6 +1710,7 @@ export function gameReducer(state, action) {
           const { fighter: updated, followerDelta } = updateRecord(f, fighterWon, draw, isFinish ? result.method : null, damageTakenA, oppOverall);
           fighterInjuryWeeks = updated.injuryWeeks;
           fighterFollowerDelta = followerDelta;
+          fighterWinStreak = updated.winStreak;
           return updated;
         }
         return f;
@@ -1674,6 +1725,7 @@ export function gameReducer(state, action) {
             const { fighter: updated, followerDelta } = updateRecord(f, oppWon, draw, isFinish ? result.method : null, damageTakenB, bookedFighterOverall);
             opponentInjuryWeeks = updated.injuryWeeks;
             opponentFollowerDelta = followerDelta;
+            opponentWinStreak = updated.winStreak;
             return updated;
           }
           return f;
@@ -1719,9 +1771,10 @@ export function gameReducer(state, action) {
 
       const oppPromo = oppRef?.promotionId ? RIVAL_PROMOTIONS.find(p => p.id === oppRef.promotionId) : null;
       const methodText = { KO: 'by knockout', TKO: 'by TKO', SUB: 'by submission', UD: 'by unanimous decision', SD: 'by split decision', MD: 'by majority decision', DRAW: 'to a draw' }[result.method];
+      const rematchPrefix = fight?.isRematch ? `Rematch: ` : '';
       const headline = draw
-        ? `${fighterRef?.name} and ${oppRef?.name} battle ${methodText}`
-        : `${fighterWon ? fighterRef?.name : oppRef?.name} defeats ${fighterWon ? oppRef?.name : fighterRef?.name} ${methodText}`;
+        ? `${rematchPrefix}${fighterRef?.name} and ${oppRef?.name} battle ${methodText}`
+        : `${rematchPrefix}${fighterWon ? fighterRef?.name : oppRef?.name} defeats ${fighterWon ? oppRef?.name : fighterRef?.name} ${methodText}`;
 
       const news = [{ id: `n${Date.now()}`, week: state.week, category: 'fight', title: headline, body: 'A fight for the ages in front of the crowd.' }];
       let socialFeed = state.socialFeed;
@@ -1733,6 +1786,7 @@ export function gameReducer(state, action) {
         draw,
         winProbability: fight?.winProbability,
         controversial,
+        winStreak: fighterWon ? fighterWinStreak : 0,
       });
       if (reactionChirp) socialFeed = pushChirp(socialFeed, reactionChirp);
       // The other side of the fight reacts too, when they're someone real —
@@ -1745,6 +1799,7 @@ export function gameReducer(state, action) {
         draw,
         winProbability: fight?.winProbability != null ? 1 - fight.winProbability : undefined,
         controversial,
+        winStreak: !fighterWon && !draw ? opponentWinStreak : 0,
       }) : null;
       if (opponentReactionChirp) socialFeed = pushChirp(socialFeed, opponentReactionChirp);
       // Beating an actual division champion from a rival promotion is
@@ -1918,6 +1973,7 @@ export function gameReducer(state, action) {
           result,
           isTitle: !!fight?.isTitle,
           isLegacyFight: !!fight?.isLegacyFight,
+          isRematch: !!fight?.isRematch,
           controversial,
           fighterFollowerDelta,
           opponentFollowerDelta,

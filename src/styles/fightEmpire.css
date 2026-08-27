@@ -970,6 +970,45 @@ button, select, input {
   color: #fff;
 }
 
+.fe-rematch-badge {
+  background: linear-gradient(90deg, #3a86ff, #1d4ed8);
+  color: #fff;
+}
+
+.fe-streak-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.fe-streak-win {
+  background: rgba(226, 38, 58, 0.18);
+  color: var(--fe-gold);
+}
+
+.fe-streak-loss {
+  background: rgba(58, 134, 255, 0.15);
+  color: #93c5fd;
+}
+
+.fe-rematch-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: rgba(58, 134, 255, 0.12);
+  border: 1px solid rgba(58, 134, 255, 0.3);
+  color: #93c5fd;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
 .fe-callout-list {
   display: flex;
   flex-direction: column;

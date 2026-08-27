@@ -4,9 +4,9 @@ import {
   FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, MAX_STAT,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE, isLegacyFight, isMismatchedBooking, LEGACY_FIGHT_PURSE_BONUS_PCT,
 } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard } from '../game/gameReducer';
+import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard, headToHeadRecord } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle, StreakBadge } from '../components/UI';
 
 const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
 const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️', stadium: '🏙️' };
@@ -206,13 +206,23 @@ function FighterRadar({ fighter, opponent }) {
   );
 }
 
-function MatchupCompare({ fighter, opponent }) {
+function MatchupCompare({ fighter, opponent, fightHistory }) {
   if (!fighter || !opponent) return null;
   const odds = Math.round(winProbability(fighter, opponent) * 100);
   const oppOdds = 100 - odds;
   const firstName = n => (n || '').split(' ')[0];
+  const h2h = fightHistory ? headToHeadRecord(fightHistory, fighter.id, opponent.id) : { meetings: 0 };
   return (
     <div className="fe-matchup">
+      {h2h.meetings > 0 && (
+        <div className="fe-rematch-banner">
+          🔁 Rematch — Meeting #{h2h.meetings + 1}
+          {h2h.winsA !== h2h.winsB && (
+            <> · {(h2h.winsA > h2h.winsB ? fighter : opponent).name} leads {Math.max(h2h.winsA, h2h.winsB)}-{Math.min(h2h.winsA, h2h.winsB)}</>
+          )}
+          {h2h.winsA === h2h.winsB && h2h.draws === 0 && <> · series tied {h2h.winsA}-{h2h.winsB}</>}
+        </div>
+      )}
       <div className="fe-matchup-odds-row">
         <span className={`fe-matchup-fighter ${odds >= 50 ? 'fe-matchup-favorite' : 'fe-matchup-underdog'}`}>
           <Avatar fighter={fighter} size={24} champion={!!fighter.title} />
@@ -257,7 +267,7 @@ function OpponentList({ opponents, crossoverOpponents, opponentId, onSelect }) {
             <WeightPill id={o.weightClass} />
             <Flag nationality={o.nationality} />
             <span className="fe-boxer-name" title={o.name}>{o.name}</span>
-            <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws}</span>
+            <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws} <StreakBadge fighter={o} /></span>
             <Followers count={o.followers} />
             <span className="fe-boxer-overall">OVR {o.overall}</span>
           </div>
@@ -545,7 +555,7 @@ function SingleBookingFlow() {
         {fighter && opponent && (
           <>
             <div className="fe-subheading">Matchup</div>
-            <MatchupCompare fighter={fighter} opponent={opponent} />
+            <MatchupCompare fighter={fighter} opponent={opponent} fightHistory={state.fightHistory} />
           </>
         )}
         {isCardType && bookableCards.length > 0 && (
@@ -803,7 +813,7 @@ function CardBuilderFlow() {
                 </div>
                 <div className="fe-subheading">Opponent</div>
                 <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={pickOpponentId} onSelect={o => setPickOpponentId(o.id)} />
-                {pickFighter && pickOpponent && <MatchupCompare fighter={pickFighter} opponent={pickOpponent} />}
+                {pickFighter && pickOpponent && <MatchupCompare fighter={pickFighter} opponent={pickOpponent} fightHistory={state.fightHistory} />}
                 {pickFighter && pickOpponent && venue && (
                   <CrowdMeter combinedFollowers={(pickFighter.followers || 0) + (pickOpponent.followers || 0)} capacity={venue.capacity} />
                 )}

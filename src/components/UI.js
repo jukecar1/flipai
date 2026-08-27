@@ -102,6 +102,17 @@ export function Followers({ count }) {
   );
 }
 
+// A notable win or loss streak — shown wherever a fighter's record shows
+// up, same way real MMA coverage always leads with "on a run" or "on a
+// skid" once it's long enough to matter.
+export function StreakBadge({ fighter }) {
+  const win = fighter?.winStreak || 0;
+  const loss = fighter?.lossStreak || 0;
+  if (win >= 3) return <span className="fe-streak-badge fe-streak-win" title={`Won ${win} in a row`}>🔥{win}W</span>;
+  if (loss >= 3) return <span className="fe-streak-badge fe-streak-loss" title={`Lost ${loss} in a row`}>❄️{loss}L</span>;
+  return null;
+}
+
 // Every fighter's name is clickable everywhere they show up — this is the
 // one place that wiring lives, so a screen just swaps a plain <span> for
 // this and gets the shared mini-profile popup for free (see

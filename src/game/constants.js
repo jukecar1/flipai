@@ -478,3 +478,10 @@ export const LEGACY_FIGHT_PURSE_BONUS_PCT = 25;
 export function isLegacyFight(age) {
   return age >= RETIREMENT_AGE - LEGACY_FIGHT_AGE_WINDOW;
 }
+
+// ---------- Rivalries & rematches ----------
+// Fans pay more to see a rubber match than a fresh matchup — the extra
+// draw of unfinished business between two people who've already fought.
+export const REMATCH_PURSE_BONUS_PCT = 20;
+// A win/loss streak this long is notable enough to actually talk about.
+export const NOTABLE_STREAK_LENGTH = 3;

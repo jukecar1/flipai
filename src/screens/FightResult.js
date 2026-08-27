@@ -35,6 +35,7 @@ export default function FightResult() {
         {last.eventName && <div className="fe-result-event-name">{last.eventName}</div>}
         {last.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
         {last.isLegacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
+        {last.isRematch && <div className="fe-title-fight-badge fe-rematch-badge">🔁 REMATCH</div>}
         <div className="fe-result-headline">
           {draw ? (
             <span>{fighter?.name} vs {opponent?.name} — Draw</span>

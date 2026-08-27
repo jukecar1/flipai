@@ -1,6 +1,6 @@
 import {
   gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue,
-  currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere,
+  currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere, headToHeadRecord,
 } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
@@ -9,7 +9,7 @@ import {
   LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
   sponsorIncome, potnChance, fotnChance, controversyChance, isMismatchedBooking, isNotableFighter, isLegacyFight,
   LEGACY_FIGHT_PURSE_BONUS_PCT, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS, MISMATCH_OVERALL_GAP, NOTABLE_FIGHTER_OVERALL,
-  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS,
+  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -1280,6 +1280,109 @@ test('a rival promotion with no contracted fighters simply does not host a card'
   const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
   spy.mockRestore();
   expect(next.news.some(n => n.id.includes('_rivalcard_'))).toBe(false);
+});
+
+// ---------- Win streaks & rivalries/rematches ----------
+
+test('headToHeadRecord tallies wins for each side and ignores unrelated fights', () => {
+  const history = [
+    { fighterId: 'a', opponentId: 'b', result: { winnerId: 'a', method: 'UD' } },
+    { fighterId: 'b', opponentId: 'a', result: { winnerId: 'b', method: 'KO' } },
+    { fighterId: 'a', opponentId: 'c', result: { winnerId: 'a', method: 'UD' } }, // unrelated
+    { fighterId: 'a', opponentId: 'b', result: { winnerId: null, method: 'DRAW' } },
+  ];
+  const h2h = headToHeadRecord(history, 'a', 'b');
+  expect(h2h.meetings).toBe(3);
+  expect(h2h.winsA).toBe(1);
+  expect(h2h.winsB).toBe(1);
+  expect(h2h.draws).toBe(1);
+});
+
+test('win streaks build across consecutive wins and break on a loss', () => {
+  // A long-enough contract so the streak-loop doesn't accidentally run
+  // champ1 out the door on expiry — this test is about streaks, not
+  // contract length.
+  let state = withLiveOpponent(baseState());
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 10 } : f)) };
+
+  state = bookMainEvent(state, 'champ1');
+  let fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(state.roster.find(f => f.id === 'champ1').winStreak).toBe(1);
+  expect(state.roster.find(f => f.id === 'champ1').lossStreak).toBe(0);
+
+  state = bookMainEvent(state, 'champ1');
+  fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(state.roster.find(f => f.id === 'champ1').winStreak).toBe(2);
+
+  state = bookMainEvent(state, 'champ1');
+  fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'opp1'); // now champ1 loses
+  expect(state.roster.find(f => f.id === 'champ1').winStreak).toBe(0);
+  expect(state.roster.find(f => f.id === 'champ1').lossStreak).toBe(1);
+});
+
+test('a draw resets both streaks', () => {
+  let state = withLiveOpponent(baseState());
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, winStreak: 4 } : f)) };
+  state = bookMainEvent(state, 'champ1');
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'DRAW', null);
+  expect(next.roster.find(f => f.id === 'champ1').winStreak).toBe(0);
+  expect(next.roster.find(f => f.id === 'champ1').lossStreak).toBe(0);
+});
+
+test('a notable win streak gets its own chirp mentioning the count', () => {
+  let state = withLiveOpponent(baseState());
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 10 } : f)) };
+  for (let i = 0; i < NOTABLE_STREAK_LENGTH; i++) {
+    state = bookMainEvent(state, 'champ1');
+    const fight = state.scheduledFights[0];
+    state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  }
+  expect(state.roster.find(f => f.id === 'champ1').winStreak).toBe(NOTABLE_STREAK_LENGTH);
+  const chirp = state.socialFeed.find(p => p.fighterId === 'champ1' && p.category === 'result');
+  expect(chirp.text).toContain(String(NOTABLE_STREAK_LENGTH));
+});
+
+test('booking the same two fighters again is flagged as a rematch and draws a bigger purse', () => {
+  const stateNoHistory = withLiveOpponent(baseState());
+  const freshBooking = bookMainEvent(stateNoHistory, 'champ1');
+  const freshFight = freshBooking.scheduledFights[0];
+  expect(freshFight.isRematch).toBe(false);
+  expect(freshFight.priorMeetings).toBe(0);
+
+  // Same fighter, same opponent, identical overall/followers — only prior
+  // history differs, so any purse difference is purely the rematch bonus.
+  const priorFight = {
+    id: 'fh_prior', week: 1, fighterId: 'champ1', opponentId: 'opp1',
+    fighterName: 'Test Champion', opponentName: 'Test Opponent',
+    result: { winnerId: 'champ1', method: 'UD' },
+  };
+  const stateWithHistory = { ...stateNoHistory, fightHistory: [priorFight] };
+  const rematchBooking = bookMainEvent(stateWithHistory, 'champ1');
+  const rematchFight = rematchBooking.scheduledFights[0];
+  expect(rematchFight.isRematch).toBe(true);
+  expect(rematchFight.priorMeetings).toBe(1);
+  // Both purses independently round to the nearest dollar off a formula
+  // with several multipliers stacked before that single rounding step, so
+  // compare the ratio rather than an exact dollar amount.
+  expect(rematchFight.purse / freshFight.purse).toBeCloseTo(1 + REMATCH_PURSE_BONUS_PCT / 100, 2);
+});
+
+test('a resolved rematch is flagged in fight history and the news headline', () => {
+  const priorFight = {
+    id: 'fh_prior2', week: 1, fighterId: 'champ1', opponentId: 'opp1',
+    fighterName: 'Test Champion', opponentName: 'Test Opponent',
+    result: { winnerId: 'champ1', method: 'UD' },
+  };
+  let state = { ...withLiveOpponent(baseState()), fightHistory: [priorFight] };
+  state = bookMainEvent(state, 'champ1');
+  const fight = state.scheduledFights[0];
+  const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(next.fightHistory[0].isRematch).toBe(true);
+  expect(next.news.some(n => n.title.startsWith('Rematch: '))).toBe(true);
 });
 
 // ---------- Promotion tier ladder ----------

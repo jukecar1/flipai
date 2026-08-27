@@ -3,7 +3,7 @@ import { useGameState, useGameDispatch, useGameActions } from '../context/GameCo
 import { useFighterProfile } from '../context/FighterProfileContext';
 import { WEIGHT_CLASSES, rosterLimitForGym, CONTRACT_WARNING_FIGHTS, WEIGHT_MOVE_COST, primeStatus, loyaltyStatus, LOYALTY_BASELINE } from '../game/constants';
 import { makeScoutCandidates } from '../game/generateFighter';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, FighterNameButton, StreakBadge } from '../components/UI';
 
 const ARCHETYPE_LABELS = {
   striker: 'Striker',
@@ -96,7 +96,7 @@ export default function Roster() {
                 <span className={`fe-age fe-age-${primeStatus(f.age).id}`} title={`${primeStatus(f.age).label} — OVR already reflects this`}>
                   {f.age}
                 </span>
-                <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB)</span>
+                <span>{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO/{f.record.subs}SUB) <StreakBadge fighter={f} /></span>
                 <span>{f.stats.striking}</span>
                 <span>{f.stats.wrestling}</span>
                 <span>{f.stats.submission}</span>

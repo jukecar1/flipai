@@ -7,6 +7,7 @@ const CATEGORIES = [
   { id: 'wins', label: 'Most Wins', value: f => f.record.wins, format: f => `${f.record.wins}W` },
   { id: 'followers', label: 'Most Followers', value: f => f.followers || 0, format: null },
   { id: 'finishes', label: 'Most Finishes', value: f => f.record.kos + f.record.subs, format: f => `${f.record.kos + f.record.subs} finishes` },
+  { id: 'streak', label: 'Hot Streak', value: f => f.winStreak || 0, format: f => `${f.winStreak || 0} in a row` },
 ];
 
 export default function Leaderboards() {
