@@ -3,7 +3,7 @@ import { useGameState, useGameDispatch, useGameActions } from '../context/GameCo
 import { useFighterProfile } from '../context/FighterProfileContext';
 import { rosterLimitForGym } from '../game/constants';
 import { findFighterAnywhere, attentionItems } from '../game/gameReducer';
-import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers, FighterNameButton } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers, FighterNameButton, ContractBadge } from '../components/UI';
 
 const ATTENTION_ICONS = {
   contract: '📝',
@@ -102,6 +102,7 @@ export default function Hub() {
                   {f.title && <span className="fe-belt-badge" title={`${f.title} Champion`}>🏆</span>}
                   <span className="fe-boxer-record">{f.record.wins}-{f.record.losses}-{f.record.draws} ({f.record.kos}KO, {f.record.subs}SUB)</span>
                   {f.injuryWeeks > 0 && <span className="fe-status fe-status-injured">Injured · {f.injuryWeeks}w</span>}
+                  <ContractBadge fighter={f} />
                   <Followers count={f.followers} />
                   <span className="fe-boxer-overall">OVR {f.overall}</span>
                 </div>

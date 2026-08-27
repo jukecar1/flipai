@@ -1007,6 +1007,30 @@ button, select, input {
   color: #93c5fd;
 }
 
+.fe-contract-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.fe-contract-pill-danger {
+  background: rgba(226, 38, 58, 0.18);
+  color: var(--fe-red);
+}
+
+.fe-contract-pill-warn {
+  background: rgba(244, 185, 66, 0.18);
+  color: var(--fe-gold);
+}
+
+.fe-contract-pill-safe {
+  background: rgba(46, 196, 182, 0.18);
+  color: var(--fe-teal);
+}
+
 .fe-rematch-banner {
   display: flex;
   align-items: center;

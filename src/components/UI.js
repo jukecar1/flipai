@@ -113,6 +113,20 @@ export function StreakBadge({ fighter }) {
   return null;
 }
 
+// A quick red/orange/green read on how much runway is left on a
+// fighter's deal — a glance at "1F" in red says re-sign them now, "5F"
+// in green says don't worry about it for a while.
+export function ContractBadge({ fighter }) {
+  const left = fighter?.contractFightsLeft;
+  if (left == null) return null;
+  const tier = left <= 1 ? 'danger' : left === 2 ? 'warn' : 'safe';
+  return (
+    <span className={`fe-contract-pill fe-contract-pill-${tier}`} title={`${left} fight${left === 1 ? '' : 's'} left on contract`}>
+      {left}F
+    </span>
+  );
+}
+
 // Every fighter's name is clickable everywhere they show up — this is the
 // one place that wiring lives, so a screen just swaps a plain <span> for
 // this and gets the shared mini-profile popup for free (see
