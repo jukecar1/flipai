@@ -543,7 +543,13 @@ function SingleBookingFlow() {
 
       {step === 'opponent' && (
       <Panel title={<StepTitle n={3}>PICK AN OPPONENT</StepTitle>} className="fe-step-col fe-step-col-3">
-        <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id)} />
+        <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={opponentId} onSelect={o => setOpponentId(o.id === opponentId ? '' : o.id)} />
+        {fighter && opponent && (
+          <>
+            <div className="fe-subheading">Matchup</div>
+            <MatchupCompare fighter={fighter} opponent={opponent} fightHistory={state.fightHistory} />
+          </>
+        )}
         <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => setStep('type')}>Back</Button>
           <Button variant="advance" onClick={() => setStep('venue')} disabled={!opponent}>Continue</Button>
@@ -553,12 +559,6 @@ function SingleBookingFlow() {
 
       {step === 'venue' && (
       <Panel title={<StepTitle n={4}>{isCardType ? 'CARD & CONFIRM' : 'VENUE & CONFIRM'}</StepTitle>} className="fe-step-col fe-step-col-4">
-        {fighter && opponent && (
-          <>
-            <div className="fe-subheading">Matchup</div>
-            <MatchupCompare fighter={fighter} opponent={opponent} fightHistory={state.fightHistory} />
-          </>
-        )}
         {isCardType && bookableCards.length > 0 && (
           <>
             <div className="fe-subheading">Add to an Upcoming Card</div>
@@ -825,7 +825,7 @@ function CardBuilderFlow() {
                   ))}
                 </div>
                 <div className="fe-subheading">Opponent</div>
-                <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={pickOpponentId} onSelect={o => setPickOpponentId(o.id)} />
+                <OpponentList opponents={opponents} crossoverOpponents={crossoverOpponents} opponentId={pickOpponentId} onSelect={o => setPickOpponentId(o.id === pickOpponentId ? '' : o.id)} />
                 {pickFighter && pickOpponent && <MatchupCompare fighter={pickFighter} opponent={pickOpponent} fightHistory={state.fightHistory} />}
                 {pickFighter && pickOpponent && venue && (
                   <CrowdMeter combinedFollowers={(pickFighter.followers || 0) + (pickOpponent.followers || 0)} capacity={venue.capacity} />

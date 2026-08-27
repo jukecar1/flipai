@@ -1420,6 +1420,9 @@ export function gameReducer(state, action) {
     }
 
     case 'ADVANCE_WEEK': {
+      // A fight that's already come due has to be played, not skipped —
+      // no fast-forwarding past fight day just by advancing the calendar.
+      if (state.scheduledFights.some(f => f.weeksOut <= 0)) return state;
       const week = state.week + 1;
       // An ignored callout just quietly fizzles after a while — no
       // penalty, it simply stops being something you can cash in on.

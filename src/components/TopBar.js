@@ -9,7 +9,12 @@ export default function TopBar({ showAdvance = true }) {
   const { meta, week, funds, record, prestige } = state;
   const tier = currentPromotionTier(state);
 
+  // A fight that's already on the calendar for this week has to actually
+  // be fought — no skipping fight day by just clicking past it.
+  const readyFight = state.scheduledFights.find(f => f.weeksOut <= 0);
+
   const advance = () => {
+    if (readyFight) return;
     dispatch({ type: 'ADVANCE_WEEK' });
   };
 
@@ -49,8 +54,13 @@ export default function TopBar({ showAdvance = true }) {
         </button>
       </div>
       {showAdvance && (
-        <Button variant="advance" onClick={advance}>
-          Advance Week
+        <Button
+          variant="advance"
+          onClick={advance}
+          disabled={!!readyFight}
+          title={readyFight ? "You've got a fight ready to go — play it before advancing." : undefined}
+        >
+          {readyFight ? 'Fight Ready' : 'Advance Week'}
         </Button>
       )}
     </div>

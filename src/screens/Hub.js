@@ -77,8 +77,15 @@ export default function Hub() {
             </div>
           </Panel>
 
-          <Panel title="UPCOMING FIGHTS">
-            {scheduledFights.length === 0 && <div className="fe-empty">No fights booked. Head to Make Fights.</div>}
+          <Panel
+            title="UPCOMING FIGHTS"
+            right={<Button variant="advance" className="fe-btn-compact" onClick={() => goTo('makeFights')}>+ Make Fights</Button>}
+          >
+            {scheduledFights.length === 0 && (
+              <div className="fe-empty">
+                No fights booked. <button className="fe-link" onClick={() => goTo('makeFights')}>Head to Make Fights.</button>
+              </div>
+            )}
             {cardGroups.map(({ card, fights }) => (
               <div key={card?.id || fights[0].cardId} className="fe-card-group">
                 <div className="fe-card-group-header">

@@ -309,6 +309,13 @@ button, select, input {
   box-shadow: 0 6px 20px rgba(226, 38, 58, 0.5);
 }
 
+/* A smaller footprint for a button living inside a panel header, next to
+   a title, rather than anchoring a whole wizard step. */
+.fe-btn-compact {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
 /* ---------- Panels ---------- */
 
 .fe-panel {

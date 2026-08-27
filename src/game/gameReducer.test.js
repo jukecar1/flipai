@@ -545,6 +545,26 @@ test('advancing the week alone never touches a contract', () => {
   expect(next.roster.find(f => f.id === 'champ1').contractFightsLeft).toBe(1);
 });
 
+test('a fight that has come due blocks the week from advancing until it is played', () => {
+  let state = bookMainEvent(baseState(), 'champ1');
+  // bookMainEvent always lands 2-6 weeks out — walk the calendar forward
+  // until the booked fight is actually ready to go.
+  while (state.scheduledFights[0].weeksOut > 0) {
+    state = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  }
+  const weekAtFightDay = state.week;
+  const blocked = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  expect(blocked).toBe(state); // a plain no-op, not just an unchanged week
+  expect(blocked.week).toBe(weekAtFightDay);
+});
+
+test('advancing the week works fine as long as every booked fight is still weeks away', () => {
+  const state = bookMainEvent(baseState(), 'champ1');
+  expect(state.scheduledFights[0].weeksOut).toBeGreaterThan(0);
+  const next = gameReducer(state, { type: 'ADVANCE_WEEK' });
+  expect(next.week).toBe(state.week + 1);
+});
+
 test('winning a title fight boosts loyalty', () => {
   let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
