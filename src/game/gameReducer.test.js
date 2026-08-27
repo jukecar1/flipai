@@ -565,6 +565,40 @@ test('advancing the week works fine as long as every booked fight is still weeks
   expect(next.week).toBe(state.week + 1);
 });
 
+test('a full card due the same week has to be played bout by bout before the week can advance', () => {
+  const state = baseState();
+  const cardmate = { ...state.roster[1], id: 'cardmate1', weightClass: 'FLW', injuryWeeks: 0 };
+  const oppA = { ...opponent, id: 'card-opp-a' };
+  const oppB = { ...opponent, id: 'card-opp-b', name: 'Card Opponent B' };
+  const withCardmate = { ...state, roster: [state.roster[0], cardmate, ...state.roster.slice(2)] };
+  const bouts = [
+    { fighterId: 'champ1', opponent: oppA, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+    { fighterId: 'cardmate1', opponent: oppB, fightType: FIGHT_TYPES.SHOWCASE, gameplan: 'balanced' },
+  ];
+  let next = gameReducer(withCardmate, { type: 'BOOK_CARD', venue, bouts });
+  next = { ...next, worldPool: { ...next.worldPool, FLW: [...(next.worldPool.FLW || []), oppA, oppB] } };
+
+  // Both bouts share the card's weeksOut — walk the calendar forward until fight night arrives.
+  while (next.scheduledFights[0].weeksOut > 0) next = gameReducer(next, { type: 'ADVANCE_WEEK' });
+  expect(next.scheduledFights).toHaveLength(2);
+  const weekAtFightNight = next.week;
+
+  // Neither bout is played yet — the week refuses to move at all.
+  expect(gameReducer(next, { type: 'ADVANCE_WEEK' })).toBe(next);
+
+  const fightA = next.scheduledFights.find(f => f.fighterId === 'champ1');
+  const afterA = resolveWithResult(next, fightA.id, 'champ1', 'card-opp-a', 'UD', 'champ1');
+  expect(afterA.scheduledFights).toHaveLength(1);
+  // One down, one to go — still blocked.
+  expect(gameReducer(afterA, { type: 'ADVANCE_WEEK' })).toBe(afterA);
+
+  const fightB = afterA.scheduledFights.find(f => f.fighterId === 'cardmate1');
+  const afterB = resolveWithResult(afterA, fightB.id, 'cardmate1', 'card-opp-b', 'UD', 'cardmate1');
+  expect(afterB.scheduledFights).toHaveLength(0);
+  // The whole card is played out — the week finally moves.
+  expect(gameReducer(afterB, { type: 'ADVANCE_WEEK' }).week).toBe(weekAtFightNight + 1);
+});
+
 test('winning a title fight boosts loyalty', () => {
   let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
