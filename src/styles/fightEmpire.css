@@ -1242,6 +1242,53 @@ button, select, input {
   padding: 10px 0;
 }
 
+.fe-attention-panel {
+  border-color: rgba(244, 185, 66, 0.35);
+}
+
+.fe-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fe-attention-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: var(--fe-panel-alt);
+  border: none;
+  color: var(--fe-text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.fe-attention-row:hover {
+  background: var(--fe-border);
+}
+
+.fe-attention-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.fe-attention-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.fe-attention-arrow {
+  color: var(--fe-text-dim);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
 .fe-fight-title {
   flex: 1;
   min-width: 0;
@@ -2330,6 +2377,42 @@ button, select, input {
   padding: 9px 10px;
   color: var(--fe-text);
   margin-bottom: 12px;
+}
+
+/* A search box + sort/filter dropdown sitting above a long fighter list —
+   shared by the opponent picker and the roster table so both scale past
+   a handful of entries without turning into an endless scroll. */
+.fe-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.fe-filter-search {
+  flex: 1;
+  min-width: 140px;
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border-light);
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: var(--fe-text);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.fe-filter-search::placeholder {
+  color: var(--fe-text-dim);
+}
+
+.fe-filter-select {
+  background: var(--fe-panel-alt);
+  border: 1px solid var(--fe-border-light);
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: var(--fe-text);
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .fe-type-tabs {

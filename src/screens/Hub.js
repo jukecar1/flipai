@@ -1,14 +1,30 @@
 import React from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
+import { useFighterProfile } from '../context/FighterProfileContext';
 import { rosterLimitForGym } from '../game/constants';
-import { findFighterAnywhere } from '../game/gameReducer';
+import { findFighterAnywhere, attentionItems } from '../game/gameReducer';
 import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers, FighterNameButton } from '../components/UI';
+
+const ATTENTION_ICONS = {
+  contract: '📝',
+  unhappy: '😠',
+  legacy: '🎖️',
+  callout: '📣',
+  freeAgent: '⏳',
+};
 
 export default function Hub() {
   const state = useGameState();
   const dispatch = useGameDispatch();
   const { goTo } = useGameActions();
+  const { open: openProfile } = useFighterProfile();
   const { roster, scheduledFights, news } = state;
+  const attention = attentionItems(state);
+
+  const handleAttentionClick = item => {
+    if (item.type === 'callout') { goTo('makeFights'); return; }
+    openProfile(item.fighterId);
+  };
 
   const readyFight = fightId => dispatch({ type: 'PREPARE_FIGHT_SIM', fightId });
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
@@ -59,6 +75,22 @@ export default function Hub() {
     <div className="fe-hub-page">
       <div className="fe-hub">
         <div className="fe-hub-col fe-hub-main">
+          <Panel title="NEEDS YOUR ATTENTION" className="fe-attention-panel">
+            {attention.length === 0 ? (
+              <div className="fe-empty">Nothing urgent — everyone's happy, under contract, and the market's quiet.</div>
+            ) : (
+              <div className="fe-attention-list">
+                {attention.map(item => (
+                  <button key={item.id} className={`fe-attention-row fe-attention-${item.type}`} onClick={() => handleAttentionClick(item)}>
+                    <span className="fe-attention-icon" aria-hidden="true">{ATTENTION_ICONS[item.type]}</span>
+                    <span className="fe-attention-text">{item.text}</span>
+                    <span className="fe-attention-arrow">›</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Panel>
+
           <Panel title={`MY ROSTER (${roster.length})`} right={<button className="fe-link" onClick={() => goTo('roster')}>View all</button>}>
             <div className="fe-boxer-list">
               {roster.map(f => (

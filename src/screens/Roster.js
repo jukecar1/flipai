@@ -18,6 +18,19 @@ function statusInfo(f) {
   return { text: 'Fresh', cls: 'fresh' };
 }
 
+// Same idea as MakeFights' OPPONENT_SORTS — a plain map so the <select>
+// options and the actual comparator can't drift out of sync. `cmp: null`
+// (the default) just means "whatever order the roster array is already in."
+const ROSTER_SORTS = {
+  default: { label: 'Roster Order', cmp: null },
+  ovr_desc: { label: 'Highest OVR', cmp: (a, b) => b.overall - a.overall },
+  age_asc: { label: 'Youngest', cmp: (a, b) => a.age - b.age },
+  age_desc: { label: 'Oldest', cmp: (a, b) => b.age - a.age },
+  followers_desc: { label: 'Most Followers', cmp: (a, b) => (b.followers || 0) - (a.followers || 0) },
+  contract_asc: { label: 'Contract Ending Soonest', cmp: (a, b) => (a.contractFightsLeft ?? 99) - (b.contractFightsLeft ?? 99) },
+  name_asc: { label: 'Name (A-Z)', cmp: (a, b) => a.name.localeCompare(b.name) },
+};
+
 export default function Roster() {
   const state = useGameState();
   const dispatch = useGameDispatch();
@@ -25,10 +38,18 @@ export default function Roster() {
   const { open: openProfile } = useFighterProfile();
   const [scoutClass, setScoutClass] = useState(WEIGHT_CLASSES[0].id);
   const [candidates, setCandidates] = useState([]);
+  const [query, setQuery] = useState('');
+  const [wcFilter, setWcFilter] = useState('all');
+  const [sortKey, setSortKey] = useState('default');
 
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
   const rosterFull = state.roster.length >= rosterLimit;
   const alreadyBooked = new Set(state.scheduledFights.map(f => f.fighterId));
+
+  const q = query.trim().toLowerCase();
+  const filteredRoster = state.roster.filter(f => (wcFilter === 'all' || f.weightClass === wcFilter) && (!q || f.name.toLowerCase().includes(q)));
+  const sortCmp = ROSTER_SORTS[sortKey].cmp;
+  const visibleRoster = sortCmp ? [...filteredRoster].sort(sortCmp) : filteredRoster;
 
   const scout = () => setCandidates(makeScoutCandidates(scoutClass, 3));
   const signCandidate = fighter => {
@@ -48,6 +69,31 @@ export default function Roster() {
         title={`ROSTER (${state.roster.length}/${rosterLimit})`}
         right={<button className="fe-link" onClick={() => goTo('gyms')}>Gym</button>}
       >
+        {state.roster.length > 0 && (
+          <div className="fe-filter-bar">
+            <input
+              type="text"
+              className="fe-filter-search"
+              placeholder="Search your roster…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+            <select className="fe-filter-select" value={wcFilter} onChange={e => setWcFilter(e.target.value)}>
+              <option value="all">All Weight Classes</option>
+              {WEIGHT_CLASSES.map(wc => (
+                <option key={wc.id} value={wc.id}>{wc.name}</option>
+              ))}
+            </select>
+            <select className="fe-filter-select" value={sortKey} onChange={e => setSortKey(e.target.value)}>
+              {Object.entries(ROSTER_SORTS).map(([key, { label }]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {visibleRoster.length === 0 && (
+          <div className="fe-empty">No fighters match your search or filter.</div>
+        )}
         <div className="fe-roster-table">
           <div className="fe-roster-head">
             <span>Fighter</span>
@@ -65,7 +111,7 @@ export default function Roster() {
             <span>Purse</span>
             <span></span>
           </div>
-          {state.roster.map(f => {
+          {visibleRoster.map(f => {
             const status = statusInfo(f);
             const wcIdx = WEIGHT_CLASSES.findIndex(w => w.id === f.weightClass);
             const canMoveUp = wcIdx > 0 && !alreadyBooked.has(f.id) && f.injuryWeeks === 0;

@@ -257,29 +257,71 @@ function MatchupCompare({ fighter, opponent, fightHistory }) {
   );
 }
 
+// Shared by every long fighter-picking list (opponents here, the roster
+// table in Roster.js) — a plain object map keeps the <select> options and
+// the actual comparator in one place instead of two things to keep in sync.
+const OPPONENT_SORTS = {
+  ovr_desc: { label: 'Highest OVR', cmp: (a, b) => b.overall - a.overall },
+  ovr_asc: { label: 'Lowest OVR', cmp: (a, b) => a.overall - b.overall },
+  followers_desc: { label: 'Most Followers', cmp: (a, b) => (b.followers || 0) - (a.followers || 0) },
+  name_asc: { label: 'Name (A-Z)', cmp: (a, b) => a.name.localeCompare(b.name) },
+};
+
 function OpponentList({ opponents, crossoverOpponents, opponentId, onSelect }) {
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState('ovr_desc');
+
+  const totalCount = opponents.length + crossoverOpponents.length;
+  const q = query.trim().toLowerCase();
+  const cmp = OPPONENT_SORTS[sortKey].cmp;
+  const filterSort = list => list.filter(o => !q || o.name.toLowerCase().includes(q)).sort(cmp);
+  const shownOpponents = filterSort(opponents);
+  const shownCrossover = filterSort(crossoverOpponents);
+
+  if (totalCount === 0) {
+    return <div className="fe-empty">No opponents available at this weight right now.</div>;
+  }
+
   return (
     <>
-      {opponents.length === 0 && crossoverOpponents.length === 0 && <div className="fe-empty">No opponents available at this weight right now.</div>}
-      <div className="fe-opponent-list">
-        {opponents.map(o => (
-          <div key={o.id} className={`fe-opponent-row ${opponentId === o.id ? 'selected' : ''}`} onClick={() => onSelect(o)}>
-            <Avatar fighter={o} size={26} />
-            <WeightPill id={o.weightClass} />
-            <Flag nationality={o.nationality} />
-            <span className="fe-boxer-name" title={o.name}>{o.name}</span>
-            <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws} <StreakBadge fighter={o} /></span>
-            <Followers count={o.followers} />
-            <span className="fe-boxer-overall">OVR {o.overall}</span>
-          </div>
-        ))}
+      <div className="fe-filter-bar">
+        <input
+          type="text"
+          className="fe-filter-search"
+          placeholder="Search opponents…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <select className="fe-filter-select" value={sortKey} onChange={e => setSortKey(e.target.value)}>
+          {Object.entries(OPPONENT_SORTS).map(([key, { label }]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
       </div>
-      {crossoverOpponents.length > 0 && (
+      {shownOpponents.length === 0 && shownCrossover.length === 0 && (
+        <div className="fe-empty">No opponents match "{query}".</div>
+      )}
+      {shownOpponents.length > 0 && (
+        <div className="fe-opponent-list">
+          {shownOpponents.map(o => (
+            <div key={o.id} className={`fe-opponent-row ${opponentId === o.id ? 'selected' : ''}`} onClick={() => onSelect(o)}>
+              <Avatar fighter={o} size={26} />
+              <WeightPill id={o.weightClass} />
+              <Flag nationality={o.nationality} />
+              <span className="fe-boxer-name" title={o.name}>{o.name}</span>
+              <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws} <StreakBadge fighter={o} /></span>
+              <Followers count={o.followers} />
+              <span className="fe-boxer-overall">OVR {o.overall}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {shownCrossover.length > 0 && (
         <>
           <div className="fe-subheading">Crossover Opponents (+${SUPER_FIGHT_SANCTION_FEE.toLocaleString()} sanction fee)</div>
           <p className="fe-hint">Rival-contracted fighters — booking one is a landmark crossover event, not a signing. Bigger purse, bigger prestige swing.</p>
           <div className="fe-opponent-list">
-            {crossoverOpponents.map(o => {
+            {shownCrossover.map(o => {
               const promo = RIVAL_PROMOTIONS.find(p => p.id === o.promotionId);
               return (
                 <div key={o.id} className={`fe-opponent-row ${opponentId === o.id ? 'selected' : ''}`} onClick={() => onSelect(o)}>

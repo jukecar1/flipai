@@ -2,7 +2,7 @@ import {
   WEIGHT_CLASSES, WEIGHT_CLASS_MAP, FIGHT_TYPES, RIVAL_PROMOTIONS, PROMOTION_TIERS,
   GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT,
   WEEKS_PER_YEAR, STAT_KEYS, MAX_STAT, trainingCost,
-  CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
+  CONTRACT_LENGTH_OPTIONS, DEFAULT_CONTRACT_FIGHTS, CONTRACT_WARNING_FIGHTS, contractCost, WEIGHT_MOVE_COST, BANKRUPTCY_WEEKS,
   CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, poachCostFor, freeAgentCost,
   cityTierForPopulation, startingFundsForPopulation, effectiveOverall, ageCurveMultiplier,
   LOYALTY_BASELINE, INACTIVE_WEEKS_BEFORE_FRUSTRATION, clampLoyalty, renewalAcceptChance, loyaltyStatus, poachChance,
@@ -787,6 +787,41 @@ export function findFighterAnywhere(state, fighterId) {
   const amateur = (state.amateurs || []).find(f => f.id === fighterId);
   if (amateur) return amateur;
   return null;
+}
+
+// A single "what needs my attention" feed for the Hub — everything here
+// is something that's easy to miss by not clicking into Roster, Make
+// Fights, or Promotions on any given week: a contract about to lapse, a
+// fighter souring on how they've been booked, a callout sitting unbooked,
+// or a free agent about to walk off the market for good. Sorted so the
+// most urgent stuff (contract/resentment risk) leads.
+export function attentionItems(state) {
+  const items = [];
+  state.roster.forEach(f => {
+    const contractLeft = f.contractFightsLeft ?? DEFAULT_CONTRACT_FIGHTS;
+    if (contractLeft <= CONTRACT_WARNING_FIGHTS) {
+      items.push({ id: `contract_${f.id}`, type: 'contract', fighterId: f.id, text: `${f.name}'s contract runs out after their next fight`, priority: 1 });
+    }
+    const tier = loyaltyStatus(f.loyalty ?? LOYALTY_BASELINE).id;
+    if (tier === 'resentful') {
+      items.push({ id: `loyalty_${f.id}`, type: 'unhappy', fighterId: f.id, text: `${f.name} is resentful — real risk they refuse to re-sign`, priority: 1 });
+    } else if (tier === 'frustrated') {
+      items.push({ id: `loyalty_${f.id}`, type: 'unhappy', fighterId: f.id, text: `${f.name} isn't thrilled with recent booking`, priority: 2 });
+    }
+    if (f.injuryWeeks === 0 && isLegacyFight(f.age) && !state.scheduledFights.some(sf => sf.fighterId === f.id)) {
+      items.push({ id: `legacy_${f.id}`, type: 'legacy', fighterId: f.id, text: `${f.name} is nearing retirement — a Legacy Fight pays a bonus before they're gone`, priority: 3 });
+    }
+  });
+  (state.callouts || []).forEach(c => {
+    if (!state.roster.some(f => f.id === c.fighterId)) return;
+    items.push({ id: `callout_${c.id}`, type: 'callout', fighterId: c.fighterId, text: `${c.fighterName} called out ${c.targetName} — still unbooked`, priority: 2 });
+  });
+  (state.freeAgents || []).forEach(a => {
+    if (a.weeksLeft <= 1) {
+      items.push({ id: `freeagent_${a.id}`, type: 'freeAgent', fighterId: a.id, text: `${a.name} leaves the free agent market in ${a.weeksLeft} week${a.weeksLeft === 1 ? '' : 's'}`, priority: 2 });
+    }
+  });
+  return items.sort((a, b) => a.priority - b.priority);
 }
 
 // Combined social following of both fighters drives ticket/PPV demand —

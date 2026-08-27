@@ -1,7 +1,7 @@
 import {
   gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue,
   currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere, headToHeadRecord,
-  divisionRankings, titleImplications,
+  divisionRankings, titleImplications, attentionItems,
 } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
@@ -11,6 +11,7 @@ import {
   sponsorIncome, potnChance, fotnChance, controversyChance, isMismatchedBooking, isNotableFighter, isLegacyFight,
   LEGACY_FIGHT_PURSE_BONUS_PCT, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS, MISMATCH_OVERALL_GAP, NOTABLE_FIGHTER_OVERALL,
   VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH, INTERIM_TITLE_PURSE_BONUS_PCT,
+  CONTRACT_WARNING_FIGHTS,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -1936,4 +1937,65 @@ test('a departing contract-expired champion hands the belt to a waiting interim 
   expect(state.roster.some(f => f.id === 'champ1')).toBe(false);
   expect(state.titles.FLW.holderId).toBe('contender1');
   expect(state.roster.find(f => f.id === 'contender1').title).toBe('Flyweight');
+});
+
+// ---------- Hub "needs your attention" feed ----------
+
+test('attentionItems flags a fighter whose contract runs out after their next fight', () => {
+  const state = baseState();
+  const expiring = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: CONTRACT_WARNING_FIGHTS } : f)) };
+  const safe = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: CONTRACT_WARNING_FIGHTS + 5 } : f)) };
+  expect(attentionItems(expiring).some(i => i.type === 'contract' && i.fighterId === 'champ1')).toBe(true);
+  expect(attentionItems(safe).some(i => i.type === 'contract' && i.fighterId === 'champ1')).toBe(false);
+});
+
+test('attentionItems flags an unhappy fighter, distinguishing resentful from merely frustrated', () => {
+  const state = baseState();
+  const resentful = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 20 } : f)) };
+  const frustrated = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 45 } : f)) };
+  const content = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: 70 } : f)) };
+  const resentfulItem = attentionItems(resentful).find(i => i.type === 'unhappy' && i.fighterId === 'champ1');
+  const frustratedItem = attentionItems(frustrated).find(i => i.type === 'unhappy' && i.fighterId === 'champ1');
+  expect(resentfulItem.priority).toBeLessThan(frustratedItem.priority); // resentful is the more urgent of the two
+  expect(attentionItems(content).some(i => i.type === 'unhappy' && i.fighterId === 'champ1')).toBe(false);
+});
+
+test('attentionItems flags a healthy, unbooked fighter nearing retirement for a Legacy Fight, but not an injured or already-booked one', () => {
+  const state = baseState();
+  const veteran = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, age: RETIREMENT_AGE - 1, injuryWeeks: 0 } : f)) };
+  expect(attentionItems(veteran).some(i => i.type === 'legacy' && i.fighterId === 'champ1')).toBe(true);
+
+  const hurtVeteran = { ...veteran, roster: veteran.roster.map(f => (f.id === 'champ1' ? { ...f, injuryWeeks: 2 } : f)) };
+  expect(attentionItems(hurtVeteran).some(i => i.type === 'legacy')).toBe(false);
+
+  const bookedVeteran = bookMainEvent(veteran, 'champ1');
+  expect(attentionItems(bookedVeteran).some(i => i.type === 'legacy')).toBe(false);
+});
+
+test('attentionItems surfaces a pending callout for one of your own fighters, ignoring one for a fighter you don\'t have', () => {
+  const state = baseState();
+  const myCallout = { id: 'co1', fighterId: 'champ1', fighterName: 'Test Champion', targetId: 'opp1', targetName: 'Some Rival', weightClass: 'FLW', week: state.week };
+  const strayCallout = { id: 'co2', fighterId: 'not-mine', fighterName: 'Nobody', targetId: 'opp2', targetName: 'Whoever', weightClass: 'FLW', week: state.week };
+  const withCallouts = { ...state, callouts: [myCallout, strayCallout] };
+  const items = attentionItems(withCallouts);
+  expect(items.some(i => i.type === 'callout' && i.id === 'callout_co1')).toBe(true);
+  expect(items.some(i => i.id === 'callout_co2')).toBe(false);
+});
+
+test('attentionItems flags a free agent about to leave the market but not one with time left', () => {
+  const state = baseState();
+  const withFreeAgents = { ...state, freeAgents: [{ id: 'fa1', name: 'Leaving Soon', weeksLeft: 1 }, { id: 'fa2', name: 'Plenty of Time', weeksLeft: 5 }] };
+  const items = attentionItems(withFreeAgents);
+  expect(items.some(i => i.type === 'freeAgent' && i.fighterId === 'fa1')).toBe(true);
+  expect(items.some(i => i.fighterId === 'fa2')).toBe(false);
+});
+
+test('attentionItems sorts the most urgent items first', () => {
+  const state = baseState();
+  const veteran = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, age: RETIREMENT_AGE - 1, injuryWeeks: 0, loyalty: 20 } : f)) };
+  const withCallout = { ...veteran, callouts: [{ id: 'co1', fighterId: 'champ1', fighterName: 'Test Champion', targetId: 'opp1', targetName: 'Some Rival', weightClass: 'FLW', week: veteran.week }] };
+  const items = attentionItems(withCallout);
+  const priorities = items.map(i => i.priority);
+  expect(priorities).toEqual([...priorities].sort((a, b) => a - b));
+  expect(items[0].priority).toBe(1); // the resentful-loyalty item leads
 });
