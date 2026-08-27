@@ -1,6 +1,7 @@
 import {
   gameReducer, newCareerState, drawMultiplier, winProbability, prestigeUpsetFactor, attendanceRate, attendanceStatus, purseForFight, ppvBuys, ppvRevenue,
   currentPromotionTier, nextPromotionTier, promotionTierProgress, tierRequirementsMet, findFighterAnywhere, headToHeadRecord,
+  divisionRankings, titleImplications,
 } from './gameReducer';
 import {
   FIGHT_TYPES, GYM_LEVELS, rosterLimitForGym, RETIREMENT_AGE, AMATEUR_SIGN_COST, AMATEUR_PROMOTION_WINS, AMATEUR_POOL_LIMIT, WEEKS_PER_YEAR,
@@ -9,7 +10,7 @@ import {
   LOYALTY_BASELINE, LOYALTY_MIN, LOYALTY_MAX, poachChance, PPV_PRODUCTION_FEE, DEFAULT_PPV_PRICE, PROMOTION_TIERS,
   sponsorIncome, potnChance, fotnChance, controversyChance, isMismatchedBooking, isNotableFighter, isLegacyFight,
   LEGACY_FIGHT_PURSE_BONUS_PCT, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS, MISMATCH_OVERALL_GAP, NOTABLE_FIGHTER_OVERALL,
-  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH,
+  VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH, INTERIM_TITLE_PURSE_BONUS_PCT,
 } from './constants';
 import { makeFighter } from './generateFighter';
 import { CITIES } from './namePool';
@@ -74,6 +75,16 @@ function withLiveOpponent(state) {
   return { ...state, worldPool: { ...state.worldPool, FLW: [...(state.worldPool.FLW || []), opponent] } };
 }
 
+// Title implications now also require the opponent to be an actual ranked
+// contender (top TITLE_CONTENDER_SLOTS in the division), not just present
+// in the world pool. Wipe out whatever random NPCs buildWorldPool seeded
+// for FLW so `opponent` is trivially the only — and therefore top-ranked —
+// contender, matching what these fixtures intend: a genuine, sanctioned
+// Main Event against a real threat.
+function withRankedOpponent(state) {
+  return { ...state, worldPool: { ...state.worldPool, FLW: [opponent] } };
+}
+
 function resolveWithResult(state, fightId, fighterId, oppId, method, winnerId) {
   const activeState = {
     ...state,
@@ -101,13 +112,13 @@ function resolveWithResult(state, fightId, fighterId, oppId, method, winnerId) {
 }
 
 test('a high-overall fighter booking a Main Event against a vacant division gets a title fight', () => {
-  const state = bookMainEvent(baseState(), 'champ1');
+  const state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   expect(state.scheduledFights).toHaveLength(1);
   expect(state.scheduledFights[0].isTitle).toBe(true);
 });
 
 test('winning a title fight crowns the fighter and flags them on the roster', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
 
@@ -118,7 +129,7 @@ test('winning a title fight crowns the fighter and flags them on the roster', ()
 });
 
 test('a successful defense increments the defense count', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   let fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.roster.find(f => f.id === 'champ1').injuryWeeks).toBe(0); // no injury with 0 damage taken
@@ -132,7 +143,7 @@ test('a successful defense increments the defense count', () => {
 });
 
 test('losing a title fight vacates the belt', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   let fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.titles.FLW.holderId).toBe('champ1');
@@ -219,7 +230,7 @@ test('a well-matched stadium booking is not nerfed at all — it pays exactly wh
 });
 
 test('a big follower spike (title win by finish) generates a trending news item', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'champ1');
   expect(state.news.some(n => n.category === 'trending')).toBe(true);
@@ -288,7 +299,7 @@ test('upgrading the gym without enough funds does nothing', () => {
 });
 
 test('retiring a champion vacates the belt and removes them from the roster', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
   expect(state.titles.FLW.holderId).toBe('champ1');
@@ -535,7 +546,7 @@ test('advancing the week alone never touches a contract', () => {
 });
 
 test('winning a title fight boosts loyalty', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   const fight = state.scheduledFights[0];
   const before = state.roster.find(f => f.id === 'champ1').loyalty;
   const next = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
@@ -1066,7 +1077,7 @@ test('a resentful fighter may vent about the company after a fight, but stays on
 });
 
 test('a content fighter does not vent about the company', () => {
-  let state = bookMainEvent(withLiveOpponent(baseState()), 'champ1');
+  let state = bookMainEvent(withRankedOpponent(baseState()), 'champ1');
   state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, loyalty: LOYALTY_BASELINE, contractFightsLeft: 5 } : f)) };
   const fight = state.scheduledFights[0];
   const spy = jest.spyOn(Math, 'random').mockReturnValue(0); // even at the "always vent" roll, a content fighter has nothing to vent about
@@ -1686,7 +1697,7 @@ test('isLegacyFight flags a fighter within a couple years of the mandatory retir
 });
 
 test('a Main Event for a fighter nearing retirement books as a Legacy Fight with a purse bonus', () => {
-  const state = baseState();
+  const state = withRankedOpponent(baseState());
   const veteran = { ...state.roster[0], age: RETIREMENT_AGE - 1 };
   const stateWithVeteran = { ...state, roster: [veteran, ...state.roster.slice(1)] };
   const next = gameReducer(stateWithVeteran, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
@@ -1702,4 +1713,173 @@ test('a Showcase fight for the same veteran is never flagged as a Legacy Fight',
   const stateWithVeteran = { ...state, roster: [veteran, ...state.roster.slice(1)] };
   const next = gameReducer(stateWithVeteran, { type: 'SCHEDULE_FIGHT', fighterId: 'champ1', opponent, fightType: FIGHT_TYPES.SHOWCASE, venue });
   expect(next.scheduledFights[0].isLegacyFight).toBe(false);
+});
+
+// ---------- Rankings-gated titles & interim belts ----------
+// A title fight now requires the opponent to actually be a ranked
+// contender, not just a strong-enough champion showing up. And since the
+// game can never book two of your own roster fighters against each
+// other, there's no such thing as a real unification bout — a champion
+// who's hurt or gone can be challenged for an interim belt instead, and
+// that interim reign simply becomes undisputed the moment the real
+// title's fate is settled (the champ heals, retires, or leaves).
+
+test('divisionRankings ranks roster and world-pool fighters together by score, sliced to the limit', () => {
+  const state = baseState();
+  const emptyPools = Object.fromEntries(Object.keys(state.worldPool).map(k => [k, []]));
+  const custom = {
+    ...state,
+    // Only r1 is in the roster — the other starting fighters are randomly
+    // generated and could otherwise land in FLW too, polluting the ranking.
+    roster: [{ ...state.roster[0], id: 'r1', weightClass: 'FLW', overall: 10, record: { wins: 2, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null }],
+    worldPool: {
+      ...emptyPools,
+      FLW: [
+        { id: 'w1', overall: 14, record: { wins: 1, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null }, // score 142
+        { id: 'w2', overall: 5, record: { wins: 0, losses: 3, draws: 0, kos: 0, subs: 0 }, champion: false, title: null }, // score 50
+        { id: 'w3', overall: 8, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: true, title: null }, // score 130 — the champion bonus outranks a plain higher overall
+      ],
+    },
+  };
+  // r1 scores 104, so the order should be w1 (142), w3 (130), r1 (104), with w2 (50) falling outside a top-3 slice.
+  const ranked = divisionRankings(custom, 'FLW', 3);
+  expect(ranked.map(f => f.id)).toEqual(['w1', 'w3', 'r1']);
+  expect(ranked).toHaveLength(3);
+});
+
+test('titleImplications requires the opponent to be an actual ranked contender, even for a vacant belt', () => {
+  const state = baseState();
+  const emptyPools = Object.fromEntries(Object.keys(state.worldPool).map(k => [k, []]));
+  const fighter = { ...state.roster[0], id: 'champ1', weightClass: 'FLW', overall: 15 };
+  const rankedOpp = { id: 'ranked1', overall: 21, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null };
+  const unrankedOpp = { id: 'scrub1', overall: 3, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null };
+  const filler = [20, 19, 18, 17, 16].map((ovr, i) => ({ id: `filler${i}`, overall: ovr, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null }));
+  const customState = { ...state, worldPool: { ...emptyPools, FLW: [rankedOpp, unrankedOpp, ...filler] } };
+  // rankedOpp (score 210) is #1; unrankedOpp (score 30) sits behind all 5 fillers (scores 160-200), well outside TITLE_CONTENDER_SLOTS.
+  expect(titleImplications(customState, fighter, rankedOpp)).toEqual({ isTitle: true, isInterimTitle: false });
+  expect(titleImplications(customState, fighter, unrankedOpp)).toEqual({ isTitle: false, isInterimTitle: false });
+});
+
+test('titleImplications never grants a title shot to a fighter below the overall threshold', () => {
+  const state = baseState();
+  const emptyPools = Object.fromEntries(Object.keys(state.worldPool).map(k => [k, []]));
+  const fighter = { ...state.roster[0], id: 'weak1', weightClass: 'FLW', overall: 8 };
+  const rankedOpp = { id: 'ranked1', overall: 12, record: { wins: 0, losses: 0, draws: 0, kos: 0, subs: 0 }, champion: false, title: null };
+  const customState = { ...state, worldPool: { ...emptyPools, FLW: [rankedOpp] } };
+  expect(titleImplications(customState, fighter, rankedOpp)).toEqual({ isTitle: false, isInterimTitle: false });
+});
+
+// Shared fixture for the interim-belt integration tests below: champ1
+// holds the real Flyweight title, contender1 is a second roster fighter
+// eligible to chase it, and the FLW world pool holds nothing but `opponent`
+// (opp1) — trivially the only, and therefore top-ranked, contender.
+function titleTestState({ champInjuryWeeks = 0, withInterim = false } = {}) {
+  const state = baseState();
+  const champ = { ...state.roster[0], id: 'champ1', name: 'Test Champion', weightClass: 'FLW', overall: 15, injuryWeeks: champInjuryWeeks, title: 'Flyweight' };
+  const contender = {
+    ...state.roster[0], id: 'contender1', name: 'Test Contender', weightClass: 'FLW', overall: 13, injuryWeeks: 0,
+    title: withInterim ? 'Interim Flyweight' : null, record: { wins: 5, losses: 1, draws: 0, kos: 2, subs: 1 },
+    contractFightsLeft: 10, loyalty: LOYALTY_BASELINE,
+  };
+  const titles = {
+    ...state.titles,
+    FLW: {
+      holderId: 'champ1', holderName: 'Test Champion', defenses: 2,
+      ...(withInterim ? { interimHolderId: 'contender1', interimHolderName: 'Test Contender', interimDefenses: 1 } : {}),
+    },
+  };
+  const emptyPools = Object.fromEntries(Object.keys(state.worldPool).map(k => [k, []]));
+  return { ...state, roster: [champ, contender, ...state.roster.slice(1)], titles, worldPool: { ...emptyPools, FLW: [opponent] } };
+}
+
+function bookMainEventVs(state, fighterId, opp) {
+  return gameReducer(state, { type: 'SCHEDULE_FIGHT', fighterId, opponent: opp, fightType: FIGHT_TYPES.MAIN_EVENT, venue });
+}
+
+test('an interim title is created when the real champion is hurt and another roster fighter beats a ranked contender', () => {
+  let state = titleTestState({ champInjuryWeeks: 3 });
+  state = bookMainEventVs(state, 'contender1', opponent);
+  const fight = state.scheduledFights[0];
+  expect(fight.isInterimTitle).toBe(true);
+  expect(fight.isTitle).toBe(false);
+  state = resolveWithResult(state, fight.id, 'contender1', 'opp1', 'UD', 'contender1');
+  expect(state.titles.FLW.holderId).toBe('champ1'); // the real belt is untouched
+  expect(state.titles.FLW.interimHolderId).toBe('contender1');
+  expect(state.titles.FLW.interimDefenses).toBe(0);
+  expect(state.roster.find(f => f.id === 'contender1').title).toBe('Interim Flyweight');
+});
+
+test('an interim title fight pays the interim purse bonus instead of the full title multiplier', () => {
+  let state = titleTestState({ champInjuryWeeks: 3 });
+  state = bookMainEventVs(state, 'contender1', opponent);
+  const fight = state.scheduledFights[0];
+  const contender = state.roster.find(f => f.id === 'contender1');
+  const basePurse = purseForFight(contender, opponent, FIGHT_TYPES.MAIN_EVENT, venue, currentPromotionTier(state).purseBonusPct);
+  expect(fight.purse).toBe(Math.round(basePurse * (1 + INTERIM_TITLE_PURSE_BONUS_PCT / 100)));
+});
+
+test('a successful interim defense increments the interim defense count', () => {
+  let state = titleTestState({ champInjuryWeeks: 3, withInterim: true });
+  state = bookMainEventVs(state, 'contender1', opponent);
+  const fight = state.scheduledFights[0];
+  expect(fight.isInterimTitle).toBe(true);
+  state = resolveWithResult(state, fight.id, 'contender1', 'opp1', 'UD', 'contender1');
+  expect(state.titles.FLW.interimHolderId).toBe('contender1');
+  expect(state.titles.FLW.interimDefenses).toBe(2); // was 1, now defended once more
+});
+
+test('losing an interim defense vacates only the interim belt, leaving the real title untouched', () => {
+  let state = titleTestState({ champInjuryWeeks: 3, withInterim: true });
+  state = bookMainEventVs(state, 'contender1', opponent);
+  const fight = state.scheduledFights[0];
+  state = resolveWithResult(state, fight.id, 'contender1', 'opp1', 'KO', 'opp1');
+  expect(state.titles.FLW.holderId).toBe('champ1');
+  expect(state.titles.FLW.interimHolderId).toBeNull();
+  expect(state.roster.find(f => f.id === 'contender1').title).toBeNull();
+});
+
+test('a defending real champion who loses while an interim titleholder exists hands the belt straight to them', () => {
+  let state = titleTestState({ withInterim: true });
+  state = bookMainEventVs(state, 'champ1', opponent);
+  const fight = state.scheduledFights[0];
+  expect(fight.isTitle).toBe(true);
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'KO', 'opp1');
+  expect(state.titles.FLW.holderId).toBe('contender1');
+  expect(state.titles.FLW.interimHolderId).toBeUndefined();
+  expect(state.titles.FLW.defenses).toBe(1); // carried over from the interim's own defense count
+  expect(state.roster.find(f => f.id === 'champ1').title).toBeNull();
+  expect(state.roster.find(f => f.id === 'contender1').title).toBe('Flyweight');
+  expect(state.news.some(n => n.title.includes('elevated to undisputed'))).toBe(true);
+});
+
+test('retiring a champion who holds the belt while an interim titleholder exists promotes the interim to undisputed', () => {
+  const state = titleTestState({ withInterim: true });
+  const next = gameReducer(state, { type: 'RETIRE_FIGHTER', fighterId: 'champ1' });
+  expect(next.roster.some(f => f.id === 'champ1')).toBe(false);
+  expect(next.titles.FLW.holderId).toBe('contender1');
+  expect(next.roster.find(f => f.id === 'contender1').title).toBe('Flyweight');
+});
+
+test("an interim titleholder is only elevated to undisputed once the real champion is confirmed healed", () => {
+  let state = titleTestState({ champInjuryWeeks: 2, withInterim: true });
+  let next = gameReducer(state, { type: 'ADVANCE_WEEK' }); // injuryWeeks: 2 -> 1, still hurt
+  expect(next.titles.FLW.holderId).toBe('champ1');
+  expect(next.titles.FLW.interimHolderId).toBe('contender1');
+  next = gameReducer(next, { type: 'ADVANCE_WEEK' }); // injuryWeeks: 1 -> 0, healed
+  expect(next.titles.FLW.holderId).toBe('contender1');
+  expect(next.titles.FLW.interimHolderId).toBeUndefined();
+  expect(next.roster.find(f => f.id === 'contender1').title).toBe('Flyweight');
+  expect(next.news.some(n => n.title.includes('elevated to undisputed'))).toBe(true);
+});
+
+test('a departing contract-expired champion hands the belt to a waiting interim titleholder', () => {
+  let state = titleTestState({ withInterim: true });
+  state = { ...state, roster: state.roster.map(f => (f.id === 'champ1' ? { ...f, contractFightsLeft: 1 } : f)) };
+  state = bookMainEventVs(state, 'champ1', opponent);
+  const fight = state.scheduledFights[0];
+  // champ1 wins their last fight (retaining the real belt right up to the moment they leave) but the contract still runs out.
+  state = resolveWithResult(state, fight.id, 'champ1', 'opp1', 'UD', 'champ1');
+  expect(state.roster.some(f => f.id === 'champ1')).toBe(false);
+  expect(state.titles.FLW.holderId).toBe('contender1');
+  expect(state.roster.find(f => f.id === 'contender1').title).toBe('Flyweight');
 });

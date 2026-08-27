@@ -485,3 +485,9 @@ export function isLegacyFight(age) {
 export const REMATCH_PURSE_BONUS_PCT = 20;
 // A win/loss streak this long is notable enough to actually talk about.
 export const NOTABLE_STREAK_LENGTH = 3;
+
+// ---------- Title implications ----------
+// A title fight needs a real ranked contender on the other side of the
+// cage — how deep into the rankings still counts as a live threat.
+export const TITLE_CONTENDER_SLOTS = 5;
+export const INTERIM_TITLE_PURSE_BONUS_PCT = 30;

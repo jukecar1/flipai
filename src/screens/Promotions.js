@@ -91,12 +91,22 @@ export default function Promotions() {
           ) : (
             yourTitles.map(({ wc, title }) => {
               const holder = state.roster.find(f => f.id === title.holderId);
+              const interimHolder = title.interimHolderId ? state.roster.find(f => f.id === title.interimHolderId) : null;
               return (
-                <div key={wc.id} className="fe-your-title-row">
-                  <span>🏆</span>
-                  <WeightPill id={wc.id} />
-                  {holder ? <FighterNameButton fighter={holder} className="fe-boxer-name" /> : <span className="fe-boxer-name">{title.holderName}</span>}
-                  <span className="fe-hint">{title.defenses} defense{title.defenses === 1 ? '' : 's'}</span>
+                <div key={wc.id} className="fe-your-title-group">
+                  <div className="fe-your-title-row">
+                    <span>🏆</span>
+                    <WeightPill id={wc.id} />
+                    {holder ? <FighterNameButton fighter={holder} className="fe-boxer-name" /> : <span className="fe-boxer-name">{title.holderName}</span>}
+                    <span className="fe-hint">{title.defenses} defense{title.defenses === 1 ? '' : 's'}</span>
+                  </div>
+                  {interimHolder && (
+                    <div className="fe-your-title-row fe-your-title-interim">
+                      <span>🥈</span>
+                      <FighterNameButton fighter={interimHolder} className="fe-boxer-name" />
+                      <span className="fe-hint">Interim · {title.interimDefenses || 0} defense{title.interimDefenses === 1 ? '' : 's'} — {holder?.name || title.holderName} out injured</span>
+                    </div>
+                  )}
                 </div>
               );
             })

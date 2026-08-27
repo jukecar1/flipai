@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useGameState } from '../context/GameContext';
 import { WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
+import { divisionRankings } from '../game/gameReducer';
 import { Panel, WeightPill, Flag, Avatar, Followers, FighterNameButton } from '../components/UI';
 
 export default function Rankings() {
@@ -8,13 +9,9 @@ export default function Rankings() {
   const [wcId, setWcId] = useState(WEIGHT_CLASSES[0].id);
   const wc = WEIGHT_CLASSES.find(w => w.id === wcId);
 
-  const list = useMemo(() => {
-    const own = state.roster.filter(f => f.weightClass === wcId).map(f => ({ ...f, mine: true }));
-    const others = (state.worldPool[wcId] || []).map(f => ({ ...f, mine: false }));
-    return [...own, ...others]
-      .sort((a, b) => (b.overall * 10 + b.record.wins * 2 + (b.champion || b.title ? 50 : 0)) - (a.overall * 10 + a.record.wins * 2 + (a.champion || a.title ? 50 : 0)))
-      .slice(0, 10);
-  }, [state.roster, state.worldPool, wcId]);
+  // Same formula the reducer uses to decide who counts as a live title
+  // contender — this screen mattering to booking is the whole point.
+  const list = useMemo(() => divisionRankings(state, wcId), [state, wcId]);
 
   return (
     <div className="fe-rankings">

@@ -203,6 +203,7 @@ export default function FightSim() {
       <div className="fe-fs-header">
         <div>
           {fightMeta?.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
+          {fightMeta?.isInterimTitle && <div className="fe-title-fight-badge fe-interim-title-badge">🥈 INTERIM TITLE</div>}
           <strong>{fightMeta ? `${activeFight.sim.rounds} rounds @ ${wc.name}` : wc.name}</strong>
           <div>{fighter.name} <Flag nationality={fighter.nationality} /> {fighter.record.wins}-{fighter.record.losses}-{fighter.record.draws}</div>
           <div>vs</div>
@@ -357,6 +358,7 @@ function WeighInView({ fighter, opponent, fightMeta, eventCard, onBegin }) {
       <div className="fe-weighin-billing">
         {eventCard?.name && <span className="fe-weighin-event">{eventCard.name}</span>}
         {fightMeta?.isTitle && <span className="fe-title-fight-badge">🏆 TITLE FIGHT</span>}
+        {fightMeta?.isInterimTitle && <span className="fe-title-fight-badge fe-interim-title-badge">🥈 INTERIM TITLE</span>}
         {fightMeta?.isRematch && <span className="fe-title-fight-badge fe-rematch-badge">🔁 REMATCH</span>}
         {fightMeta?.isSuperFight && <span className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER</span>}
       </div>

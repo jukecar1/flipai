@@ -12,7 +12,7 @@ import {
   CALLOUT_CHANCE, CALLOUT_EXPIRY_WEEKS, CALLOUT_PRESTIGE_BONUS,
   VIRAL_CHIRP_LIKES, VIRAL_FOLLOWER_BONUS, RIVAL_CHIRP_CHANCE, RIVAL_CARD_CHANCE, isNotableFighter,
   controversyChance, isMismatchedBooking, isLegacyFight, LEGACY_FIGHT_PURSE_BONUS_PCT,
-  REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH,
+  REMATCH_PURSE_BONUS_PCT, NOTABLE_STREAK_LENGTH, TITLE_CONTENDER_SLOTS, INTERIM_TITLE_PURSE_BONUS_PCT,
 } from './constants';
 import { makeStartingRoster, makeOpponentPool, makeFighter } from './generateFighter';
 import { CITIES, cityLabel, randomFighterName } from './namePool';
@@ -540,14 +540,55 @@ function hallOfFameEntry(fighter, week) {
   };
 }
 
-// A booked Main Event is for your promotion's own belt when the fighter is
-// good enough to be a credible titleholder and either the division's belt
-// is vacant or they're already your champion defending it. (Rival-held
-// belts are a separate, unrelated thing — see RIVAL_PROMOTIONS.)
-export function isTitleFight(state, fighter) {
-  if (!fighter || fighter.overall < TITLE_ELIGIBLE_OVERALL) return false;
-  const holder = state.titles?.[fighter.weightClass];
-  return !holder || holder.holderId === fighter.id;
+// A weight class's current rankings — blends your roster and the world
+// pool exactly the way the Rankings screen shows them, so "a ranked
+// contender" means the same thing there and in the reducer's own title
+// eligibility check below.
+export function divisionRankings(state, weightClassId, limit = 10) {
+  const own = state.roster.filter(f => f.weightClass === weightClassId).map(f => ({ ...f, mine: true }));
+  const others = (state.worldPool[weightClassId] || []).map(f => ({ ...f, mine: false }));
+  const score = f => f.overall * 10 + f.record.wins * 2 + (f.champion || f.title ? 50 : 0);
+  return [...own, ...others].sort((a, b) => score(b) - score(a)).slice(0, limit);
+}
+
+// What (if anything) is really on the line in this Main Event. A title
+// shot needs an actual ranked contender across the cage — not just any
+// Main Event booking — the same way a real promotion won't put a belt up
+// against an untested name. An injured champion doesn't freeze the whole
+// division either: a different one of your fighters can step in against a
+// ranked contender for the interim strap instead of the title picture
+// just sitting still.
+export function titleImplications(state, fighter, opponent) {
+  const none = { isTitle: false, isInterimTitle: false };
+  if (!fighter || !opponent || fighter.overall < TITLE_ELIGIBLE_OVERALL) return none;
+  const wcId = fighter.weightClass;
+  const holder = state.titles?.[wcId];
+  const contenders = divisionRankings(state, wcId, TITLE_CONTENDER_SLOTS);
+  const opponentRanked = contenders.some(f => f.id === opponent.id);
+  if (!opponentRanked) return none;
+
+  if (!holder) return { isTitle: true, isInterimTitle: false }; // vacant — win it outright
+  if (holder.holderId === fighter.id) return { isTitle: true, isInterimTitle: false }; // defending champion
+  if (holder.interimHolderId === fighter.id) return { isTitle: false, isInterimTitle: true }; // defending the interim belt
+
+  // Someone else already holds it — only chase an interim version, and
+  // only while the real champion genuinely can't defend it themselves.
+  const champ = findFighterAnywhere(state, holder.holderId);
+  if (!champ || champ.injuryWeeks > 0) return { isTitle: false, isInterimTitle: true };
+  return none;
+}
+
+// If a division's real title opens up — the champion loses it, retires,
+// or walks — and there's already an interim champion waiting, they
+// inherit the undisputed belt on the spot instead of the title picture
+// just going fully vacant with an interim reign left hanging.
+function vacateOrPromoteInterim(titles, wcId) {
+  const current = titles[wcId];
+  if (current?.interimHolderId) {
+    const promoted = { holderId: current.interimHolderId, holderName: current.interimHolderName, defenses: current.interimDefenses || 0 };
+    return { titles: { ...titles, [wcId]: promoted }, promotedId: current.interimHolderId, promotedName: current.interimHolderName };
+  }
+  return { titles: { ...titles, [wcId]: null }, promotedId: null, promotedName: null };
 }
 
 // ---------- Promotion tier ladder ----------
@@ -893,7 +934,9 @@ export function headToHeadRecord(fightHistory, idA, idB) {
 // multi-bout card builder) so the shape never drifts between them.
 function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venue, gameplan, camp, cardId, weeksOut, week }) {
   const isSuperFight = !!opponent.promotionId;
-  const titleFight = fightType === FIGHT_TYPES.MAIN_EVENT && isTitleFight(state, fighter);
+  const { isTitle: titleFight, isInterimTitle } = fightType === FIGHT_TYPES.MAIN_EVENT
+    ? titleImplications(state, fighter, opponent)
+    : { isTitle: false, isInterimTitle: false };
   // A veteran within sight of retirement headlining a Main Event could be
   // one of their last walks — a bigger draw, same as it would be for real.
   const legacyFight = fightType === FIGHT_TYPES.MAIN_EVENT && isLegacyFight(fighter.age);
@@ -912,10 +955,12 @@ function buildFightRecord(state, { fighterId, fighter, opponent, fightType, venu
     rounds: fightType === FIGHT_TYPES.MAIN_EVENT ? 5 : 3,
     purse: Math.round(
       purseForFight(fighter, opponent, fightType, venue, currentPromotionTier(state).purseBonusPct)
-      * (titleFight ? 1.6 : 1) * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+      * (titleFight ? 1.6 : 1) * (isInterimTitle ? 1 + INTERIM_TITLE_PURSE_BONUS_PCT / 100 : 1)
+      * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
       * (isRematch ? 1 + REMATCH_PURSE_BONUS_PCT / 100 : 1)
     ),
     isTitle: titleFight,
+    isInterimTitle,
     isSuperFight,
     isLegacyFight: legacyFight,
     isRematch,
@@ -1102,10 +1147,14 @@ export function gameReducer(state, action) {
       if (!fighter) return state;
       const worthy = isHallOfFameWorthy(fighter);
       let titles = state.titles;
+      let promoted = null;
       if (titles[fighter.weightClass]?.holderId === fighter.id) {
-        titles = { ...titles, [fighter.weightClass]: null };
+        const result = vacateOrPromoteInterim(titles, fighter.weightClass);
+        titles = result.titles;
+        if (result.promotedId) promoted = { id: result.promotedId, name: result.promotedName };
       }
       const hallOfFame = worthy ? [hallOfFameEntry(fighter, state.week), ...(state.hallOfFame || [])] : (state.hallOfFame || []);
+      const wcName = WEIGHT_CLASS_MAP[fighter.weightClass]?.name;
       const news = [{
         id: `n${Date.now()}_retire`,
         week: state.week,
@@ -1113,9 +1162,14 @@ export function gameReducer(state, action) {
         title: worthy ? `${fighter.name} retires — Hall of Fame` : `${fighter.name} retires`,
         body: `${fighter.name} steps away from competition, finishing ${fighter.record.wins}-${fighter.record.losses}-${fighter.record.draws}.${worthy ? ' A career worthy of the Fight Empire Hall of Fame.' : ''}`,
       }, ...state.news];
+      if (promoted) {
+        news.unshift({ id: `n${Date.now()}_titlepromoted`, week: state.week, category: 'title', title: `${promoted.name} elevated to undisputed ${wcName} Champion`, body: `${fighter.name} retires as champion — with an interim titleholder already in place, ${promoted.name} is immediately recognized as undisputed champion.` });
+      }
       return {
         ...state,
-        roster: state.roster.filter(f => f.id !== fighter.id),
+        roster: state.roster
+          .filter(f => f.id !== fighter.id)
+          .map(f => (promoted && f.id === promoted.id ? { ...f, title: wcName } : f)),
         titles,
         hallOfFame,
         news,
@@ -1411,10 +1465,13 @@ export function gameReducer(state, action) {
       let titles = state.titles;
       let hallOfFame = state.hallOfFame || [];
       const roster = [];
+      const titlePromotions = [];
       agedRoster.forEach(f => {
         if (f.age >= RETIREMENT_AGE) {
           if (titles[f.weightClass]?.holderId === f.id) {
-            titles = { ...titles, [f.weightClass]: null };
+            const result = vacateOrPromoteInterim(titles, f.weightClass);
+            titles = result.titles;
+            if (result.promotedId) titlePromotions.push({ wcId: f.weightClass, promotedId: result.promotedId, promotedName: result.promotedName });
           }
           const worthy = isHallOfFameWorthy(f);
           if (worthy) hallOfFame = [hallOfFameEntry(f, week), ...hallOfFame];
@@ -1429,6 +1486,39 @@ export function gameReducer(state, action) {
         }
         roster.push(f);
       });
+
+      // A healed champion doesn't automatically get the belt handed back —
+      // there's no way to book two of your own fighters against each
+      // other for a real unification bout, so once an interim reign is
+      // underway it's what the title picture resolves to. The moment the
+      // original holder is medically cleared (or already gone) with an
+      // interim champion waiting, the interim belt simply becomes the
+      // undisputed one.
+      Object.keys(titles).forEach(wcId => {
+        const holder = titles[wcId];
+        if (!holder?.interimHolderId) return;
+        const champStillOut = roster.some(f => f.id === holder.holderId && f.injuryWeeks > 0);
+        if (champStillOut) return;
+        const result = vacateOrPromoteInterim(titles, wcId);
+        titles = result.titles;
+        if (result.promotedId) titlePromotions.push({ wcId, promotedId: result.promotedId, promotedName: result.promotedName });
+      });
+
+      titlePromotions.forEach(({ wcId, promotedId, promotedName }) => {
+        news.unshift({
+          id: `n${Date.now()}_titlepromoted_${promotedId}`,
+          week,
+          category: 'title',
+          title: `${promotedName} elevated to undisputed ${WEIGHT_CLASS_MAP[wcId]?.name} Champion`,
+          body: `With the interim reign settled and the original champion's claim resolved, ${promotedName} is recognized as undisputed champion.`,
+        });
+      });
+      const finalRoster = titlePromotions.length
+        ? roster.map(f => {
+          const promo = titlePromotions.find(p => p.promotedId === f.id);
+          return promo ? { ...f, title: WEIGHT_CLASS_MAP[promo.wcId]?.name } : f;
+        })
+        : roster;
 
       // Stay broke too many weeks running and the bank calls it.
       const brokeWeeks = funds === 0 ? (state.meta.brokeWeeks || 0) + 1 : 0;
@@ -1515,7 +1605,7 @@ export function gameReducer(state, action) {
         cards,
         scheduledFights,
         funds,
-        roster,
+        roster: finalRoster,
         amateurs,
         hallOfFame,
         titles,
@@ -1858,14 +1948,41 @@ export function gameReducer(state, action) {
       let titles = state.titles;
       let roster2 = roster;
       let titlesWon = state.meta.titlesWon || 0;
-      if (fight?.isTitle && fighterRef) {
+      if (fight?.isInterimTitle && fighterRef) {
+        const wcId = fighterRef.weightClass;
+        const wcName = WEIGHT_CLASS_MAP[wcId]?.name;
+        const currentHolder = titles[wcId];
+        const wasInterimDefense = currentHolder?.interimHolderId === active.fighterId;
+        if (fighterWon) {
+          const interimDefenses = wasInterimDefense ? (currentHolder.interimDefenses || 0) + 1 : 0;
+          titles = { ...titles, [wcId]: { ...currentHolder, interimHolderId: active.fighterId, interimHolderName: fighterRef.name, interimDefenses } };
+          roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: `Interim ${wcName}` } : f));
+          prestigeDelta += interimDefenses > 0 ? 10 : 25;
+          news.unshift({
+            id: `n${Date.now()}_interim`,
+            week: state.week,
+            category: 'title',
+            title: interimDefenses > 0 ? `${fighterRef.name} retains the interim ${wcName} title` : `${fighterRef.name} claims the interim ${wcName} Championship`,
+            body: interimDefenses > 0
+              ? `${fighterRef.name} makes the ${interimDefenses === 1 ? '1st' : `${interimDefenses}th`} defense of the interim belt.`
+              : `${fighterRef.name} steps up for the interim title while the real champion is unavailable.`,
+          });
+        } else if (wasInterimDefense && !draw) {
+          titles = { ...titles, [wcId]: { ...currentHolder, interimHolderId: null, interimHolderName: null, interimDefenses: 0 } };
+          roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: null } : f));
+          news.unshift({ id: `n${Date.now()}_interimvacant`, week: state.week, category: 'title', title: `Interim ${wcName} title vacated`, body: `${fighterRef.name} lost the interim belt — it's back up for grabs.` });
+        }
+      } else if (fight?.isTitle && fighterRef) {
         const wcId = fighterRef.weightClass;
         const wcName = WEIGHT_CLASS_MAP[wcId]?.name;
         const currentHolder = titles[wcId];
         const wasDefense = currentHolder && currentHolder.holderId === active.fighterId;
         if (fighterWon) {
           const defenses = wasDefense ? currentHolder.defenses + 1 : 0;
-          titles = { ...titles, [wcId]: { holderId: active.fighterId, holderName: fighterRef.name, defenses } };
+          // Spread currentHolder first — a live interim reign is completely
+          // independent of the real champion's own fights and shouldn't be
+          // wiped out just because the real champ also won this week.
+          titles = { ...titles, [wcId]: { ...currentHolder, holderId: active.fighterId, holderName: fighterRef.name, defenses } };
           roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: wcName } : f));
           prestigeDelta += defenses > 0 ? 15 : 40;
           if (defenses === 0) titlesWon += 1;
@@ -1877,9 +1994,16 @@ export function gameReducer(state, action) {
             body: defenses > 0 ? `${fighterRef.name} makes the ${defenses === 1 ? '1st' : `${defenses}th`} defense of the belt.` : `${fighterRef.name} wins the newly created ${wcName} Championship.`,
           });
         } else if (wasDefense && !draw) {
-          titles = { ...titles, [wcId]: null };
-          roster2 = roster.map(f => (f.id === active.fighterId ? { ...f, title: null } : f));
-          news.unshift({ id: `n${Date.now()}_titlevacant`, week: state.week, category: 'title', title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
+          const { titles: nextTitles, promotedId, promotedName } = vacateOrPromoteInterim(titles, wcId);
+          titles = nextTitles;
+          roster2 = roster.map(f => {
+            if (f.id === active.fighterId) return { ...f, title: null };
+            if (promotedId && f.id === promotedId) return { ...f, title: wcName };
+            return f;
+          });
+          news.unshift(promotedId
+            ? { id: `n${Date.now()}_titlepromoted`, week: state.week, category: 'title', title: `${promotedName} elevated to undisputed ${wcName} Champion`, body: `${fighterRef.name} lost the belt — with an interim champion already in place, ${promotedName} is immediately recognized as undisputed champion.` }
+            : { id: `n${Date.now()}_titlevacant`, week: state.week, category: 'title', title: `${wcName} title vacated`, body: `${fighterRef.name} lost the belt — the ${wcName} championship is now vacant.` });
         }
       }
 
@@ -1901,13 +2025,19 @@ export function gameReducer(state, action) {
         });
         const loyalty = clampLoyalty((bookedFighterPostFight.loyalty ?? LOYALTY_BASELINE) + loyaltyDelta);
         if (contractFightsLeft <= 0) {
+          let promotedTitle = null;
           if (titles[bookedFighterPostFight.weightClass]?.holderId === bookedFighterPostFight.id) {
-            titles = { ...titles, [bookedFighterPostFight.weightClass]: null };
+            const result = vacateOrPromoteInterim(titles, bookedFighterPostFight.weightClass);
+            titles = result.titles;
+            if (result.promotedId) promotedTitle = { id: result.promotedId, name: result.promotedName };
           }
           const promo = pick(state.rivals);
           const { contractFightsLeft: oldFightsLeft, signed, title, ...departed } = bookedFighterPostFight;
           worldPool[bookedFighterPostFight.weightClass] = [...worldPool[bookedFighterPostFight.weightClass], { ...departed, loyalty, promotionId: promo.id, champion: false, title: null }];
           roster2 = roster2.filter(f => f.id !== bookedFighterPostFight.id);
+          if (promotedTitle) {
+            roster2 = roster2.map(f => (f.id === promotedTitle.id ? { ...f, title: WEIGHT_CLASS_MAP[bookedFighterPostFight.weightClass]?.name } : f));
+          }
           news.unshift({
             id: `n${Date.now()}_contractdone`,
             week: state.week,
@@ -1915,6 +2045,15 @@ export function gameReducer(state, action) {
             title: `${bookedFighterPostFight.name}'s contract is up — signs with ${promo.name}`,
             body: departureFlavor(bookedFighterPostFight.name, promo.name, loyalty),
           });
+          if (promotedTitle) {
+            news.unshift({
+              id: `n${Date.now()}_titlepromoted`,
+              week: state.week,
+              category: 'title',
+              title: `${promotedTitle.name} elevated to undisputed ${WEIGHT_CLASS_MAP[bookedFighterPostFight.weightClass]?.name} Champion`,
+              body: `${bookedFighterPostFight.name} leaves with the belt unresolved — with an interim titleholder already in place, ${promotedTitle.name} is immediately recognized as undisputed champion.`,
+            });
+          }
           const departureChirp = makeChirp(state, { fighter: bookedFighterPostFight, category: 'departure', text: pick(DEPARTURE_CHIRPS)(promo.name) });
           socialFeed = pushChirp(socialFeed, departureChirp);
           ({ roster: roster2, worldPool } = viralBumpAcrossPools(departureChirp, roster2, worldPool));
@@ -1972,6 +2111,7 @@ export function gameReducer(state, action) {
           eventName: eventCard?.name || null,
           result,
           isTitle: !!fight?.isTitle,
+          isInterimTitle: !!fight?.isInterimTitle,
           isLegacyFight: !!fight?.isLegacyFight,
           isRematch: !!fight?.isRematch,
           controversial,

@@ -14,7 +14,8 @@ export default function Titles() {
     const yourTitle = state.titles[wc.id];
     if (yourTitle) {
       const holder = state.roster.find(f => f.id === yourTitle.holderId);
-      return { wc, status: 'yours', holder, defenses: yourTitle.defenses };
+      const interimHolder = yourTitle.interimHolderId ? state.roster.find(f => f.id === yourTitle.interimHolderId) : null;
+      return { wc, status: 'yours', holder, defenses: yourTitle.defenses, interimHolder, interimDefenses: yourTitle.interimDefenses };
     }
     const rivalChamp = (state.worldPool[wc.id] || []).find(f => f.champion);
     if (rivalChamp) {
@@ -29,35 +30,47 @@ export default function Titles() {
       <Panel title="TITLES">
         <p className="fe-hint">Win a Main Event against an OVR 11+ contender in a division you don't already hold to claim its belt.</p>
         <div className="fe-champ-list">
-          {rows.map(({ wc, status, holder, defenses, promo }) => {
+          {rows.map(({ wc, status, holder, defenses, promo, interimHolder, interimDefenses }) => {
             const poachCost = status === 'rival' && holder ? poachCostFor(holder) : 0;
             return (
-              <div key={wc.id} className="fe-champ-row">
-                <WeightPill id={wc.id} />
-                {status === 'vacant' && <span className="fe-empty">Vacant</span>}
-                {holder && (
-                  <>
-                    <Avatar fighter={holder} size={26} champion />
-                    <Flag nationality={holder.nationality} />
-                    <FighterNameButton fighter={holder} className="fe-boxer-name" />
-                    <span className="fe-champ-record">{holder.record.wins}-{holder.record.losses}-{holder.record.draws}</span>
-                    <Followers count={holder.followers} />
-                    {status === 'yours' ? (
-                      <span className="fe-champ-promo fe-gold">Your belt · {defenses} defense{defenses === 1 ? '' : 's'}</span>
-                    ) : (
-                      <>
-                        <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
-                        <Button
-                          variant="secondary"
-                          className="fe-scout-sign-btn"
-                          onClick={() => poach(holder.id)}
-                          disabled={state.funds < poachCost || rosterFull}
-                        >
-                          Poach (${poachCost.toLocaleString()})
-                        </Button>
-                      </>
-                    )}
-                  </>
+              <div key={wc.id} className="fe-champ-row-group">
+                <div className="fe-champ-row">
+                  <WeightPill id={wc.id} />
+                  {status === 'vacant' && <span className="fe-empty">Vacant</span>}
+                  {holder && (
+                    <>
+                      <Avatar fighter={holder} size={26} champion />
+                      <Flag nationality={holder.nationality} />
+                      <FighterNameButton fighter={holder} className="fe-boxer-name" />
+                      <span className="fe-champ-record">{holder.record.wins}-{holder.record.losses}-{holder.record.draws}</span>
+                      <Followers count={holder.followers} />
+                      {status === 'yours' ? (
+                        <span className="fe-champ-promo fe-gold">Your belt · {defenses} defense{defenses === 1 ? '' : 's'}</span>
+                      ) : (
+                        <>
+                          <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
+                          <Button
+                            variant="secondary"
+                            className="fe-scout-sign-btn"
+                            onClick={() => poach(holder.id)}
+                            disabled={state.funds < poachCost || rosterFull}
+                          >
+                            Poach (${poachCost.toLocaleString()})
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+                {interimHolder && (
+                  <div className="fe-champ-row fe-champ-row-interim">
+                    <span className="fe-champ-promo">🥈</span>
+                    <Avatar fighter={interimHolder} size={22} />
+                    <Flag nationality={interimHolder.nationality} />
+                    <FighterNameButton fighter={interimHolder} className="fe-boxer-name" />
+                    <span className="fe-champ-record">{interimHolder.record.wins}-{interimHolder.record.losses}-{interimHolder.record.draws}</span>
+                    <span className="fe-champ-promo">Interim champ · {interimDefenses || 0} defense{interimDefenses === 1 ? '' : 's'} — {holder?.name} is out injured</span>
+                  </div>
                 )}
               </div>
             );

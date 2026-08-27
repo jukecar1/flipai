@@ -3,8 +3,9 @@ import { useGameState, useGameDispatch } from '../context/GameContext';
 import {
   FIGHT_TYPES, WEIGHT_CLASS_MAP, CARD_MAX_FIGHTS, SUPER_FIGHT_SANCTION_FEE, GAMEPLANS, CAMPS, RIVAL_PROMOTIONS, STAT_KEYS, STAT_LABELS, MAX_STAT,
   PPV_PRICE_OPTIONS, DEFAULT_PPV_PRICE, PPV_PRODUCTION_FEE, isLegacyFight, isMismatchedBooking, LEGACY_FIGHT_PURSE_BONUS_PCT,
+  INTERIM_TITLE_PURSE_BONUS_PCT,
 } from '../game/constants';
-import { isTitleFight, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard, headToHeadRecord } from '../game/gameReducer';
+import { titleImplications, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard, headToHeadRecord } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
 import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle, StreakBadge } from '../components/UI';
 
@@ -401,7 +402,8 @@ function SingleBookingFlow() {
   const cost = venueCost + sanctionFee + ppvFee;
 
   const canConfirm = fighter && opponent && venue && state.funds >= cost && !alreadyBooked.has(fighter.id) && !isInjured(fighter);
-  const isTitle = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && isTitleFight(state, fighter);
+  const { isTitle, isInterimTitle } = fightType === FIGHT_TYPES.MAIN_EVENT && fighter && opponent
+    ? titleImplications(state, fighter, opponent) : { isTitle: false, isInterimTitle: false };
   const isDefense = isTitle && state.titles[fighter.weightClass]?.holderId === fighter.id;
   const legacyFight = fightType === FIGHT_TYPES.MAIN_EVENT && !!fighter && isLegacyFight(fighter.age);
   const mismatch = isMismatchedBooking(fighter, opponent, fightType);
@@ -410,7 +412,8 @@ function SingleBookingFlow() {
   const winPurse = fighter && venue && opponent
     ? Math.round(
         purseForFight(fighter, opponent, fightType, venue, tierBonusPct)
-        * (isTitle ? 1.6 : 1) * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+        * (isTitle ? 1.6 : 1) * (isInterimTitle ? 1 + INTERIM_TITLE_PURSE_BONUS_PCT / 100 : 1)
+        * (isSuperFight ? 1.4 : 1) * (legacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
       )
     : 0;
 
@@ -528,10 +531,8 @@ function SingleBookingFlow() {
             </button>
           ))}
         </div>
-        {isTitle && (
-          <p className="fe-hint fe-hint-title">
-            🏆 {isDefense ? `Title defense — ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship` : `Title fight for the vacant ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship`}
-          </p>
+        {fightType === FIGHT_TYPES.MAIN_EVENT && (
+          <p className="fe-hint">🏆 Main Events against a ranked contender can be a title fight — pick an opponent to see if this one qualifies.</p>
         )}
         <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => setStep('fighter')}>Back</Button>
@@ -594,12 +595,20 @@ function SingleBookingFlow() {
 
         {fighter && opponent && venue && (
           <div className="fe-fight-poster">
-            {(isTitle || isSuperFight || legacyFight) && (
+            {(isTitle || isInterimTitle || isSuperFight || legacyFight) && (
               <div className="fe-fight-poster-badges">
                 {isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
+                {isInterimTitle && <div className="fe-title-fight-badge fe-interim-title-badge">🥈 INTERIM TITLE</div>}
                 {isSuperFight && <div className="fe-title-fight-badge fe-superfight-badge">⚔️ CROSSOVER EVENT</div>}
                 {legacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
               </div>
+            )}
+            {(isTitle || isInterimTitle) && (
+              <p className="fe-hint fe-hint-title">
+                {isInterimTitle
+                  ? `🥈 Interim ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship on the line`
+                  : `🏆 ${isDefense ? `Title defense — ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship` : `Title fight for the vacant ${WEIGHT_CLASS_MAP[fighter.weightClass].name} Championship`}`}
+              </p>
             )}
             {mismatch && (
               <p className="fe-hint fe-hint-warn">
@@ -700,14 +709,16 @@ function CardBuilderFlow() {
   }, [pickFighter, worldPool, pickType]);
   const pickOpponent = opponents.find(o => o.id === pickOpponentId) || crossoverOpponents.find(o => o.id === pickOpponentId);
 
-  const isTitle = pickType === FIGHT_TYPES.MAIN_EVENT && pickFighter && isTitleFight(state, pickFighter);
+  const { isTitle, isInterimTitle } = pickType === FIGHT_TYPES.MAIN_EVENT && pickFighter && pickOpponent
+    ? titleImplications(state, pickFighter, pickOpponent) : { isTitle: false, isInterimTitle: false };
   const pickIsSuperFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickOpponent?.promotionId;
   const pickLegacyFight = pickType === FIGHT_TYPES.MAIN_EVENT && !!pickFighter && isLegacyFight(pickFighter.age);
   const pickMismatch = isMismatchedBooking(pickFighter, pickOpponent, pickType);
   const pickWinPurse = pickFighter && pickOpponent && venue
     ? Math.round(
         purseForFight(pickFighter, pickOpponent, pickType, venue, tierBonusPct)
-        * (isTitle ? 1.6 : 1) * (pickIsSuperFight ? 1.4 : 1) * (pickLegacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
+        * (isTitle ? 1.6 : 1) * (isInterimTitle ? 1 + INTERIM_TITLE_PURSE_BONUS_PCT / 100 : 1)
+        * (pickIsSuperFight ? 1.4 : 1) * (pickLegacyFight ? 1 + LEGACY_FIGHT_PURSE_BONUS_PCT / 100 : 1)
       )
     : 0;
 
@@ -747,6 +758,7 @@ function CardBuilderFlow() {
       fightType: pickType,
       gameplan: pickGameplan,
       isTitle,
+      isInterimTitle,
     }]);
     setPickFighterId('');
     setPickOpponentId('');
@@ -803,7 +815,8 @@ function CardBuilderFlow() {
                     </button>
                   ))}
                 </div>
-                {isTitle && <p className="fe-hint fe-hint-title">🏆 Title-eligible for {WEIGHT_CLASS_MAP[pickFighter.weightClass].name}</p>}
+                {isTitle && <p className="fe-hint fe-hint-title">🏆 Title fight for {WEIGHT_CLASS_MAP[pickFighter.weightClass].name}</p>}
+                {isInterimTitle && <p className="fe-hint fe-hint-title">🥈 Interim {WEIGHT_CLASS_MAP[pickFighter.weightClass].name} title on the line</p>}
                 <div className="fe-wc-tabs">
                   {GAMEPLANS.map(g => (
                     <button key={g.id} className={`fe-wc-tab ${pickGameplan === g.id ? 'active' : ''}`} onClick={() => setPickGameplan(g.id)} title={g.description}>
@@ -855,6 +868,7 @@ function CardBuilderFlow() {
               <Avatar fighter={{ name: b.fighterName, weightClass: b.fighterWeightClass }} size={26} />
               <WeightPill id={b.fighterWeightClass} />
               {b.isTitle && <span title="Title fight">🏆</span>}
+              {b.isInterimTitle && <span title="Interim title fight">🥈</span>}
               {b.opponent.promotionId && <span title="Crossover event">⚔️</span>}
               <span className="fe-fight-title">{b.fighterName} v {b.opponent.name} <span className="fe-hint">({TYPE_LABELS[b.fightType]})</span></span>
               {venue && <CrowdMeter combinedFollowers={(b.fighterFollowers || 0) + (b.opponent.followers || 0)} capacity={venue.capacity} compact />}

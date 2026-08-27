@@ -34,6 +34,7 @@ export default function FightResult() {
       <Panel title="FIGHT RESULT" className="fe-result-panel">
         {last.eventName && <div className="fe-result-event-name">{last.eventName}</div>}
         {last.isTitle && <div className="fe-title-fight-badge">🏆 TITLE FIGHT</div>}
+        {last.isInterimTitle && <div className="fe-title-fight-badge fe-interim-title-badge">🥈 INTERIM TITLE</div>}
         {last.isLegacyFight && <div className="fe-title-fight-badge fe-legacy-badge">🎖️ LEGACY FIGHT</div>}
         {last.isRematch && <div className="fe-title-fight-badge fe-rematch-badge">🔁 REMATCH</div>}
         <div className="fe-result-headline">

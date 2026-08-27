@@ -970,6 +970,11 @@ button, select, input {
   color: #fff;
 }
 
+.fe-interim-title-badge {
+  background: linear-gradient(90deg, #c0c6ce, #8b95a1);
+  color: #1a1200;
+}
+
 .fe-rematch-badge {
   background: linear-gradient(90deg, #3a86ff, #1d4ed8);
   color: #fff;
@@ -2966,6 +2971,18 @@ button, select, input {
   margin-bottom: 10px;
 }
 
+.fe-champ-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fe-champ-row-interim {
+  margin-left: 16px;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
 .fe-leaderboard-row, .fe-champ-row, .fe-free-agent-row {
   display: flex;
   flex-wrap: wrap;
@@ -3071,6 +3088,19 @@ button, select, input {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 14px;
+}
+
+.fe-your-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fe-your-title-interim {
+  margin-left: 16px;
+  background: rgba(139, 149, 161, 0.1);
+  border-color: rgba(139, 149, 161, 0.3);
+  font-size: 12px;
 }
 
 .fe-your-title-row {
