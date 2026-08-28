@@ -2492,65 +2492,68 @@ button, select, input {
   font-size: 13px;
 }
 
-.fe-type-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+/* Three parallel, fully-described cards — pick the event type and it
+   books straight through to the opponent step in one tap, instead of
+   selecting a tab and then separately confirming "Continue". */
+.fe-type-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.fe-type-tab {
+@media (max-width: 520px) {
+  .fe-type-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fe-type-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
   background: var(--fe-panel-alt);
   border: 1px solid var(--fe-border);
-  color: var(--fe-text-dim);
-  padding: 10px 12px;
-  border-radius: 7px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  border-radius: var(--fe-radius);
+  padding: 14px 10px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
-.fe-type-tab:not(.active):hover {
+.fe-type-card:hover {
   border-color: var(--fe-border-light);
-  color: var(--fe-text);
-  transform: translateX(2px);
+  transform: translateY(-1px);
 }
 
-.fe-type-tab.active {
-  border-color: var(--fe-red);
-  background: linear-gradient(135deg, rgba(226, 38, 58, 0.16), rgba(226, 38, 58, 0.04));
+.fe-type-card-icon {
+  font-size: 24px;
 }
 
-.fe-type-tab-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.fe-type-tab-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.fe-type-tab-label {
+.fe-type-card-label {
   font-family: var(--fe-font-display);
   font-size: 15px;
   letter-spacing: 0.3px;
   color: var(--fe-text);
 }
 
-.fe-type-tab.active .fe-type-tab-label {
-  color: #fff;
-}
-
-.fe-type-tab-desc {
+.fe-type-card-desc {
   font-family: var(--fe-font-body);
   font-size: 11.5px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--fe-text-dim);
+  flex: 1;
+}
+
+.fe-type-card-note {
+  font-size: 11px;
+  color: var(--fe-gold);
+  margin: 0;
+}
+
+.fe-type-card-btn {
+  width: 100%;
+  margin-top: 4px;
 }
 
 .fe-venue-list {

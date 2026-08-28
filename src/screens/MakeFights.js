@@ -562,23 +562,23 @@ function SingleBookingFlow() {
 
       {step === 'type' && (
       <Panel title={<StepTitle n={2}>CHOOSE YOUR EVENT</StepTitle>} className="fe-step-col fe-step-col-2">
-        <div className="fe-type-tabs">
+        <div className="fe-type-cards">
           {Object.values(FIGHT_TYPES).map(t => (
-            <button key={t} className={`fe-type-tab ${fightType === t ? 'active' : ''}`} onClick={() => selectType(t)}>
-              <span className="fe-type-tab-top">
-                <span className="fe-type-tab-icon" aria-hidden="true">{TYPE_ICONS[t]}</span>
-                <span className="fe-type-tab-label">{TYPE_LABELS[t]}</span>
-              </span>
-              <span className="fe-type-tab-desc">{TYPE_DESCRIPTIONS[t]}</span>
-            </button>
+            <div key={t} className={`fe-type-card ${fightType === t ? 'active' : ''}`}>
+              <div className="fe-type-card-icon" aria-hidden="true">{TYPE_ICONS[t]}</div>
+              <div className="fe-type-card-label">{TYPE_LABELS[t]}</div>
+              <p className="fe-type-card-desc">{TYPE_DESCRIPTIONS[t]}</p>
+              {t === FIGHT_TYPES.MAIN_EVENT && (
+                <p className="fe-type-card-note">🏆 Against a ranked contender, this can be a title fight.</p>
+              )}
+              <Button variant="advance" className="fe-type-card-btn" onClick={() => { selectType(t); setStep('opponent'); }}>
+                Create {TYPE_LABELS[t]}
+              </Button>
+            </div>
           ))}
         </div>
-        {fightType === FIGHT_TYPES.MAIN_EVENT && (
-          <p className="fe-hint">🏆 Main Events against a ranked contender can be a title fight — pick an opponent to see if this one qualifies.</p>
-        )}
         <div className="fe-wizard-actions">
           <Button variant="secondary" onClick={() => setStep('fighter')}>Back</Button>
-          <Button variant="advance" onClick={() => setStep('opponent')}>Continue</Button>
         </div>
       </Panel>
       )}
