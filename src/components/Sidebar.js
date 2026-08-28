@@ -40,23 +40,24 @@ export default function Sidebar() {
             key={item.id}
             className={`fe-nav-item ${active === item.id ? 'active' : ''}`}
             onClick={() => goTo(item.id)}
+            title={item.label}
           >
             <span className="fe-nav-icon"><item.Icon /></span>
-            {item.label}
+            <span className="fe-nav-label">{item.label}</span>
           </button>
         ))}
       </nav>
       <div className="fe-sidebar-footer">
-        <button className={`fe-nav-item ${active === 'careerStats' ? 'active' : ''}`} onClick={() => goTo('careerStats')}>
+        <button className={`fe-nav-item ${active === 'careerStats' ? 'active' : ''}`} onClick={() => goTo('careerStats')} title="Career Stats">
           <span className="fe-nav-icon"><StatsIcon /></span>
-          Career Stats
+          <span className="fe-nav-label">Career Stats</span>
         </button>
-        <button className={`fe-nav-item ${active === 'settings' ? 'active' : ''}`} onClick={() => goTo('settings')}>
+        <button className={`fe-nav-item ${active === 'settings' ? 'active' : ''}`} onClick={() => goTo('settings')} title="Settings">
           <span className="fe-nav-icon"><SettingsIcon /></span>
-          Settings
+          <span className="fe-nav-label">Settings</span>
         </button>
-        <button className="fe-nav-item fe-nav-quit" onClick={backToStart}>
-          Save &amp; Exit
+        <button className="fe-nav-item fe-nav-quit" onClick={backToStart} title="Save & Exit">
+          <span className="fe-nav-label">Save &amp; Exit</span>
         </button>
       </div>
     </div>

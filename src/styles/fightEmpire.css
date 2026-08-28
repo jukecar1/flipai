@@ -4197,47 +4197,72 @@ button, select, input {
   }
 }
 
-/* A real phone held in landscape is short (roughly 350-430px tall) no
-   matter how wide it is, and none of the width-based breakpoints above
-   catch that — this targets the height itself and trims every layer of
-   chrome (topbar, sidebar/nav strip, panel padding) so actual content
-   gets more of that scarce vertical space instead of forcing a scroll
-   for what should be a single glance. */
-@media (max-height: 460px) {
+/* A real phone held in landscape is short (roughly 350-430px tall, and
+   often quite a bit less once an app's own viewer chrome — a title bar,
+   a browser address bar — eats into that) no matter how wide it is, and
+   none of the width-based breakpoints above catch that. This targets the
+   height itself and treats every layer of chrome as negotiable: nav
+   labels drop to icon-only, panel headers/rows shrink to their smallest
+   readable size, so a single glance actually shows several rows instead
+   of one panel header and a fight-or-two before you have to scroll. */
+@media (max-height: 500px) {
   .fe-topbar {
-    padding: 8px 16px;
-    gap: 14px;
+    padding: 5px 12px;
+    gap: 10px;
   }
   .fe-topbar-title h1 {
-    font-size: 14px;
+    font-size: 12.5px;
   }
   .fe-topbar-sub {
-    font-size: 11px;
+    font-size: 10px;
+  }
+  .fe-topbar-stats {
+    gap: 12px;
+  }
+  .fe-topbar-stats .fe-label {
+    font-size: 9px;
   }
   .fe-value {
-    font-size: 15px;
-  }
-  .fe-sidebar {
-    padding: 8px 10px;
-  }
-  .fe-logo {
-    margin-bottom: 10px;
-  }
-  .fe-nav-item {
-    padding: 6px 10px;
     font-size: 13px;
   }
+  .fe-sidebar {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .fe-logo {
+    margin-bottom: 0;
+  }
+  .fe-nav-item {
+    padding: 5px 7px;
+    font-size: 11.5px;
+    gap: 5px;
+  }
+  /* Icon-only nav — the label text is what was costing the most width
+     per item, and reclaiming it means more of the strip's tabs are
+     reachable without swiping past them. */
+  .fe-nav-label {
+    display: none;
+  }
   .fe-content {
-    padding: 10px 16px 16px;
+    padding: 6px 10px 10px;
   }
   .fe-panel {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
   .fe-panel-header {
-    padding: 7px 12px;
+    padding: 4px 10px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
   }
   .fe-panel-body {
-    padding: 10px 12px;
+    padding: 6px 10px;
+  }
+  .fe-boxer-row, .fe-fight-row, .fe-opponent-row, .fe-venue-row, .fe-ranking-row, .fe-attention-row {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .fe-attention-list, .fe-opponent-list {
+    gap: 4px;
   }
 }
 
