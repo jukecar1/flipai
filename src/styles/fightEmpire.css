@@ -76,6 +76,15 @@ button, select, input {
 .fe-app-shell {
   display: flex;
   min-height: 100vh;
+  /* A real ceiling, not just a floor — without this the shell happily
+     grows taller than the viewport whenever a screen's content is long,
+     and the whole PAGE scrolls (sidebar and all) instead of just
+     .fe-content underneath. 100dvh accounts for a mobile browser's
+     address bar collapsing; browsers that don't support it just use the
+     100vh value above. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background-color: var(--fe-bg);
   background-image:
     var(--fe-atmosphere),
@@ -90,11 +99,17 @@ button, select, input {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* Flex items default to min-height: auto (roughly "as tall as my
+     content wants"), which silently overrides the shell's height cap
+     above. Zeroing it is what actually lets .fe-content's overflow-y
+     below do its job instead of pushing this column past the shell. */
+  min-height: 0;
 }
 
 .fe-content {
   padding: 18px 24px 32px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -4083,6 +4098,18 @@ button, select, input {
   .fe-mode-tabs {
     grid-template-columns: 1fr;
   }
+  /* The 5 raw sub-stat columns (STR/WR/SUB/CHIN/CAR) are the reason this
+     table needed 960px — OVR already summarizes them and the fighter
+     profile modal shows the full breakdown on tap, so they're the first
+     thing to go once there isn't room for a real desktop-width table. */
+  .fe-roster-head, .fe-roster-row {
+    grid-template-columns: 2fr 0.5fr 1.3fr 0.6fr 1fr 0.9fr 0.8fr 1fr 1.5fr;
+    min-width: 0;
+  }
+  .fe-roster-head > *:nth-child(n+4):nth-child(-n+8),
+  .fe-roster-row > *:nth-child(n+4):nth-child(-n+8) {
+    display: none;
+  }
   .fe-fs-body {
     grid-template-columns: 1fr;
   }
@@ -4155,9 +4182,6 @@ button, select, input {
   .fe-topbar-stats > div {
     min-width: 0;
   }
-  .fe-roster-head, .fe-roster-row {
-    min-width: 980px;
-  }
   .fe-fs-body {
     grid-template-columns: 1fr;
   }
@@ -4167,6 +4191,50 @@ button, select, input {
   }
   .fe-speed-group {
     flex: 1 1 100%;
+  }
+}
+
+/* A real phone held in landscape is short (roughly 350-430px tall) no
+   matter how wide it is, and none of the width-based breakpoints above
+   catch that — this targets the height itself and trims every layer of
+   chrome (topbar, sidebar/nav strip, panel padding) so actual content
+   gets more of that scarce vertical space instead of forcing a scroll
+   for what should be a single glance. */
+@media (max-height: 460px) {
+  .fe-topbar {
+    padding: 8px 16px;
+    gap: 14px;
+  }
+  .fe-topbar-title h1 {
+    font-size: 14px;
+  }
+  .fe-topbar-sub {
+    font-size: 11px;
+  }
+  .fe-value {
+    font-size: 15px;
+  }
+  .fe-sidebar {
+    padding: 8px 10px;
+  }
+  .fe-logo {
+    margin-bottom: 10px;
+  }
+  .fe-nav-item {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .fe-content {
+    padding: 10px 16px 16px;
+  }
+  .fe-panel {
+    margin-bottom: 10px;
+  }
+  .fe-panel-header {
+    padding: 7px 12px;
+  }
+  .fe-panel-body {
+    padding: 10px 12px;
   }
 }
 
