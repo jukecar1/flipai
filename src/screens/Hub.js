@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameState, useGameDispatch, useGameActions } from '../context/GameContext';
 import { useFighterProfile } from '../context/FighterProfileContext';
-import { rosterLimitForGym } from '../game/constants';
+import { rosterLimitForGym, WEIGHT_CLASSES, RIVAL_PROMOTIONS } from '../game/constants';
 import { findFighterAnywhere, attentionItems } from '../game/gameReducer';
 import { Panel, Button, WeightPill, Flag, Avatar, NewsCategoryIcon, Followers, FighterNameButton, ContractBadge } from '../components/UI';
 
@@ -30,6 +30,36 @@ export default function Hub() {
   const rosterLimit = rosterLimitForGym(state.meta.gymLevel);
 
   const tickerItems = news.slice(0, 8);
+
+  const [tab, setTab] = useState('stable');
+
+  // Whatever's soonest on the schedule, card or no card — a single glance
+  // at "what's next" instead of hunting through the fight list for it.
+  const nextFight = scheduledFights.length > 0
+    ? [...scheduledFights].sort((a, b) => a.weeksOut - b.weeksOut)[0]
+    : null;
+  const nextFightCard = nextFight?.cardId ? (state.cards || []).find(c => c.id === nextFight.cardId) : null;
+  const nextFightFighter = nextFight ? roster.find(f => f.id === nextFight.fighterId) : null;
+  const nextFightOpponent = nextFight ? findFighterAnywhere(state, nextFight.opponentId) : null;
+
+  // World-tab snapshot — same shape as the Promotions screen's leaderboard
+  // and champions list, condensed so it's a glance from the Hub instead
+  // of a trip to another screen just to see where things stand.
+  const promoBoard = [
+    { id: 'you', name: state.meta.promotionName, prestige: state.prestige, mine: true },
+    ...state.rivals.map(r => ({ ...r, mine: false })),
+  ].sort((a, b) => b.prestige - a.prestige);
+
+  const champions = WEIGHT_CLASSES.map(wc => {
+    const yourTitle = state.titles[wc.id];
+    if (yourTitle) {
+      const holder = roster.find(f => f.id === yourTitle.holderId);
+      return { wc, champ: holder, mine: true };
+    }
+    const champ = (state.worldPool[wc.id] || []).find(f => f.champion);
+    const promo = champ ? RIVAL_PROMOTIONS.find(p => p.id === champ.promotionId) : null;
+    return { wc, champ, promo, mine: false };
+  });
 
   // Group card-based bouts (Showcase/Main Event) under their shared event;
   // Single Fights have no card and just list on their own.
@@ -73,6 +103,30 @@ export default function Hub() {
 
   return (
     <div className="fe-hub-page">
+      <div className="fe-hub-tabs">
+        <button className={`fe-hub-tab ${tab === 'stable' ? 'active' : ''}`} onClick={() => setTab('stable')}>My Stable</button>
+        <button className={`fe-hub-tab ${tab === 'world' ? 'active' : ''}`} onClick={() => setTab('world')}>World</button>
+      </div>
+
+      {tab === 'stable' && nextFight && (
+        <button
+          className="fe-next-fight-banner"
+          onClick={() => (nextFight.weeksOut <= 0 ? readyFight(nextFight.id) : goTo('bouts'))}
+        >
+          <div className="fe-next-fight-info">
+            <span className="fe-next-fight-label">{nextFightCard ? nextFightCard.name : 'Next Fight'}</span>
+            <span className="fe-next-fight-matchup">
+              {nextFightFighter?.name || 'TBD'} vs {nextFightOpponent?.name || nextFight.opponentName || 'TBD'}
+            </span>
+            <span className="fe-hint">{nextFight.venue.name}, {nextFight.venue.city}</span>
+          </div>
+          <span className={`fe-next-fight-tag ${nextFight.weeksOut <= 0 ? 'now' : ''}`}>
+            {nextFight.weeksOut <= 0 ? "THIS WEEK" : `${nextFight.weeksOut}w away`}
+          </span>
+        </button>
+      )}
+
+      {tab === 'stable' && (
       <div className="fe-hub">
         <div className="fe-hub-col fe-hub-main">
           <Panel title="NEEDS YOUR ATTENTION" className="fe-attention-panel">
@@ -163,6 +217,53 @@ export default function Hub() {
           </Panel>
         </div>
       </div>
+      )}
+
+      {tab === 'world' && (
+      <div className="fe-hub">
+        <div className="fe-hub-col fe-hub-main">
+          <Panel title="PROMOTION LEADERBOARD" right={<button className="fe-link" onClick={() => goTo('promotions')}>Full standings</button>}>
+            <div className="fe-leaderboard">
+              {promoBoard.map((p, i) => (
+                <div key={p.id} className={`fe-leaderboard-row ${p.mine ? 'mine' : ''}`}>
+                  <span className="fe-rank-num">{i + 1}</span>
+                  <span className="fe-promo-dot" style={{ background: p.color || '#e2263a' }} />
+                  <div className="fe-promo-info">
+                    <strong>{p.name}{p.mine && <span className="fe-mine-badge">YOU</span>}</strong>
+                  </div>
+                  <span className="fe-promo-prestige">{p.prestige.toLocaleString()} pts</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="fe-hub-col fe-hub-side">
+          <Panel title="DIVISIONAL CHAMPIONS" right={<button className="fe-link" onClick={() => goTo('promotions')}>All titles</button>}>
+            <div className="fe-champ-list">
+              {champions.map(({ wc, champ, promo, mine }) => (
+                <div key={wc.id} className="fe-champ-row">
+                  <WeightPill id={wc.id} />
+                  {champ ? (
+                    <>
+                      <Avatar fighter={champ} size={24} champion />
+                      <FighterNameButton fighter={champ} className="fe-boxer-name" />
+                      {mine ? (
+                        <span className="fe-mine-badge">YOU</span>
+                      ) : (
+                        <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name || 'Unaffiliated'}</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="fe-empty">Vacant</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      </div>
+      )}
 
       {tickerItems.length > 0 && (
         <div className="fe-ticker">
