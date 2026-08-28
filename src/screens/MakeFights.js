@@ -7,7 +7,7 @@ import {
 } from '../game/constants';
 import { titleImplications, drawMultiplier, purseForFight, winProbability, attendanceRate, attendanceStatus, ppvBuys, ppvRevenue, currentPromotionTier, nameForCard, headToHeadRecord } from '../game/gameReducer';
 import { venueOptions } from '../game/venues';
-import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle, StreakBadge } from '../components/UI';
+import { Panel, Button, WeightPill, Flag, Avatar, Followers, StepTitle, StreakBadge, StatReadout } from '../components/UI';
 
 const VENUE_TIER_LABELS = { small_hall: 'Small Hall', theatre: 'Theatre', arena: 'Arena', stadium: 'Stadium' };
 const VENUE_TIER_ICONS = { small_hall: '🥊', theatre: '🎭', arena: '🏟️', stadium: '🏙️' };
@@ -308,8 +308,11 @@ function OpponentList({ opponents, crossoverOpponents, opponentId, onSelect }) {
               <Avatar fighter={o} size={26} />
               <WeightPill id={o.weightClass} />
               <Flag nationality={o.nationality} />
-              <span className="fe-boxer-name" title={o.name}>{o.name}</span>
-              <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws} <StreakBadge fighter={o} /></span>
+              <div className="fe-scout-candidate-info">
+                <span className="fe-boxer-name" title={o.name}>{o.name}</span>
+                <span className="fe-boxer-record">{o.record.wins}-{o.record.losses}-{o.record.draws} <StreakBadge fighter={o} /></span>
+                <StatReadout fighter={o} />
+              </div>
               <Followers count={o.followers} />
               <span className="fe-boxer-overall">OVR {o.overall}</span>
             </div>
@@ -328,8 +331,11 @@ function OpponentList({ opponents, crossoverOpponents, opponentId, onSelect }) {
                   <Avatar fighter={o} size={26} champion={o.champion} />
                   <WeightPill id={o.weightClass} />
                   <Flag nationality={o.nationality} />
-                  <span className="fe-boxer-name" title={o.name}>{o.name}{o.champion ? ' 👑' : ''}</span>
-                  <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
+                  <div className="fe-scout-candidate-info">
+                    <span className="fe-boxer-name" title={o.name}>{o.name}{o.champion ? ' 👑' : ''}</span>
+                    <span className="fe-champ-promo" style={{ color: promo?.color }} title={promo?.name}>{promo?.name}</span>
+                    <StatReadout fighter={o} />
+                  </div>
                   <Followers count={o.followers} />
                   <span className="fe-boxer-overall">OVR {o.overall}</span>
                 </div>
