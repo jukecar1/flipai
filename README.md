@@ -1,70 +1,61 @@
-# Getting Started with Create React App
+# Flip Airport
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A click/tap-driven airport management sim built with [Expo](https://expo.dev) / React Native.
 
-## Available Scripts
+Guide inbound flights to land, dispatch fuel trucks and ramp crews to turn them around at the
+gate, then clear them for takeoff — all before they run out of patience or reputation runs out.
 
-In the project directory, you can run:
+## How to play
 
-### `npm start`
+- **Approach Queue** — inbound planes hold and burn fuel patience. Tap one, then tap the runway
+  to clear it to land. Wait too long and it diverts (money + reputation penalty).
+- **Gates** — landed planes taxi in and run two parallel tasks, ⛽ fuel and 🧳 ramp/baggage.
+  Unattended tasks crawl; an assigned crew finishes them much faster.
+- **Ground Crew** — tap an idle crew, then tap a gate to dispatch it. Tap a busy crew to recall it.
+- **Runway** — a single bottleneck. Select a plane, then tap the runway to land or depart it.
+- **Economy** — on-time departures pay a bonus, late ones eat into the fare. Spend money to hire
+  more crew or build more gates as daily traffic ramps up.
+- Too many diversions tank your reputation and the airport gets grounded — tap **Restart** to
+  try again.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Testing it on your phone with Expo Go
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+1. Install the **Expo Go** app on your phone (iOS App Store / Google Play).
+2. In this project, run:
+   ```
+   npm install
+   npx expo start
+   ```
+3. Scan the QR code that prints in the terminal with your phone:
+   - **iOS**: use the Camera app, tap the notification, it'll open in Expo Go.
+   - **Android**: open Expo Go and use its built-in QR scanner.
+4. The app loads on your phone. Metro keeps a live connection, so as the code changes and you
+   re-run `npx expo start`, just reload the app (shake the phone → "Reload", or `r` in the
+   terminal) to pick up the latest version — no rebuild needed for JS-only changes.
 
-### `npm test`
+If your phone can't reach the dev server directly (different networks, restrictive Wi-Fi),
+run `npx expo start --tunnel` instead — it's slower but works over the internet.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Other scripts
 
-### `npm run build`
+- `npx expo start --android` / `--ios` — launch directly into a simulator/emulator if you have
+  one set up.
+- `npx expo export --platform android` (or `ios`) — produce a production JS bundle without a
+  device, useful for a quick "does this actually compile" check.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Project structure
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+App.js                    # Entry point (status bar + safe area wrapper)
+src/
+  AirportGame.js           # Main screen: game loop (tick interval), layout, modals
+  theme.js                 # Shared color tokens
+  game/engine.js           # Pure game state + reducer (no UI dependencies)
+  components/
+    HUD.js                 # Top bar: money, reputation, day, speed/pause controls
+    AirportMap.js           # Gates, taxiway, runway
+    Sidebar.js               # Approach queue, ground crew panel, shop, event log
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+`src/game/engine.js` has no React Native imports — it's a plain reducer over a plain-object game
+state, so the simulation logic can be unit tested or reused outside the UI if needed.

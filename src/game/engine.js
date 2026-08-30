@@ -1,5 +1,11 @@
 // Core simulation engine for the Airport Manager game.
 // Pure state + reducer, no rendering concerns live here.
+// (Uses a JSON-based deep clone instead of structuredClone for
+// compatibility with the Hermes engine used by React Native/Expo.)
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 export const DAY_LENGTH = 60; // ticks per in-game "day"
 export const LANDING_TICKS = 3;
@@ -214,7 +220,7 @@ export function gameReducer(state, action) {
   switch (action.type) {
     case 'TICK': {
       if (state.paused || state.gameOver) return state;
-      const next = structuredClone(state);
+      const next = clone(state);
       doTick(next);
       return next;
     }
@@ -237,7 +243,7 @@ export function gameReducer(state, action) {
       return { ...state, selected: { kind: 'crew', id: action.id } };
     }
     case 'UNASSIGN_CREW': {
-      const next = structuredClone(state);
+      const next = clone(state);
       const crew = next.crews.find((c) => c.id === action.id);
       if (crew) crew.gateId = null;
       return next;
@@ -246,7 +252,7 @@ export function gameReducer(state, action) {
       if (!state.selected || state.selected.kind !== 'plane') return state;
       const plane = state.planes[state.selected.id];
       if (!plane) return { ...state, selected: null };
-      const next = structuredClone(state);
+      const next = clone(state);
       const p = next.planes[plane.id];
       if (p.status === 'holding' && !next.runway.occupantId) {
         p.status = 'landing';
@@ -276,7 +282,7 @@ export function gameReducer(state, action) {
         const task = crew.type === 'fuel' ? plane.fuelTask : plane.rampTask;
         const alreadyAssigned = state.crews.some((c) => c.gateId === gate.id && c.type === crew.type);
         if (task.remaining <= 0 || alreadyAssigned) return { ...state, selected: null };
-        const next = structuredClone(state);
+        const next = clone(state);
         next.crews.find((c) => c.id === crew.id).gateId = gate.id;
         next.selected = null;
         addLog(next, 'info', `${crew.type === 'fuel' ? 'Fuel truck' : 'Ramp crew'} dispatched to ${gate.id}.`);
@@ -291,7 +297,7 @@ export function gameReducer(state, action) {
       return { ...state, selected: null };
     case 'BUY_GATE': {
       if (state.gates.length >= MAX_GATES || state.money < state.gateCost) return state;
-      const next = structuredClone(state);
+      const next = clone(state);
       next.money -= next.gateCost;
       next.gates.push({ id: `G${next.gates.length + 1}`, planeId: null });
       next.gateCost = Math.round(next.gateCost * 1.5);
@@ -300,7 +306,7 @@ export function gameReducer(state, action) {
     }
     case 'BUY_CREW': {
       if (state.crews.length >= MAX_CREW || state.money < state.crewCost) return state;
-      const next = structuredClone(state);
+      const next = clone(state);
       next.money -= next.crewCost;
       const fuelCount = next.crews.filter((c) => c.type === 'fuel').length;
       const rampCount = next.crews.filter((c) => c.type === 'ramp').length;
