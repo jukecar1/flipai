@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "Flip Airport",
-    "slug": "flip-airport",
+    "name": "Flip Airways",
+    "slug": "flip-airways",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0d1720",
+    "backgroundColor": "#05070c",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0d1720",
+        "backgroundColor": "#05070c",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

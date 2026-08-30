@@ -1,324 +1,275 @@
-// Core simulation engine for the Airport Manager game.
-// Pure state + reducer, no rendering concerns live here.
-// (Uses a JSON-based deep clone instead of structuredClone for
-// compatibility with the Hermes engine used by React Native/Expo.)
+// Turn-based airline management simulation.
+// Pure state + reducer, no React/RN dependencies — advanceWeek() runs the
+// whole weekly simulation (revenue, cost, maintenance, aging) in one pass.
+
+import { AIRCRAFT_TYPES, distanceKm } from './data';
+
+const START_CASH = 60_000_000;
+const FUEL_PRICE_PER_UNIT = 1.15; // $ per (fuelBurnPerKm unit * km)
+const TICKET_RATE_PER_KM = 0.11; // $ per passenger-km
+const TICKET_BASE_FARE = 40; // $ flat per passenger
+const CARGO_RATE_PER_KG_KM = 0.00045;
+const IDLE_PARKING_FEE = 20_000; // $/week per aircraft with no route
+const WEEKLY_OVERHEAD = 60_000; // flat admin overhead
+const MAINT_DOWN_WEEKS = 1;
+const MAX_HISTORY = 24;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export const DAY_LENGTH = 60; // ticks per in-game "day"
-export const LANDING_TICKS = 3;
-export const DEPART_TICKS = 3;
-export const HOLD_PATIENCE = 45; // ticks a plane will circle before diverting
-export const EMERGENCY_THRESHOLD = 15; // patience left when it starts flashing red
-export const MAX_LOG = 40;
-export const MAX_GATES = 8;
-export const MAX_CREW = 8;
-
-const SIZES = {
-  S: { label: 'Regional', fare: 300, task: 10, weight: 5 },
-  M: { label: 'Narrowbody', fare: 550, task: 14, weight: 4 },
-  L: { label: 'Widebody', fare: 850, task: 18, weight: 2 },
-};
-
-const AIRLINES = ['FlipAir', 'BlueWing', 'SunJet', 'Coastal', 'NorthStar', 'Vantage'];
-
-function pickSize() {
-  const total = Object.values(SIZES).reduce((s, v) => s + v.weight, 0);
-  let r = Math.random() * total;
-  for (const [key, v] of Object.entries(SIZES)) {
-    r -= v.weight;
-    if (r <= 0) return key;
-  }
-  return 'S';
+function typeOf(id) {
+  return AIRCRAFT_TYPES.find((t) => t.id === id);
 }
 
-let uid = 1;
-function nextId(prefix) {
-  return `${prefix}${uid++}`;
+export function codesFromName(rawName) {
+  const name = (rawName || '').trim() || 'New Airways';
+  const words = name.split(/\s+/).filter(Boolean);
+  const initials = words.map((w) => w[0].toUpperCase()).join('');
+  const lettersOnly = (name.replace(/[^A-Za-z]/g, '').toUpperCase() || 'AIR');
+  const icao = initials.length >= 3 ? initials.slice(0, 3) : (lettersOnly + 'XXX').slice(0, 3);
+  const iata = initials.length >= 2 ? initials.slice(0, 2) : (lettersOnly + 'XX').slice(0, 2);
+  const callsign = lettersOnly.slice(0, 8) || 'FLIPAIR';
+  return { iata, icao, callsign };
 }
 
-function makePlane(tick) {
-  const size = pickSize();
-  const meta = SIZES[size];
-  const airline = AIRLINES[Math.floor(Math.random() * AIRLINES.length)];
-  const callsign = `${airline.slice(0, 2).toUpperCase()}${100 + Math.floor(Math.random() * 899)}`;
-  const groundEstimate = Math.round(meta.task * 1.3) + 12; // rough unattended-ish estimate
+function addWeeks(iso, weeks) {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + weeks * 7);
+  return d.toISOString();
+}
+
+function makeAircraft(id, typeId, tail) {
   return {
-    id: nextId('P'),
-    callsign,
-    airline,
-    size,
-    label: meta.label,
-    fare: meta.fare,
-    spawnTick: tick,
-    scheduledDeparture: tick + HOLD_PATIENCE * 0.4 + groundEstimate,
-    status: 'holding',
-    fuelPatience: HOLD_PATIENCE,
-    emergency: false,
-    gateId: null,
-    fuelTask: { remaining: meta.task, total: meta.task },
-    rampTask: { remaining: meta.task, total: meta.task },
+    id,
+    tail,
+    typeId,
+    status: 'active',
+    routeId: null,
+    hoursSinceCheck: 0,
+    totalHours: 0,
+    cycles: 0,
+    ageWeeks: 0,
+    maintWeeksLeft: 0,
+    lastWeek: null,
   };
 }
 
-export function initialState() {
-  const gates = [0, 1, 2, 3].map((i) => ({ id: `G${i + 1}`, planeId: null }));
-  const crews = [
-    { id: 'C1', type: 'fuel', gateId: null },
-    { id: 'C2', type: 'fuel', gateId: null },
-    { id: 'C3', type: 'ramp', gateId: null },
-    { id: 'C4', type: 'ramp', gateId: null },
-  ];
+export function newGameState(name, color) {
+  const codes = codesFromName(name);
+  const nowIso = new Date().toISOString();
+  const starterId = 'AC1';
+  const starterTail = `N-${codes.icao}01`;
   return {
-    tick: 0,
-    day: 1,
-    money: 2000,
-    reputation: 100,
-    speed: 1,
-    paused: false,
-    gameOver: false,
-    gates,
-    crews,
-    runway: { occupantId: null, mode: null, freeAtTick: 0 },
-    planes: {},
-    selected: null,
-    log: [{ tick: 0, kind: 'info', text: 'Welcome to Flip Airport. Clear arrivals to land and get them turned around!' }],
-    gateCost: 1500,
-    crewCost: 800,
-    stats: { completed: 0, diverted: 0 },
+    meta: { name: name?.trim() || 'New Airways', color, ...codes },
+    dateIso: nowIso,
+    weekIndex: 0,
+    cash: START_CASH,
+    aircraft: { [starterId]: makeAircraft(starterId, 'E195', starterTail) },
+    routes: {},
+    history: [],
+    lastWeek: { revenue: 0, cost: 0, profit: 0, scheduled: 0, completed: 0, avgLoad: 0 },
+    nextAircraftNum: 2,
+    nextRouteNum: 1,
+    selectedRouteAircraft: null,
   };
 }
 
-function addLog(state, kind, text) {
-  const entry = { tick: state.tick, kind, text };
-  state.log = [entry, ...state.log].slice(0, MAX_LOG);
+function reassignableAircraftList(state) {
+  return Object.values(state.aircraft).filter((a) => a.status === 'active' && !a.routeId);
 }
 
-function freeCrewsForGate(state, gateId) {
-  state.crews.forEach((c) => {
-    if (c.gateId === gateId) c.gateId = null;
-  });
-}
+function doNextWeek(state) {
+  state.weekIndex += 1;
+  state.dateIso = addWeeks(state.dateIso, 1);
 
-function spawnRate(day) {
-  return Math.min(0.05 + day * 0.012, 0.32);
-}
+  let revenue = 0;
+  let cost = 0;
+  let scheduled = 0;
+  let completed = 0;
+  let loadSum = 0;
+  let loadCount = 0;
 
-function doTick(state) {
-  state.tick += 1;
-  const newDay = 1 + Math.floor(state.tick / DAY_LENGTH);
-  if (newDay !== state.day) {
-    state.day = newDay;
-    addLog(state, 'day', `Day ${newDay} begins. Traffic is picking up.`);
-  }
-
-  // --- Spawn arrivals ---
-  const activeCount = Object.values(state.planes).length;
-  if (activeCount < 14 && Math.random() < spawnRate(state.day)) {
-    const p = makePlane(state.tick);
-    state.planes[p.id] = p;
-    addLog(state, 'arrival', `${p.callsign} (${p.label}) is inbound, requesting to land.`);
-  }
-
-  // --- Runway resolution ---
-  const rw = state.runway;
-  if (rw.occupantId && state.tick >= rw.freeAtTick) {
-    const plane = state.planes[rw.occupantId];
-    if (plane) {
-      if (rw.mode === 'landing') {
-        const freeGate = state.gates.find((g) => !g.planeId);
-        if (freeGate) {
-          freeGate.planeId = plane.id;
-          plane.gateId = freeGate.id;
-          plane.status = 'atGate';
-          addLog(state, 'taxi', `${plane.callsign} landed and is taxiing to ${freeGate.id}.`);
-        } else {
-          plane.status = 'waitingForGate';
-          addLog(state, 'taxi', `${plane.callsign} landed and is holding on the taxiway for an open gate.`);
-        }
-      } else if (rw.mode === 'departing') {
-        const lateness = Math.max(0, state.tick - plane.scheduledDeparture);
-        const onTimeBonus = lateness === 0 ? Math.round(plane.fare * 0.3) : 0;
-        const latePenalty = Math.min(plane.fare * 0.8, lateness * 8);
-        const payout = Math.round(plane.fare + onTimeBonus - latePenalty);
-        state.money += payout;
-        state.reputation = Math.max(0, Math.min(100, state.reputation + (lateness === 0 ? 1 : lateness > 20 ? -3 : 0)));
-        state.stats.completed += 1;
-        if (plane.gateId) {
-          const g = state.gates.find((x) => x.id === plane.gateId);
-          if (g) g.planeId = null;
-          freeCrewsForGate(state, plane.gateId);
-        }
-        addLog(
-          state,
-          lateness === 0 ? 'success' : 'warn',
-          `${plane.callsign} departed ${lateness === 0 ? 'on time' : `${lateness}t late`}. +$${payout}.`
-        );
-        delete state.planes[plane.id];
+  // Aircraft maintenance countdown resolves first so a plane coming off
+  // maintenance this week can fly again.
+  Object.values(state.aircraft).forEach((a) => {
+    a.ageWeeks += 1;
+    if (a.status === 'maintenance') {
+      a.maintWeeksLeft -= 1;
+      if (a.maintWeeksLeft <= 0) {
+        a.status = 'active';
+        a.maintWeeksLeft = 0;
       }
-      rw.occupantId = null;
-      rw.mode = null;
+    }
+  });
+
+  Object.values(state.routes).forEach((route) => {
+    const aircraft = route.aircraftId ? state.aircraft[route.aircraftId] : null;
+    if (!aircraft) {
+      route.lastWeek = { flights: 0, completed: 0, loadFactor: 0, revenue: 0, cost: 0, profit: 0 };
+      return;
+    }
+    scheduled += route.frequency;
+    if (aircraft.status !== 'active') {
+      route.lastWeek = { flights: route.frequency, completed: 0, loadFactor: 0, revenue: 0, cost: 0, profit: 0 };
+      return;
+    }
+
+    const type = typeOf(aircraft.typeId);
+    const loadFactor = Math.max(0.35, Math.min(0.98, 0.68 + (Math.random() - 0.5) * 0.5));
+    const flights = route.frequency;
+
+    let flightRevenue;
+    if (type.cargo) {
+      const kg = type.capacity * loadFactor;
+      flightRevenue = kg * route.distanceKm * CARGO_RATE_PER_KG_KM;
     } else {
-      rw.occupantId = null;
-      rw.mode = null;
+      const pax = type.capacity * loadFactor;
+      flightRevenue = pax * (TICKET_BASE_FARE + route.distanceKm * TICKET_RATE_PER_KM);
     }
-  }
+    const weekRevenue = flightRevenue * flights;
+    const fuelCost = type.fuelBurnPerKm * route.distanceKm * flights * FUEL_PRICE_PER_UNIT;
+    const crewCost = type.crewCostPerFlight * flights;
+    const maintCost = type.maintPerFlight * flights;
+    const weekCost = fuelCost + crewCost + maintCost;
 
-  // --- Assign free gates to planes waiting on the taxiway ---
-  const waiting = Object.values(state.planes)
-    .filter((p) => p.status === 'waitingForGate')
-    .sort((a, b) => a.spawnTick - b.spawnTick);
-  for (const p of waiting) {
-    const freeGate = state.gates.find((g) => !g.planeId);
-    if (!freeGate) break;
-    freeGate.planeId = p.id;
-    p.gateId = freeGate.id;
-    p.status = 'atGate';
-    addLog(state, 'taxi', `${p.callsign} is now taxiing into ${freeGate.id}.`);
-  }
+    route.lastWeek = {
+      flights,
+      completed: flights,
+      loadFactor,
+      revenue: weekRevenue,
+      cost: weekCost,
+      profit: weekRevenue - weekCost,
+    };
 
-  // --- Ground service progress ---
-  Object.values(state.planes).forEach((p) => {
-    if (p.status !== 'atGate') return;
-    const fuelCrew = state.crews.some((c) => c.gateId === p.gateId && c.type === 'fuel');
-    const rampCrew = state.crews.some((c) => c.gateId === p.gateId && c.type === 'ramp');
-    p.fuelTask.remaining = Math.max(0, p.fuelTask.remaining - (fuelCrew ? 3 : 1));
-    p.rampTask.remaining = Math.max(0, p.rampTask.remaining - (rampCrew ? 3 : 1));
-    if (p.fuelTask.remaining === 0 && p.rampTask.remaining === 0) {
-      p.status = 'ready';
-      addLog(state, 'ready', `${p.callsign} is fueled, loaded, and ready for departure.`);
-    }
-  });
+    revenue += weekRevenue;
+    cost += weekCost;
+    completed += flights;
+    loadSum += loadFactor;
+    loadCount += 1;
 
-  // --- Holding pattern fuel pressure ---
-  Object.values(state.planes).forEach((p) => {
-    if (p.status !== 'holding') return;
-    p.fuelPatience -= 1;
-    if (p.fuelPatience === EMERGENCY_THRESHOLD) {
-      p.emergency = true;
-      addLog(state, 'warn', `${p.callsign} is burning fuel fast — land it soon!`);
-    }
-    if (p.fuelPatience <= 0) {
-      state.money = Math.max(0, state.money - Math.round(p.fare * 0.7));
-      state.reputation = Math.max(0, state.reputation - 8);
-      state.stats.diverted += 1;
-      addLog(state, 'error', `${p.callsign} ran low on fuel and diverted to another airport. Reputation hit.`);
-      delete state.planes[p.id];
+    const flightHours = route.distanceKm / type.speedKmh;
+    aircraft.totalHours += flightHours * flights;
+    aircraft.hoursSinceCheck += flightHours * flights;
+    aircraft.cycles += flights;
+
+    if (aircraft.hoursSinceCheck >= type.checkIntervalHours) {
+      aircraft.status = 'maintenance';
+      aircraft.maintWeeksLeft = MAINT_DOWN_WEEKS;
+      aircraft.hoursSinceCheck = 0;
     }
   });
 
-  if (state.reputation <= 0) {
-    state.gameOver = true;
-    state.paused = true;
-    addLog(state, 'error', 'Reputation has collapsed. The airport is grounded. Game over.');
-  }
+  const idleFleet = Object.values(state.aircraft).filter((a) => a.status === 'active' && !a.routeId).length;
+  const overhead = WEEKLY_OVERHEAD + idleFleet * IDLE_PARKING_FEE;
+  cost += overhead;
+
+  const profit = revenue - cost;
+  state.cash += profit;
+
+  const avgLoad = loadCount ? loadSum / loadCount : 0;
+  state.lastWeek = { revenue, cost, profit, scheduled, completed, avgLoad, overhead };
+  state.history = [...state.history, { weekIndex: state.weekIndex, dateIso: state.dateIso, revenue, cost, profit }].slice(
+    -MAX_HISTORY
+  );
 }
 
 export function gameReducer(state, action) {
   switch (action.type) {
-    case 'TICK': {
-      if (state.paused || state.gameOver) return state;
+    case 'NEW_GAME':
+      return newGameState(action.name, action.color);
+    case 'LOAD_STATE':
+      return action.state;
+    case 'NEXT_WEEK': {
       const next = clone(state);
-      doTick(next);
+      doNextWeek(next);
       return next;
     }
-    case 'SET_SPEED':
-      return { ...state, speed: action.speed };
-    case 'TOGGLE_PAUSE':
-      return state.gameOver ? state : { ...state, paused: !state.paused };
-    case 'SELECT_PLANE': {
-      if (state.selected && state.selected.kind === 'plane' && state.selected.id === action.id) {
-        return { ...state, selected: null };
-      }
-      return { ...state, selected: { kind: 'plane', id: action.id } };
-    }
-    case 'SELECT_CREW': {
-      if (state.selected && state.selected.kind === 'crew' && state.selected.id === action.id) {
-        return { ...state, selected: null };
-      }
-      const crew = state.crews.find((c) => c.id === action.id);
-      if (!crew || crew.gateId) return state;
-      return { ...state, selected: { kind: 'crew', id: action.id } };
-    }
-    case 'UNASSIGN_CREW': {
+    case 'BUY_AIRCRAFT': {
+      const type = typeOf(action.typeId);
+      if (!type || state.cash < type.price) return state;
       const next = clone(state);
-      const crew = next.crews.find((c) => c.id === action.id);
-      if (crew) crew.gateId = null;
+      const id = `AC${next.nextAircraftNum}`;
+      const tail = `N-${next.meta.icao}${String(next.nextAircraftNum).padStart(2, '0')}`;
+      next.aircraft[id] = makeAircraft(id, type.id, tail);
+      next.cash -= type.price;
+      next.nextAircraftNum += 1;
       return next;
     }
-    case 'CLICK_RUNWAY': {
-      if (!state.selected || state.selected.kind !== 'plane') return state;
-      const plane = state.planes[state.selected.id];
-      if (!plane) return { ...state, selected: null };
+    case 'SELL_AIRCRAFT': {
+      const aircraft = state.aircraft[action.id];
+      if (!aircraft) return state;
+      const type = typeOf(aircraft.typeId);
       const next = clone(state);
-      const p = next.planes[plane.id];
-      if (p.status === 'holding' && !next.runway.occupantId) {
-        p.status = 'landing';
-        next.runway.occupantId = p.id;
-        next.runway.mode = 'landing';
-        next.runway.freeAtTick = next.tick + LANDING_TICKS;
-        addLog(next, 'info', `${p.callsign} cleared to land.`);
-      } else if (p.status === 'ready' && !next.runway.occupantId) {
-        p.status = 'departing';
-        next.runway.occupantId = p.id;
-        next.runway.mode = 'departing';
-        next.runway.freeAtTick = next.tick + DEPART_TICKS;
-        addLog(next, 'info', `${p.callsign} cleared for takeoff.`);
-      } else {
-        return { ...state, selected: null };
+      if (aircraft.routeId && next.routes[aircraft.routeId]) {
+        next.routes[aircraft.routeId].aircraftId = null;
       }
-      next.selected = null;
+      next.cash += Math.round((type?.price || 0) * 0.5);
+      delete next.aircraft[action.id];
       return next;
     }
-    case 'CLICK_GATE': {
-      const gate = state.gates.find((g) => g.id === action.gateId);
-      if (!gate) return state;
-      if (state.selected && state.selected.kind === 'crew') {
-        const crew = state.crews.find((c) => c.id === state.selected.id);
-        const plane = gate.planeId ? state.planes[gate.planeId] : null;
-        if (!crew || !plane || plane.status !== 'atGate') return { ...state, selected: null };
-        const task = crew.type === 'fuel' ? plane.fuelTask : plane.rampTask;
-        const alreadyAssigned = state.crews.some((c) => c.gateId === gate.id && c.type === crew.type);
-        if (task.remaining <= 0 || alreadyAssigned) return { ...state, selected: null };
-        const next = clone(state);
-        next.crews.find((c) => c.id === crew.id).gateId = gate.id;
-        next.selected = null;
-        addLog(next, 'info', `${crew.type === 'fuel' ? 'Fuel truck' : 'Ramp crew'} dispatched to ${gate.id}.`);
-        return next;
-      }
-      if (gate.planeId) {
-        return { ...state, selected: { kind: 'plane', id: gate.planeId } };
-      }
-      return { ...state, selected: null };
-    }
-    case 'DESELECT':
-      return { ...state, selected: null };
-    case 'BUY_GATE': {
-      if (state.gates.length >= MAX_GATES || state.money < state.gateCost) return state;
+    case 'CREATE_ROUTE': {
+      const { origin, destination, aircraftId, frequency } = action;
+      if (origin === destination) return state;
+      const aircraft = aircraftId ? state.aircraft[aircraftId] : null;
+      if (aircraftId && (!aircraft || aircraft.status !== 'active' || aircraft.routeId)) return state;
       const next = clone(state);
-      next.money -= next.gateCost;
-      next.gates.push({ id: `G${next.gates.length + 1}`, planeId: null });
-      next.gateCost = Math.round(next.gateCost * 1.5);
-      addLog(next, 'success', `New gate built: ${next.gates[next.gates.length - 1].id}.`);
+      const id = `R${next.nextRouteNum}`;
+      next.routes[id] = {
+        id,
+        origin,
+        destination,
+        distanceKm: distanceKm(origin, destination),
+        aircraftId: aircraftId || null,
+        frequency,
+        lastWeek: null,
+      };
+      if (aircraftId) next.aircraft[aircraftId].routeId = id;
+      next.nextRouteNum += 1;
       return next;
     }
-    case 'BUY_CREW': {
-      if (state.crews.length >= MAX_CREW || state.money < state.crewCost) return state;
+    case 'ASSIGN_AIRCRAFT_TO_ROUTE': {
+      const route = state.routes[action.routeId];
+      const aircraft = state.aircraft[action.aircraftId];
+      if (!route || !aircraft || aircraft.status !== 'active' || aircraft.routeId) return state;
+      if (route.aircraftId) return state;
       const next = clone(state);
-      next.money -= next.crewCost;
-      const fuelCount = next.crews.filter((c) => c.type === 'fuel').length;
-      const rampCount = next.crews.filter((c) => c.type === 'ramp').length;
-      const type = fuelCount <= rampCount ? 'fuel' : 'ramp';
-      next.crews.push({ id: `C${next.crews.length + 1}`, type, gateId: null });
-      next.crewCost = Math.round(next.crewCost * 1.5);
-      addLog(next, 'success', `Hired a new ${type === 'fuel' ? 'fuel truck crew' : 'ramp crew'}.`);
+      next.routes[action.routeId].aircraftId = action.aircraftId;
+      next.aircraft[action.aircraftId].routeId = action.routeId;
       return next;
     }
-    case 'RESTART':
-      return initialState();
+    case 'UNASSIGN_ROUTE_AIRCRAFT': {
+      const route = state.routes[action.routeId];
+      if (!route || !route.aircraftId) return state;
+      const next = clone(state);
+      next.aircraft[route.aircraftId].routeId = null;
+      next.routes[action.routeId].aircraftId = null;
+      return next;
+    }
+    case 'SET_FREQUENCY': {
+      const route = state.routes[action.routeId];
+      if (!route) return state;
+      const next = clone(state);
+      next.routes[action.routeId].frequency = action.frequency;
+      return next;
+    }
+    case 'REMOVE_ROUTE': {
+      const route = state.routes[action.routeId];
+      if (!route) return state;
+      const next = clone(state);
+      if (route.aircraftId && next.aircraft[route.aircraftId]) {
+        next.aircraft[route.aircraftId].routeId = null;
+      }
+      delete next.routes[action.routeId];
+      return next;
+    }
     default:
       return state;
   }
 }
+
+export function unassignedAircraft(state) {
+  return reassignableAircraftList(state);
+}
+
+export { typeOf as aircraftTypeOf };

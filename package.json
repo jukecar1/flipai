@@ -1,5 +1,5 @@
 {
-  "name": "flip-airport",
+  "name": "flip-airways",
   "version": "1.0.0",
   "main": "index.js",
   "private": true,
@@ -10,6 +10,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "expo": "~57.0.18",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
