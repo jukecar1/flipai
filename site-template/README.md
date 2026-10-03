@@ -14,3 +14,4 @@ Cloudflare Pages (or any static host).
 
 - Default (trades / local business): `clients/sample-plumber.json`
 - Dark product landing page: add `"template": "saas"` — see `clients/sample-saas.json`
+- Dark trades page: `"template": "trades-dark"` — see `clients/sample-plumber-dark.json`
