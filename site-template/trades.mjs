@@ -1,0 +1,242 @@
+// Light, photo-friendly landing page for local trades (plumbing, HVAC, roofing, etc.)
+// Optional fields: logo, heroImages[], gallery[], rating{score,count,url}, reviews[], about, email, faq[]
+const esc = (s = "") =>
+  String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const tel = (p) => "tel:+1" + p.replace(/\D/g, "").replace(/^1/, "");
+
+const ICONS = {
+  snow: "M12 2v20M4.2 7l15.6 10M19.8 7L4.2 17M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5",
+  flame: "M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z",
+  wrench: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z",
+  wind: "M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8a3 3 0 1 1-3 3",
+  home: "M3 11l9-8 9 8M5 10v10h14V10",
+  drop: "M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z",
+  bolt: "M13 2L4 14h7l-1 8 9-12h-7z",
+  shield: "M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z",
+};
+const icon = (n) =>
+  `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n] || ICONS.wrench}"/></svg>`;
+const star = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></svg>`;
+const stars = () => `<span class="stars" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
+
+export function renderTrades(c) {
+  const { primary, accent } = c.colors;
+  const has = (k) => Array.isArray(c[k]) && c[k].length > 0;
+  const brand = c.logo
+    ? `<img class="logo-img" src="${esc(c.logo)}" alt="${esc(c.name)} logo">`
+    : `<span class="wordmark">${esc(c.name)}</span>`;
+  const nav = [
+    ["#services", "Services"],
+    has("gallery") ? ["#work", "Our work"] : null,
+    c.rating || has("reviews") ? ["#reviews", "Reviews"] : null,
+    ["#contact", "Contact"],
+  ].filter(Boolean);
+  const hero = has("heroImages") ? c.heroImages.slice(0, 3) : [];
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(c.name)} | ${esc(c.trade)} in ${esc(c.address)}</title>
+<meta name="description" content="${esc(c.name)} - ${esc(c.trade)} serving ${esc(c.serviceArea.slice(0, 3).join(", "))}. Call ${esc(c.phone)}.">
+<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: c.name,
+    telephone: c.phone,
+    email: c.email || undefined,
+    areaServed: c.serviceArea,
+    address: c.address,
+  })}</script>
+<style>
+:root{--primary:${primary};--accent:${accent};--ink:#0f1c2e;--muted:#566177;--soft:#f3f6fb;--line:#e3e8f1;--r:16px;--shadow:0 10px 30px rgba(15,28,46,.08)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#fff;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+img{max-width:100%;display:block}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.topbar{background:#0b1a30;color:#cfd8e8;font-size:.82rem;text-align:center;padding:7px 12px}
+.topbar a{color:#fff;font-weight:700;text-decoration:none}
+header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
+.wordmark{font-weight:900;font-size:1.15rem;letter-spacing:-.01em;color:var(--primary)}
+.logo-img{height:44px;width:auto}
+nav.links{display:none;gap:26px;font-weight:600;font-size:.95rem}
+nav.links a{text-decoration:none;color:var(--muted)}
+nav.links a:hover{color:var(--primary)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#1a1205;font-weight:800;padding:13px 22px;border-radius:12px;text-decoration:none;border:0;cursor:pointer;font-size:1rem;white-space:nowrap;box-shadow:0 6px 16px rgba(245,158,11,.28)}
+.btn.alt{background:#fff;color:var(--primary);box-shadow:none;border:1px solid rgba(255,255,255,.5)}
+.btn.sm{padding:10px 16px;font-size:.95rem}
+.hero{background:radial-gradient(900px 400px at 85% -10%,rgba(255,255,255,.14),transparent 60%),linear-gradient(135deg,var(--primary),#0a1f3d);color:#fff;padding:48px 0 56px}
+.hero .wrap{display:grid;gap:36px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:6px 14px;border-radius:999px;font-size:.88rem;font-weight:600}
+.stars{display:inline-flex;gap:2px;color:#fbbf24}
+h1{font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.06;letter-spacing:-.03em;margin:16px 0 14px;font-weight:900}
+.hero p{font-size:1.1rem;opacity:.92;max-width:520px;margin:0 0 24px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;height:340px}
+.mosaic img{width:100%;height:100%;object-fit:cover;border-radius:14px;border:3px solid rgba(255,255,255,.18);box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.mosaic img:first-child{grid-row:span 2}
+.trust{background:#fff;border-bottom:1px solid var(--line)}
+.trust .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding-top:18px;padding-bottom:18px}
+.trust div{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.95rem}
+.trust svg{color:var(--primary);flex:none}
+section{padding:64px 0}
+section.soft{background:var(--soft)}
+.eyebrow{color:var(--primary);font-weight:800;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}
+h2{font-size:clamp(1.6rem,4vw,2.2rem);letter-spacing:-.02em;line-height:1.15;margin:6px 0 28px}
+.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+.card .ic{width:48px;height:48px;border-radius:12px;background:var(--soft);color:var(--primary);display:grid;place-items:center;margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:1.1rem}
+.card p{margin:0;color:var(--muted)}
+.gal{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+.gal img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--r);box-shadow:var(--shadow)}
+.rate{display:grid;gap:22px;align-items:center}
+.rate.solo{max-width:340px}
+.score{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:26px;text-align:center;box-shadow:var(--shadow)}
+.score b{display:block;font-size:3.4rem;line-height:1;letter-spacing:-.03em}
+.score .stars{margin:8px 0}
+.score small{color:var(--muted)}
+.quote .stars{margin-bottom:8px}
+.quote p{color:var(--ink)}
+.quote small{color:var(--muted)}
+.two{display:grid;gap:32px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{background:#fff;border:1px solid var(--line);padding:7px 15px;border-radius:999px;font-weight:600;font-size:.92rem}
+table{border-collapse:collapse;width:100%}
+td{padding:11px 0;border-bottom:1px solid var(--line)}
+td:last-child{text-align:right;font-weight:700}
+.band{background:linear-gradient(135deg,var(--primary),#0a1f3d);color:#fff;text-align:center;padding:52px 0}
+.band h2{margin:0 0 10px;color:#fff}
+.band p{margin:0 0 22px;opacity:.9}
+form{display:grid;gap:12px}
+input,textarea{font:inherit;padding:14px;border:1px solid #cbd3e1;border-radius:12px;width:100%;background:#fff}
+input:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:1px}
+.contact-info{font-size:1.05rem}
+.contact-info a{font-weight:800;color:var(--primary);text-decoration:none}
+footer{background:#0b1a30;color:#aab6cc;padding:32px 0 96px;font-size:.9rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center}
+footer .wordmark{color:#fff}
+.sticky{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,28,46,.12)}
+.sticky .btn{flex:1;padding:13px 10px}
+.sticky .btn.alt{background:var(--soft);border:1px solid var(--line);color:var(--primary)}
+@media(min-width:860px){
+  nav.links{display:flex}
+  .hero .wrap{grid-template-columns:1.1fr .9fr}
+  .mosaic{height:400px}
+  .gal{grid-template-columns:repeat(4,1fr)}
+  .rate:not(.solo){grid-template-columns:280px 1fr}
+  .sticky{display:none}
+  footer{padding-bottom:32px}
+}
+@media(max-width:520px){.btn.call .num{display:none}}
+</style>
+</head>
+<body>
+${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.phone)}">${esc(c.phone)}</a></div>` : ""}
+<header><div class="wrap">
+  <a href="#" style="text-decoration:none">${brand}</a>
+  <nav class="links">${nav.map(([h, t]) => `<a href="${h}">${t}</a>`).join("")}</nav>
+  <a class="btn sm call" href="${tel(c.phone)}">Call <span class="num">${esc(c.phone)}</span></a>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <div>
+    ${c.rating ? `<span class="pill">${stars()} ${esc(c.rating.score)} &middot; ${esc(c.rating.count)} Google reviews</span>` : ""}
+    <h1>${esc(c.tagline)}</h1>
+    <p>${esc(c.intro)}</p>
+    <div class="cta">
+      <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
+      <a class="btn alt" href="#contact">Get a free estimate</a>
+    </div>
+  </div>
+  ${hero.length ? `<div class="mosaic">${hero.map((s) => `<img src="${esc(s.src)}" alt="${esc(s.alt)}">`).join("")}</div>` : ""}
+</div></div>
+
+<div class="trust"><div class="wrap">${c.badges
+    .map((b) => `<div>${icon("shield")}<span>${esc(b)}</span></div>`)
+    .join("")}</div></div>
+
+<section id="services"><div class="wrap">
+  <div class="eyebrow">What we do</div>
+  <h2>Our services</h2>
+  <div class="grid">${c.services
+    .map((s) => `<div class="card"><div class="ic">${icon(s.icon)}</div><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></div>`)
+    .join("")}</div>
+</div></section>
+
+${has("gallery") ? `<section id="work" class="soft"><div class="wrap">
+  <div class="eyebrow">Our work</div>
+  <h2>On the job around ${esc(c.serviceArea[0])}</h2>
+  <div class="gal">${c.gallery.map((g) => `<img src="${esc(g.src)}" alt="${esc(g.alt)}" loading="lazy">`).join("")}</div>
+</div></section>` : ""}
+
+${c.rating || has("reviews") ? `<section id="reviews"><div class="wrap">
+  <div class="eyebrow">Reviews</div>
+  <h2>Trusted by local homeowners</h2>
+  <div class="rate${has("reviews") ? "" : " solo"}">
+    ${c.rating ? `<div class="score"><b>${esc(c.rating.score)}</b>${stars()}<br><small>${esc(c.rating.count)} reviews on Google</small>${c.rating.url ? `<p><a class="btn sm" href="${esc(c.rating.url)}">Read reviews</a></p>` : ""}</div>` : ""}
+    ${has("reviews") ? `<div class="grid">${c.reviews
+      .map((r) => `<div class="card quote">${stars()}<p>"${esc(r.text)}"</p><small>${esc(r.name)} &middot; Google review</small></div>`)
+      .join("")}</div>` : ""}
+  </div>
+</div></section>` : ""}
+
+<section class="soft"><div class="wrap two">
+  <div>
+    <div class="eyebrow">Service area</div>
+    <h2>Where we work</h2>
+    <div class="chips">${c.serviceArea.map((a) => `<span>${esc(a)}</span>`).join("")}</div>
+  </div>
+  <div>
+    <div class="eyebrow">Availability</div>
+    <h2>Hours</h2>
+    <table>${c.hours.map(([d, h]) => `<tr><td>${esc(d)}</td><td>${esc(h)}</td></tr>`).join("")}</table>
+  </div>
+</div></section>
+
+${c.about ? `<section><div class="wrap"><div class="eyebrow">About</div><h2>About ${esc(c.name)}</h2><p style="max-width:680px;color:var(--muted)">${esc(c.about)}</p></div></section>` : ""}
+
+<div class="band"><div class="wrap">
+  <h2>Need help today?</h2>
+  <p>${esc(c.bandText || "Call now and talk to a real person.")}</p>
+  <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
+</div></div>
+
+<section id="contact"><div class="wrap two">
+  <div>
+    <div class="eyebrow">Contact</div>
+    <h2>Request a free estimate</h2>
+    <form action="${esc(c.formEndpoint)}" method="POST">
+      <input name="name" placeholder="Your name" required>
+      <input name="phone" type="tel" placeholder="Phone number" required>
+      <input name="email" type="email" placeholder="Email (optional)">
+      <textarea name="message" rows="4" placeholder="What do you need help with?"></textarea>
+      <button class="btn" type="submit">Send request</button>
+    </form>
+  </div>
+  <div class="contact-info">
+    <div class="eyebrow">Get in touch</div>
+    <h2>We pick up</h2>
+    <p><a href="${tel(c.phone)}">${esc(c.phone)}</a></p>
+    ${c.email ? `<p><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ""}
+    <p style="color:var(--muted)">${esc(c.address)}</p>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>${c.logo ? "" : `<span class="wordmark">${esc(c.name)}</span><br>`}&copy; ${new Date().getFullYear()} ${esc(c.name)}. All rights reserved.</div>
+  <div>${esc(c.phone)} &middot; ${esc(c.address)}</div>
+</div></footer>
+
+<div class="sticky">
+  <a class="btn" href="${tel(c.phone)}">Call now</a>
+  <a class="btn alt" href="#contact">Free estimate</a>
+</div>
+</body>
+</html>
+`;
+}
