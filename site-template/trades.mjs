@@ -62,7 +62,7 @@ img{max-width:100%;display:block}
 header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
 .wordmark{font-weight:900;font-size:1.15rem;letter-spacing:-.01em;color:var(--primary)}
-.logo-img{height:44px;width:auto}
+.logo-img{height:50px;width:auto}
 nav.links{display:none;gap:26px;font-weight:600;font-size:.95rem}
 nav.links a{text-decoration:none;color:var(--muted)}
 nav.links a:hover{color:var(--primary)}
@@ -76,9 +76,9 @@ nav.links a:hover{color:var(--primary)}
 h1{font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.06;letter-spacing:-.03em;margin:16px 0 14px;font-weight:900}
 .hero p{font-size:1.1rem;opacity:.92;max-width:520px;margin:0 0 24px}
 .cta{display:flex;gap:12px;flex-wrap:wrap}
-.mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;height:340px}
+.mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1.25fr) minmax(0,1fr);gap:10px;height:340px}
 .mosaic img{width:100%;height:100%;object-fit:cover;border-radius:14px;border:3px solid rgba(255,255,255,.18);box-shadow:0 12px 30px rgba(0,0,0,.25)}
-.mosaic img:first-child{grid-row:span 2}
+.mosaic img:first-child{grid-column:span 2}
 .trust{background:#fff;border-bottom:1px solid var(--line)}
 .trust .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding-top:18px;padding-bottom:18px}
 .trust div{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.95rem}
@@ -92,14 +92,13 @@ h2{font-size:clamp(1.6rem,4vw,2.2rem);letter-spacing:-.02em;line-height:1.15;mar
 .card .ic{width:48px;height:48px;border-radius:12px;background:var(--soft);color:var(--primary);display:grid;place-items:center;margin-bottom:12px}
 .card h3{margin:0 0 6px;font-size:1.1rem}
 .card p{margin:0;color:var(--muted)}
-.gal{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+.gal{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .gal img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--r);box-shadow:var(--shadow)}
-.rate{display:grid;gap:22px;align-items:center}
-.rate.solo{max-width:340px}
-.score{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:26px;text-align:center;box-shadow:var(--shadow)}
-.score b{display:block;font-size:3.4rem;line-height:1;letter-spacing:-.03em}
-.score .stars{margin:8px 0}
-.score small{color:var(--muted)}
+.rate{display:grid;gap:18px}
+.score{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 26px;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+.score b{font-size:2.6rem;line-height:1;letter-spacing:-.03em}
+.score small{color:var(--muted);font-size:.95rem}
+.score p{margin:0 0 0 auto}
 .quote .stars{margin-bottom:8px}
 .quote p{color:var(--ink)}
 .quote small{color:var(--muted)}
@@ -127,8 +126,6 @@ footer .wordmark{color:#fff}
   nav.links{display:flex}
   .hero .wrap{grid-template-columns:1.1fr .9fr}
   .mosaic{height:400px}
-  .gal{grid-template-columns:repeat(4,1fr)}
-  .rate:not(.solo){grid-template-columns:280px 1fr}
   .sticky{display:none}
   footer{padding-bottom:32px}
 }
@@ -177,7 +174,7 @@ ${has("gallery") ? `<section id="work" class="soft"><div class="wrap">
 ${c.rating || has("reviews") ? `<section id="reviews"><div class="wrap">
   <div class="eyebrow">Reviews</div>
   <h2>Trusted by local homeowners</h2>
-  <div class="rate${has("reviews") ? "" : " solo"}">
+  <div class="rate">
     ${c.rating ? `<div class="score"><b>${esc(c.rating.score)}</b>${stars()}<br><small>${esc(c.rating.count)} reviews on Google</small>${c.rating.url ? `<p><a class="btn sm" href="${esc(c.rating.url)}">Read reviews</a></p>` : ""}</div>` : ""}
     ${has("reviews") ? `<div class="grid">${c.reviews
       .map((r) => `<div class="card quote">${stars()}<p>"${esc(r.text)}"</p><small>${esc(r.name)} &middot; Google review</small></div>`)
