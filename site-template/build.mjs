@@ -103,17 +103,17 @@ footer a{color:#fff}
   </div>
 </div></section>
 
-<section><div class="wrap">
+${c.reviews?.length ? `<section><div class="wrap">
   <h2>What customers say</h2>
   <div class="grid">${c.reviews
     .map((r) => `<div class="card quote"><p>"${esc(r.text)}"</p><small>- ${esc(r.name)}</small></div>`)
     .join("")}</div>
-</div></section>
+</div></section>` : ""}
 
-<section class="soft"><div class="wrap">
+${c.about ? `<section class="soft"><div class="wrap">
   <h2>About us</h2>
   <p style="max-width:680px">${esc(c.about)}</p>
-</div></section>
+</div></section>` : ""}
 
 <section id="contact"><div class="wrap two">
   <div>
@@ -129,7 +129,7 @@ footer a{color:#fff}
   <div>
     <h2>Contact</h2>
     <p><a href="${tel(c.phone)}"><strong>${esc(c.phone)}</strong></a><br>
-    <a href="mailto:${esc(c.email)}">${esc(c.email)}</a><br>${esc(c.address)}</p>
+    ${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a><br>` : ""}${esc(c.address)}</p>
   </div>
 </div></section>
 
