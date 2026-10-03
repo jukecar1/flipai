@@ -1,0 +1,33 @@
+{
+  "slug": "sample-plumber",
+  "name": "Gulf Coast Plumbing Co.",
+  "trade": "Plumber",
+  "tagline": "Fast, honest plumbing for Pensacola homes.",
+  "intro": "Leaky faucet or burst pipe, we show up on time, fix it right, and price it fairly. Licensed, insured, and locally owned.",
+  "phone": "(850) 555-0142",
+  "email": "hello@example.com",
+  "formEndpoint": "https://formspree.io/f/REPLACE_ME",
+  "address": "Pensacola, FL",
+  "hours": [
+    ["Mon - Fri", "7:00 AM - 6:00 PM"],
+    ["Saturday", "8:00 AM - 2:00 PM"],
+    ["Emergency calls", "24/7"]
+  ],
+  "colors": { "primary": "#0b5cab", "accent": "#f59e0b" },
+  "badges": ["Licensed & insured", "Free estimates", "Same-day service", "24/7 emergencies"],
+  "services": [
+    { "title": "Leak repair", "text": "Faucets, pipes, and fixtures fixed before they turn into water damage." },
+    { "title": "Water heaters", "text": "Repair and replacement of tank and tankless units." },
+    { "title": "Drain cleaning", "text": "Clogged sinks, tubs, and main lines cleared fast." },
+    { "title": "Bathroom & kitchen", "text": "Installs for sinks, toilets, disposals, and dishwashers." },
+    { "title": "Repiping", "text": "Whole-home repiping done with minimal disruption." },
+    { "title": "Emergency service", "text": "Burst pipes and flooding handled day or night." }
+  ],
+  "serviceArea": ["Pensacola", "Gulf Breeze", "Pace", "Milton", "Cantonment", "Perdido Key", "Navarre"],
+  "reviews": [
+    { "name": "Sample Customer", "text": "Replace with a real review. Showed up within the hour and fixed it fast." },
+    { "name": "Sample Customer", "text": "Replace with a real review. Fair price and very professional." },
+    { "name": "Sample Customer", "text": "Replace with a real review. Highly recommend." }
+  ],
+  "about": "Replace with the owner's story: how long they have been in business, license number, and what makes them different."
+}
