@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderTrades } from "./trades.mjs";
+import { renderTrades, renderServicePage } from "./trades.mjs";
 import { renderSaas } from "./saas.mjs";
 import { renderTradesDark } from "./trades-dark.mjs";
 
@@ -35,4 +35,18 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, "index.html"), (renderers[c.template] || renderTrades)(c));
   console.log("built dist/" + c.slug + "/index.html");
+  if (!renderers[c.template]) {
+    for (const p of c.servicePages || []) {
+      mkdirSync(join(out, p.slug), { recursive: true });
+      writeFileSync(join(out, p.slug, "index.html"), renderServicePage(c, p));
+      console.log("built dist/" + c.slug + "/" + p.slug + "/index.html");
+    }
+    // sitemap + robots only for live sites (drafts are noindex and have no siteUrl)
+    if (c.siteUrl && !c.noindex) {
+      const base = c.siteUrl.replace(/\/$/, "");
+      const urls = [base + "/", ...(c.servicePages || []).map((p) => `${base}/${p.slug}/`)];
+      writeFileSync(join(out, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n")}\n</urlset>\n`);
+      writeFileSync(join(out, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`);
+    }
+  }
 }

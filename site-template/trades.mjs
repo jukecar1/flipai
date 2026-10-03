@@ -1,8 +1,10 @@
-// Light, photo-friendly landing page for local trades (plumbing, HVAC, roofing, etc.)
-// Optional fields: logo, heroImages[], gallery[], rating{score,count,url}, reviews[], about, email, faq[]
+// Light, photo-friendly site for local trades (plumbing, HVAC, roofing, etc.)
+// Optional fields: logo, heroImages[], gallery[], rating{score,count,url}, reviews[], about, email, sms,
+//   servicePages[] (one page per service), noindex (drafts), siteUrl (for canonical links)
 const esc = (s = "") =>
   String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 const tel = (p) => "tel:+1" + p.replace(/\D/g, "").replace(/^1/, "");
+const has = (c, k) => Array.isArray(c[k]) && c[k].length > 0;
 
 const ICONS = {
   snow: "M12 2v20M4.2 7l15.6 10M19.8 7L4.2 17M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5",
@@ -18,47 +20,11 @@ const icon = (n) =>
   `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n] || ICONS.wrench}"/></svg>`;
 const star = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></svg>`;
 const stars = () => `<span class="stars" aria-label="5 out of 5 stars">${star.repeat(5)}</span>`;
+const fill = (c, s) => String(s).replaceAll("{phone}", c.phone).replaceAll("{name}", c.name).replaceAll("{areas}", c.serviceArea.join(", "));
 
-export function renderTrades(c) {
+const css = (c) => {
   const { primary, accent } = c.colors;
-  const has = (k) => Array.isArray(c[k]) && c[k].length > 0;
-  const brand = c.logo
-    ? `<img class="logo-img" src="${esc(c.logo)}" alt="${esc(c.name)} logo">`
-    : `<span class="wordmark">${esc(c.name)}</span>`;
-  const nav = [
-    ["#services", "Services"],
-    has("gallery") ? ["#work", "Our work"] : null,
-    c.rating || has("reviews") ? ["#reviews", "Reviews"] : null,
-    ["#contact", "Contact"],
-  ].filter(Boolean);
-  const hero = has("heroImages") ? c.heroImages.slice(0, 3) : [];
-  const featured = has("reviews") ? [...c.reviews.filter((r) => r.featured), ...c.reviews.filter((r) => !r.featured)].slice(0, 2) : [];
-  const who = (r) => esc(r.name) + (r.date ? " &middot; " + esc(r.date) : "");
-  const proof = c.rating || featured.length
-    ? `<div class="proof">${c.rating ? `<div class="proof-top">${stars()}<b>${esc(c.rating.score)}</b><span>${esc(c.rating.count)} Google reviews</span></div>` : ""}${featured
-        .map((r) => `<div class="q"><p>"${esc(r.excerpt || r.text)}"</p><cite>${who(r)}</cite></div>`)
-        .join("")}</div>`
-    : "";
-  const textBtn = c.sms ? `<a class="btn alt" href="sms:+1${c.sms.replace(/\D/g, "").replace(/^1/, "")}">Text us</a>` : "";
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(c.name)} | ${esc(c.trade)} in ${esc(c.address)}</title>
-<meta name="description" content="${esc(c.name)} - ${esc(c.trade)} serving ${esc(c.serviceArea.slice(0, 3).join(", "))}. Call ${esc(c.phone)}.">
-<script type="application/ld+json">${JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: c.name,
-    telephone: c.phone,
-    email: c.email || undefined,
-    areaServed: c.serviceArea,
-    address: c.address,
-  })}</script>
-<style>
-:root{--primary:${primary};--accent:${accent};--ink:#0f1c2e;--muted:#566177;--soft:#f3f6fb;--line:#e3e8f1;--r:16px;--shadow:0 10px 30px rgba(15,28,46,.08)}
+  return `:root{--primary:${primary};--accent:${accent};--ink:#0f1c2e;--muted:#566177;--soft:#f3f6fb;--line:#e3e8f1;--r:16px;--shadow:0 10px 30px rgba(15,28,46,.08)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:#fff;line-height:1.55;-webkit-font-smoothing:antialiased}
@@ -79,6 +45,8 @@ nav.links a:hover{color:var(--primary)}
 .btn.sm{padding:10px 16px;font-size:.95rem}
 .hero{background:radial-gradient(900px 400px at 85% -10%,rgba(255,255,255,.14),transparent 60%),linear-gradient(135deg,var(--primary),#0a1f3d);color:#fff;padding:48px 0 56px}
 .hero .wrap{display:grid;gap:36px;align-items:center}
+.crumbs{font-size:.85rem;opacity:.85;margin-bottom:6px}
+.crumbs a{text-decoration:none}
 .serving{margin-top:14px;font-size:.95rem;opacity:.9}
 .proof{margin-top:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px 16px;max-width:520px}
 .proof-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.95rem}
@@ -138,7 +106,25 @@ footer .wordmark{color:#fff}
 .sticky .btn.alt{background:var(--soft);border:1px solid var(--line);color:var(--primary)}
 .chk{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:9px}
 .chk li{position:relative;padding-left:28px;font-weight:600;font-size:.97rem}
-.chk li::before{content:"";position:absolute;left:0;top:.2em;width:18px;height:18px;border-radius:50%;background:var(--soft) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${primary.replace('#', '%23')}' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5 9-10'/></svg>") center/11px no-repeat}
+.chk li::before{content:"";position:absolute;left:0;top:.2em;width:18px;height:18px;border-radius:50%;background:var(--soft) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${primary.replace("#", "%23")}' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5 9-10'/></svg>") center/11px no-repeat}
+.chk a{text-decoration:none;color:var(--primary);border-bottom:1px solid rgba(21,64,122,.25)}
+.chk a:hover{border-bottom-color:var(--primary)}
+.prose{max-width:720px}
+.prose p{color:var(--muted);margin:0 0 14px}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.faq summary{font-weight:700;cursor:pointer}
+.faq details p{margin:10px 0 0;color:var(--muted)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.hero .wrap>div:first-child>*{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+.hero .wrap>div:first-child>*:nth-child(2){animation-delay:.08s}
+.hero .wrap>div:first-child>*:nth-child(3){animation-delay:.16s}
+.hero .wrap>div:first-child>*:nth-child(4){animation-delay:.24s}
+.hero .wrap>div:first-child>*:nth-child(5){animation-delay:.32s}
+.hero .wrap>div:first-child>*:nth-child(6){animation-delay:.4s}
+.mosaic{animation:rise .9s cubic-bezier(.2,.7,.2,1) .2s both}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d,0ms)}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.hero .wrap>div:first-child>*,.mosaic{animation:none}.reveal{opacity:1;transform:none;transition:none}}
 @media(max-width:859px){
   section{padding:44px 0}
   h2{margin-bottom:20px}
@@ -157,17 +143,118 @@ footer .wordmark{color:#fff}
   .sticky{display:none}
   footer{padding-bottom:32px}
 }
-@media(max-width:520px){.btn.call .num{display:none}}
+@media(max-width:520px){.btn.call .num{display:none}}`;
+};
+
+// Fades sections and cards in as they scroll into view. Content stays visible without JS or with reduced motion.
+const REVEAL_JS = `<script>
+(function(){
+  if(!("IntersectionObserver" in window)||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  var els=document.querySelectorAll(".trust .wrap>div,section .wrap>*:not(.grid),#services .card,.band .wrap>*,.faq details");
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{threshold:.12,rootMargin:"0px 0px -6% 0px"});
+  els.forEach(function(el,i){el.classList.add("reveal");el.style.setProperty("--d",Math.min((i%4)*70,210)+"ms");io.observe(el)});
+})();
+</script>`;
+
+function shell(c, { title, description, canonical, body, base = "", nav }) {
+  const brand = c.logo
+    ? `<img class="logo-img" src="${esc(c.logo)}" alt="${esc(c.name)} logo">`
+    : `<span class="wordmark">${esc(c.name)}</span>`;
+  const textBtn = c.sms ? `<a class="btn alt" href="sms:+1${c.sms.replace(/\D/g, "").replace(/^1/, "")}">Text us</a>` : "";
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(description)}">
+${c.noindex ? '<meta name="robots" content="noindex,nofollow">\n' : ""}${canonical ? `<link rel="canonical" href="${esc(canonical)}">\n` : ""}<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: c.name,
+    telephone: c.phone,
+    email: c.email || undefined,
+    areaServed: c.serviceArea,
+    address: c.address,
+  })}</script>
+<style>
+${css(c)}
 </style>
 </head>
 <body>
 ${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.phone)}">${esc(c.phone)}</a></div>` : ""}
 <header><div class="wrap">
-  <a href="#" style="text-decoration:none">${brand}</a>
+  <a href="${base || "#"}" style="text-decoration:none">${brand}</a>
   <nav class="links">${nav.map(([h, t]) => `<a href="${h}">${t}</a>`).join("")}</nav>
   <a class="btn sm call" href="${tel(c.phone)}">Call <span class="num">${esc(c.phone)}</span></a>
 </div></header>
+${body}
+<footer><div class="wrap">
+  <div>${c.logo ? "" : `<span class="wordmark">${esc(c.name)}</span><br>`}&copy; ${new Date().getFullYear()} ${esc(c.name)}. All rights reserved.</div>
+  <div>${esc(c.phone)} &middot; ${esc(c.address)}</div>
+</div></footer>
 
+<div class="sticky">
+  <a class="btn" href="${tel(c.phone)}">Call now</a>
+  ${textBtn || `<a class="btn alt" href="#contact">Free estimate</a>`}
+</div>
+${REVEAL_JS}
+</body>
+</html>
+`;
+}
+
+const featuredReviews = (c) => (has(c, "reviews") ? [...c.reviews.filter((r) => r.featured), ...c.reviews.filter((r) => !r.featured)].slice(0, 2) : []);
+const who = (r) => esc(r.name) + (r.date ? " &middot; " + esc(r.date) : "");
+const proofBlock = (c) => {
+  const f = featuredReviews(c);
+  return c.rating || f.length
+    ? `<div class="proof">${c.rating ? `<div class="proof-top">${stars()}<b>${esc(c.rating.score)}</b><span>${esc(c.rating.count)} Google reviews</span></div>` : ""}${f
+        .map((r) => `<div class="q"><p>"${esc(r.excerpt || r.text)}"</p><cite>${who(r)}</cite></div>`)
+        .join("")}</div>`
+    : "";
+};
+const contactForm = (c) => `<section id="contact"><div class="wrap two">
+  <div>
+    <div class="eyebrow">Contact</div>
+    <h2>Request a free estimate</h2>
+    <form action="${esc(c.formEndpoint)}" method="POST">
+      <input name="name" placeholder="Your name" required>
+      <input name="phone" type="tel" placeholder="Phone number" required>
+      <input name="email" type="email" placeholder="Email (optional)">
+      <textarea name="message" rows="4" placeholder="What do you need help with?"></textarea>
+      <button class="btn" type="submit">Send request</button>
+    </form>
+  </div>
+  <div class="contact-info">
+    <div class="eyebrow">Get in touch</div>
+    <h2>We pick up</h2>
+    <p><a href="${tel(c.phone)}">${esc(c.phone)}</a></p>
+    ${c.email ? `<p><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ""}
+    <p style="color:var(--muted)">${esc(c.address)}</p>
+  </div>
+</div></section>`;
+const band = (c) => `<div class="band"><div class="wrap">
+  <h2>Need help today?</h2>
+  <p>${esc(c.bandText || "Call now and talk to a real person.")}</p>
+  <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
+</div></div>`;
+
+export function renderTrades(c) {
+  const nav = [
+    ["#services", "Services"],
+    has(c, "gallery") ? ["#work", "Our work"] : null,
+    c.rating || has(c, "reviews") ? ["#reviews", "Reviews"] : null,
+    ["#contact", "Contact"],
+  ].filter(Boolean);
+  const hero = has(c, "heroImages") ? c.heroImages.slice(0, 3) : [];
+  const textBtn = c.sms ? `<a class="btn alt" href="sms:+1${c.sms.replace(/\D/g, "").replace(/^1/, "")}">Text us</a>` : "";
+  // service labels (and aliases) that have their own page become links
+  const pageFor = {};
+  for (const p of c.servicePages || []) for (const l of [p.label, ...(p.aliases || [])]) pageFor[l] = p.slug;
+  const item = (i) => (pageFor[i] ? `<a href="${pageFor[i]}/">${esc(i)}</a>` : esc(i));
+
+  const body = `
 <div class="hero"><div class="wrap">
   <div>
     <h1>${esc(c.tagline)}</h1>
@@ -177,7 +264,7 @@ ${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.pho
       ${textBtn || `<a class="btn alt" href="#contact">Get a free estimate</a>`}
     </div>
     <div class="serving">Serving ${esc(c.serviceArea.slice(0, 4).join(", "))} and nearby areas</div>
-    ${proof}
+    ${proofBlock(c)}
   </div>
   ${hero.length ? `<div class="mosaic">${hero.map((s) => `<img src="${esc(s.src)}" alt="${esc(s.alt)}">`).join("")}</div>` : ""}
 </div></div>
@@ -190,22 +277,22 @@ ${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.pho
   <div class="eyebrow">What we do</div>
   <h2>Our services</h2>
   <div class="grid">${c.services
-    .map((s) => `<div class="card"><div class="ic">${icon(s.icon)}</div><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.items ? `<ul class="chk">${s.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}</div>`)
+    .map((s) => `<div class="card"><div class="ic">${icon(s.icon)}</div><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.items ? `<ul class="chk">${s.items.map((i) => `<li>${item(i)}</li>`).join("")}</ul>` : ""}</div>`)
     .join("")}</div>
 </div></section>
 
-${has("gallery") ? `<section id="work" class="soft"><div class="wrap">
+${has(c, "gallery") ? `<section id="work" class="soft"><div class="wrap">
   <div class="eyebrow">Our work</div>
   <h2>On the job around ${esc(c.serviceArea[0])}</h2>
   <div class="gal">${c.gallery.map((g) => `<img src="${esc(g.src)}" alt="${esc(g.alt)}" loading="lazy">`).join("")}</div>
 </div></section>` : ""}
 
-${c.rating || has("reviews") ? `<section id="reviews"><div class="wrap">
+${c.rating || has(c, "reviews") ? `<section id="reviews"><div class="wrap">
   <div class="eyebrow">Reviews</div>
   <h2>Trusted by local homeowners</h2>
   <div class="rate">
-    ${c.rating ? `<div class="score"><b>${esc(c.rating.score)}</b>${stars()}<br><small>${esc(c.rating.count)} reviews on Google</small>${c.rating.url ? `<p><a class="btn sm" href="${esc(c.rating.url)}">Read reviews</a></p>` : ""}</div>` : ""}
-    ${has("reviews") ? `<div class="grid">${c.reviews
+    ${c.rating ? `<div class="score"><b>${esc(c.rating.score)}</b>${stars()}<small>${esc(c.rating.count)} reviews on Google</small>${c.rating.url ? `<p><a class="btn sm" href="${esc(c.rating.url)}">Read reviews</a></p>` : ""}</div>` : ""}
+    ${has(c, "reviews") ? `<div class="grid">${c.reviews
       .map((r) => `<div class="card quote">${stars()}<p>"${esc(r.text)}"</p><small>${who(r)} &middot; Google review</small></div>`)
       .join("")}</div>` : ""}
   </div>
@@ -226,43 +313,73 @@ ${c.rating || has("reviews") ? `<section id="reviews"><div class="wrap">
 
 ${c.about ? `<section><div class="wrap"><div class="eyebrow">About</div><h2>About ${esc(c.name)}</h2><p style="max-width:680px;color:var(--muted)">${esc(c.about)}</p></div></section>` : ""}
 
-<div class="band"><div class="wrap">
-  <h2>Need help today?</h2>
-  <p>${esc(c.bandText || "Call now and talk to a real person.")}</p>
-  <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
+${band(c)}
+
+${contactForm(c)}`;
+
+  return shell(c, {
+    title: `${c.name} | ${c.trade} in ${c.address}`,
+    description: `${c.name} - ${c.trade} serving ${c.serviceArea.slice(0, 3).join(", ")}. Call ${c.phone}.`,
+    canonical: c.siteUrl ? c.siteUrl.replace(/\/$/, "") + "/" : "",
+    body,
+    nav,
+  });
+}
+
+// One page per service, for people searching for that exact service. Needs c.servicePages[].
+export function renderServicePage(c, p) {
+  const area = c.serviceArea[0];
+  const base = "../";
+  const nav = [[base, "Home"], [base + "#services", "Services"], [base + "#reviews", "Reviews"], ["#contact", "Contact"]];
+  const others = c.servicePages.filter((o) => o.slug !== p.slug);
+  const list = (arr) => `<ul class="chk">${arr.map((x) => `<li>${esc(fill(c, x))}</li>`).join("")}</ul>`;
+  const body = `
+<div class="hero"><div class="wrap">
+  <div>
+    <div class="crumbs"><a href="${base}">Home</a> / <a href="${base}#services">Services</a> / ${esc(p.title)}</div>
+    <h1>${esc(p.h1 || `${p.title} in ${area}, FL`)}</h1>
+    <p>${esc(fill(c, p.intro))}</p>
+    <div class="cta">
+      <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
+      <a class="btn alt" href="#contact">Get a free estimate</a>
+    </div>
+    ${proofBlock(c)}
+  </div>
 </div></div>
 
-<section id="contact"><div class="wrap two">
-  <div>
-    <div class="eyebrow">Contact</div>
-    <h2>Request a free estimate</h2>
-    <form action="${esc(c.formEndpoint)}" method="POST">
-      <input name="name" placeholder="Your name" required>
-      <input name="phone" type="tel" placeholder="Phone number" required>
-      <input name="email" type="email" placeholder="Email (optional)">
-      <textarea name="message" rows="4" placeholder="What do you need help with?"></textarea>
-      <button class="btn" type="submit">Send request</button>
-    </form>
-  </div>
-  <div class="contact-info">
-    <div class="eyebrow">Get in touch</div>
-    <h2>We pick up</h2>
-    <p><a href="${tel(c.phone)}">${esc(c.phone)}</a></p>
-    ${c.email ? `<p><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ""}
-    <p style="color:var(--muted)">${esc(c.address)}</p>
-  </div>
+<section><div class="wrap two">
+  ${has(p, "signs") ? `<div><div class="eyebrow">${esc(p.signsEyebrow || "Signs to watch for")}</div><h2>${esc(p.signsTitle || "When to call")}</h2>${list(p.signs)}</div>` : ""}
+  ${has(p, "points") ? `<div><div class="eyebrow">What to expect</div><h2>What we do</h2>${list(p.points)}</div>` : ""}
 </div></section>
 
-<footer><div class="wrap">
-  <div>${c.logo ? "" : `<span class="wordmark">${esc(c.name)}</span><br>`}&copy; ${new Date().getFullYear()} ${esc(c.name)}. All rights reserved.</div>
-  <div>${esc(c.phone)} &middot; ${esc(c.address)}</div>
-</div></footer>
+${has(p, "body") ? `<section class="soft"><div class="wrap prose">${p.body.map((t) => `<p>${esc(fill(c, t))}</p>`).join("")}</div></section>` : ""}
 
-<div class="sticky">
-  <a class="btn" href="${tel(c.phone)}">Call now</a>
-  ${c.sms ? textBtn.replace('class="btn alt"', 'class="btn alt"').replace(">Text us<", ">Text us<") : `<a class="btn alt" href="#contact">Free estimate</a>`}
-</div>
-</body>
-</html>
-`;
+${has(p, "faq") ? `<section><div class="wrap faq prose"><div class="eyebrow">Questions</div><h2>Common questions</h2>${p.faq
+    .map(([q, a]) => `<details><summary>${esc(fill(c, q))}</summary><p>${esc(fill(c, a))}</p></details>`)
+    .join("")}</div></section>` : ""}
+
+<section class="soft"><div class="wrap">
+  <div class="eyebrow">Service area</div>
+  <h2>${esc(p.title)} near you</h2>
+  <div class="chips">${c.serviceArea.map((a) => `<span>${esc(a)}</span>`).join("")}</div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="eyebrow">More from ${esc(c.name)}</div>
+  <h2>Other services</h2>
+  <div class="chips">${others.map((o) => `<a href="../${o.slug}/" style="text-decoration:none"><span>${esc(o.title)}</span></a>`).join("")}</div>
+</div></section>
+
+${band(c)}
+
+${contactForm(c)}`;
+
+  return shell(c, {
+    title: `${p.title} in ${area}, FL | ${c.name}`,
+    description: p.description || `${p.title} from ${c.name} serving ${c.serviceArea.slice(0, 3).join(", ")} and nearby. Call ${c.phone}.`,
+    canonical: c.siteUrl ? `${c.siteUrl.replace(/\/$/, "")}/${p.slug}/` : "",
+    body,
+    base,
+    nav,
+  });
 }

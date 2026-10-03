@@ -1,4 +1,4 @@
-"""Builds one-page offer sheets (PDF) from the template below.
+"""Builds one-page offer sheets (PDF).
 Usage: python3 make_offer.py [--name "Your Business"] [--contact "Your Name | (850) 555-0100 | you@email.com"]
 Outputs sales/offer/offer-standard.pdf and offer-showcase.pdf
 """
@@ -10,7 +10,9 @@ ap.add_argument("--contact", default="[Your Name]  |  [Phone]  |  [Email]")
 ap.add_argument("--regular-build", type=int, default=400)
 ap.add_argument("--showcase-build", type=int, default=200)
 ap.add_argument("--monthly", type=int, default=50)
-ap.add_argument("--buyout", type=int, default=300)
+ap.add_argument("--annual", type=int, default=500)       # 12 months for the price of 10
+ap.add_argument("--pages-addon", type=int, default=150)  # up to 6 service pages, one-time
+ap.add_argument("--migration", type=int, default=150)    # optional: move site to the client's own hosting
 a = ap.parse_args()
 out = pathlib.Path(__file__).parent / "offer"; out.mkdir(exist_ok=True)
 e = html.escape
@@ -18,34 +20,35 @@ e = html.escape
 def page(showcase: bool) -> str:
     if showcase:
         build = f'<s>${a.regular_build}</s> <b>${a.showcase_build}</b>'
-        note = "First-client price in exchange for permission to show your site in my portfolio and a short testimonial."
+        note = "First-client price in exchange for permission to show your site in my portfolio and a short testimonial. Due before the site goes live."
     else:
         build = f'<b>${a.regular_build}</b>'
-        note = "One-time. Includes one round of revisions before launch."
+        note = "One-time. Includes one round of revisions. Due before the site goes live."
     return f"""<!doctype html><html><head><meta charset="utf-8"><style>
-@page {{ size: Letter; margin: 0.45in }}
+@page {{ size: Letter; margin: 0.4in }}
 *{{box-sizing:border-box}}
-body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f1c2e;font-size:13px;line-height:1.45}}
-.top{{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #15407a;padding-bottom:8px;margin-bottom:12px}}
-h1{{margin:0;font-size:28px;color:#15407a}} .sub{{color:#566177;font-size:12px;margin-top:4px}}
-.biz{{text-align:right;font-weight:bold;color:#15407a;font-size:16px}}
-.prices{{display:flex;gap:14px;margin-bottom:6px}}
-.box{{flex:1;border:1px solid #d0d7e2;border-radius:12px;padding:14px 16px}}
-.box .l{{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#566177;font-weight:bold}}
-.box .p{{font-size:36px;color:#15407a;margin:2px 0}} .box .p b{{font-weight:900}} .box .p small{{font-size:15px;color:#566177}}
-.box .n{{font-size:11px;color:#566177}}
-h2{{font-size:14px;margin:18px 0 7px;color:#15407a;text-transform:uppercase;letter-spacing:.06em}}
-ul{{margin:0;padding-left:16px}} li{{margin:4px 0}}
+body{{margin:0;font-family:Arial,Helvetica,sans-serif;color:#0f1c2e;font-size:11.5px;line-height:1.38}}
+.top{{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #15407a;padding-bottom:7px;margin-bottom:10px}}
+h1{{margin:0;font-size:25px;color:#15407a}} .sub{{color:#566177;font-size:11px;margin-top:3px}}
+.biz{{text-align:right;font-weight:bold;color:#15407a;font-size:15px}}
+.prices{{display:flex;gap:12px;margin-bottom:4px}}
+.box{{flex:1;border:1px solid #d0d7e2;border-radius:10px;padding:10px 14px}}
+.box .l{{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#566177;font-weight:bold}}
+.box .p{{font-size:31px;color:#15407a;margin:1px 0}} .box .p b{{font-weight:900}} .box .p small{{font-size:14px;color:#566177}}
+.box .n{{font-size:10px;color:#566177}}
+h2{{font-size:12.5px;margin:12px 0 5px;color:#15407a;text-transform:uppercase;letter-spacing:.06em}}
+ul{{margin:0;padding-left:15px}} li{{margin:2.5px 0}}
 .cols{{display:flex;gap:18px}} .cols>div{{flex:1}}
-.fine{{background:#f3f6fb;border-radius:8px;padding:11px 14px;margin-top:16px;font-size:11.5px;color:#34405a}}
-.foot{{margin-top:18px;border-top:1px solid #d0d7e2;padding-top:9px;color:#566177;font-size:11px;display:flex;justify-content:space-between}}
+.fine{{background:#f3f6fb;border-radius:8px;padding:9px 12px;margin-top:11px;font-size:10.5px;color:#34405a}}
+.fine p{{margin:0 0 5px}} .fine p:last-child{{margin:0}}
+.foot{{margin-top:11px;border-top:1px solid #d0d7e2;padding-top:7px;color:#566177;font-size:10px;display:flex;justify-content:space-between}}
 </style></head><body>
 <div class="top"><div><h1>Your Website + Care Plan</h1><div class="sub">Prepared for: ______________________________ &nbsp; Date: ____________</div></div>
 <div class="biz">{e(a.name)}</div></div>
 
 <div class="prices">
 <div class="box"><div class="l">Website build</div><div class="p">{build}</div><div class="n">{e(note)}</div></div>
-<div class="box"><div class="l">Care plan</div><div class="p"><b>${a.monthly}</b><small> / month</small></div><div class="n">Month-to-month. Cancel any time with 30 days' notice.</div></div>
+<div class="box"><div class="l">Care plan</div><div class="p"><b>${a.monthly}</b><small> / month</small></div><div class="n">Month-to-month, cancel any time with 30 days' notice. Or pay yearly: ${a.annual} for 12 months (2 months free).</div></div>
 </div>
 
 <div class="cols"><div>
@@ -54,7 +57,8 @@ ul{{margin:0;padding-left:16px}} li{{margin:4px 0}}
 <li>Your services, service areas, hours, and real photos</li>
 <li>Your Google reviews displayed on the page</li>
 <li>Tap-to-call buttons and a free-estimate request form</li>
-<li>Your own domain name and secure (HTTPS) hosting set up</li>
+<li>Your own domain name, registered in your name</li>
+<li>Secure (HTTPS) hosting, set up and managed for you</li>
 <li>One round of revisions before launch</li></ul>
 </div><div>
 <h2>Your care plan includes</h2>
@@ -67,11 +71,27 @@ ul{{margin:0;padding-left:16px}} li{{margin:4px 0}}
 <li>Support by text or email, with a reply within 1 business day</li></ul>
 </div></div>
 
-<h2>Not included (quoted separately)</h2>
-<div class="cols"><div><ul><li>Extra edits beyond 2 a month: $25 each</li><li>New pages or a redesign</li><li>Logo design, photography, long-form writing</li></ul></div>
-<div><ul><li>Optional add-ons: online booking, an AI assistant that answers calls and texts, call tracking</li><li>Ads management and business email accounts</li></ul></div></div>
+<div class="cols"><div>
+<h2>Optional add-ons (quoted separately)</h2>
+<ul><li><b>Service pages, up to 6: ${a.pages_addon} one-time.</b> One page for each main service, so customers searching for that exact service can find you</li>
+<li>Online booking</li>
+<li>An AI assistant that answers calls and texts</li>
+<li>Call tracking</li>
+<li>Extra edits beyond 2 a month: $25 each</li></ul>
+</div><div>
+<h2>Not included</h2>
+<ul><li>Legal pages (privacy policy, terms of service)</li>
+<li>Accessibility audits and legal compliance advice</li>
+<li>Online payments or shopping carts</li>
+<li>User logins or a custom back-end</li>
+<li>Ads management and business email accounts</li>
+<li>Logo design, photography, long-form writing</li></ul>
+</div></div>
 
-<div class="fine"><b>Good to know:</b> I register and host your domain name and site for you under the care plan. If you ever want to take over your domain and site files, a one-time <b>${a.buyout} buyout</b> transfers them to you, along with help moving the site to your own hosting. The text and photos you provide always remain yours. Unused edits do not roll over. A website supports your business but I can't guarantee search rankings, calls, or sales. Details are confirmed in a short written agreement before work begins.</div>
+<div class="fine">
+<p><b>If you ever leave:</b> your domain name stays yours, because it is registered in your name. I will send you a complete copy of your site files and a handoff checklist for any developer you choose, at no charge. If you would like me to move the site to your own hosting account, that is an optional one-time ${a.migration}.</p>
+<p><b>Good to know:</b> I manage the hosting and technical accounts for you, and your own text and photos always remain yours. Unused edits do not roll over. A website supports your business, but I can't guarantee search rankings, calls, or sales. Details are confirmed in a short written agreement before work begins.</p>
+</div>
 
 <div class="foot"><span>{e(a.contact)}</span><span>Prices valid for 14 days</span></div>
 </body></html>"""
