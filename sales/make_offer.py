@@ -10,6 +10,7 @@ ap.add_argument("--contact", default="[Your Name]  |  [Phone]  |  [Email]")
 ap.add_argument("--regular-build", type=int, default=400)
 ap.add_argument("--showcase-build", type=int, default=200)
 ap.add_argument("--monthly", type=int, default=50)
+ap.add_argument("--buyout", type=int, default=300)
 a = ap.parse_args()
 out = pathlib.Path(__file__).parent / "offer"; out.mkdir(exist_ok=True)
 e = html.escape
@@ -70,7 +71,7 @@ ul{{margin:0;padding-left:16px}} li{{margin:4px 0}}
 <div class="cols"><div><ul><li>Extra edits beyond 2 a month: $25 each</li><li>New pages or a redesign</li><li>Logo design, photography, long-form writing</li></ul></div>
 <div><ul><li>Optional add-ons: online booking, an AI assistant that answers calls and texts, call tracking</li><li>Ads management and business email accounts</li></ul></div></div>
 
-<div class="fine"><b>Good to know:</b> You own your domain name and your content. If you ever leave, you can take your site files with you. Unused edits do not roll over. A website supports your business but I can't guarantee search rankings, calls, or sales. Details are confirmed in a short written agreement before work begins.</div>
+<div class="fine"><b>Good to know:</b> I register and host your domain name and site for you under the care plan. If you ever want to take over your domain and site files, a one-time <b>${a.buyout} buyout</b> transfers them to you, along with help moving the site to your own hosting. The text and photos you provide always remain yours. Unused edits do not roll over. A website supports your business but I can't guarantee search rankings, calls, or sales. Details are confirmed in a short written agreement before work begins.</div>
 
 <div class="foot"><span>{e(a.contact)}</span><span>Prices valid for 14 days</span></div>
 </body></html>"""

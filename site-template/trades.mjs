@@ -32,6 +32,14 @@ export function renderTrades(c) {
     ["#contact", "Contact"],
   ].filter(Boolean);
   const hero = has("heroImages") ? c.heroImages.slice(0, 3) : [];
+  const featured = has("reviews") ? [...c.reviews.filter((r) => r.featured), ...c.reviews.filter((r) => !r.featured)].slice(0, 2) : [];
+  const who = (r) => esc(r.name) + (r.date ? " &middot; " + esc(r.date) : "");
+  const proof = c.rating || featured.length
+    ? `<div class="proof">${c.rating ? `<div class="proof-top">${stars()}<b>${esc(c.rating.score)}</b><span>${esc(c.rating.count)} Google reviews</span></div>` : ""}${featured
+        .map((r) => `<div class="q"><p>"${esc(r.excerpt || r.text)}"</p><cite>${who(r)}</cite></div>`)
+        .join("")}</div>`
+    : "";
+  const textBtn = c.sms ? `<a class="btn alt" href="sms:+1${c.sms.replace(/\D/g, "").replace(/^1/, "")}">Text us</a>` : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -71,7 +79,13 @@ nav.links a:hover{color:var(--primary)}
 .btn.sm{padding:10px 16px;font-size:.95rem}
 .hero{background:radial-gradient(900px 400px at 85% -10%,rgba(255,255,255,.14),transparent 60%),linear-gradient(135deg,var(--primary),#0a1f3d);color:#fff;padding:48px 0 56px}
 .hero .wrap{display:grid;gap:36px;align-items:center}
-.pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:6px 14px;border-radius:999px;font-size:.88rem;font-weight:600}
+.serving{margin-top:14px;font-size:.95rem;opacity:.9}
+.proof{margin-top:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px 16px;max-width:520px}
+.proof-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.95rem}
+.proof-top b{font-size:1.3rem}
+.q{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14)}
+.hero .q p{margin:0;font-size:.93rem;line-height:1.45;opacity:1;max-width:none;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.q cite{display:block;margin-top:4px;font-size:.8rem;opacity:.75;font-style:normal}
 .stars{display:inline-flex;gap:2px;color:#fbbf24}
 h1{font-size:clamp(2.1rem,6vw,3.5rem);line-height:1.06;letter-spacing:-.03em;margin:16px 0 14px;font-weight:900}
 .hero p{font-size:1.1rem;opacity:.92;max-width:520px;margin:0 0 24px}
@@ -156,13 +170,14 @@ ${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.pho
 
 <div class="hero"><div class="wrap">
   <div>
-    ${c.rating ? `<span class="pill">${stars()} ${esc(c.rating.score)} &middot; ${esc(c.rating.count)} Google reviews</span>` : ""}
     <h1>${esc(c.tagline)}</h1>
     <p>${esc(c.intro)}</p>
     <div class="cta">
       <a class="btn" href="${tel(c.phone)}">Call ${esc(c.phone)}</a>
-      <a class="btn alt" href="#contact">Get a free estimate</a>
+      ${textBtn || `<a class="btn alt" href="#contact">Get a free estimate</a>`}
     </div>
+    <div class="serving">Serving ${esc(c.serviceArea.slice(0, 4).join(", "))} and nearby areas</div>
+    ${proof}
   </div>
   ${hero.length ? `<div class="mosaic">${hero.map((s) => `<img src="${esc(s.src)}" alt="${esc(s.alt)}">`).join("")}</div>` : ""}
 </div></div>
@@ -191,7 +206,7 @@ ${c.rating || has("reviews") ? `<section id="reviews"><div class="wrap">
   <div class="rate">
     ${c.rating ? `<div class="score"><b>${esc(c.rating.score)}</b>${stars()}<br><small>${esc(c.rating.count)} reviews on Google</small>${c.rating.url ? `<p><a class="btn sm" href="${esc(c.rating.url)}">Read reviews</a></p>` : ""}</div>` : ""}
     ${has("reviews") ? `<div class="grid">${c.reviews
-      .map((r) => `<div class="card quote">${stars()}<p>"${esc(r.text)}"</p><small>${esc(r.name)} &middot; Google review</small></div>`)
+      .map((r) => `<div class="card quote">${stars()}<p>"${esc(r.text)}"</p><small>${who(r)} &middot; Google review</small></div>`)
       .join("")}</div>` : ""}
   </div>
 </div></section>` : ""}
@@ -245,7 +260,7 @@ ${c.about ? `<section><div class="wrap"><div class="eyebrow">About</div><h2>Abou
 
 <div class="sticky">
   <a class="btn" href="${tel(c.phone)}">Call now</a>
-  <a class="btn alt" href="#contact">Free estimate</a>
+  ${c.sms ? textBtn.replace('class="btn alt"', 'class="btn alt"').replace(">Text us<", ">Text us<") : `<a class="btn alt" href="#contact">Free estimate</a>`}
 </div>
 </body>
 </html>
