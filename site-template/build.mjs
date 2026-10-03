@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { renderSaas } from "./saas.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const esc = (s = "") =>
@@ -142,6 +143,6 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
   const c = JSON.parse(readFileSync(join(dir, file), "utf8"));
   const out = join(root, "dist", c.slug);
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, "index.html"), render(c));
+  writeFileSync(join(out, "index.html"), c.template === "saas" ? renderSaas(c) : render(c));
   console.log("built dist/" + c.slug + "/index.html");
 }

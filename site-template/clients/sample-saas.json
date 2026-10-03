@@ -1,0 +1,31 @@
+{
+  "template": "saas",
+  "slug": "sample-saas",
+  "name": "SampleIQ",
+  "colors": { "accent": "#2f8cf0", "accent2": "#7c5cff" },
+  "navCta": "Sign in",
+  "headline1": "Every Deal. Every Angle.",
+  "headline2": "Every Decision, Smarter.",
+  "sub": "Analyze anything in seconds. Free.",
+  "body": "Replace with one or two lines on what your product does and who it is for.",
+  "stats": [["200+", "results per search"], ["40+", "metrics"], ["AI", "summary"], ["Free", "to get started"]],
+  "steps": [
+    { "title": "Search", "text": "Enter a city or address." },
+    { "title": "Analyze", "text": "Instantly see the numbers that matter." },
+    { "title": "Decide", "text": "Know if it is worth pursuing." }
+  ],
+  "formEndpoint": "https://formspree.io/f/REPLACE_ME",
+  "signupCta": "Get early access",
+  "audiences": [
+    ["Buyers", "true costs before you offer"],
+    ["Investors", "returns and cash flow"],
+    ["Agents", "full listing data"],
+    ["Renters", "fair prices"]
+  ],
+  "search": {
+    "action": "#",
+    "tabs": ["For Sale", "Recently Sold"],
+    "placeholder": "City, address, or zip",
+    "recent": ["Pensacola, FL", "Mobile, AL", "Destin, FL", "Panama City, FL"]
+  }
+}

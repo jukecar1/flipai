@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SampleIQ | Every Deal. Every Angle. Every Decision, Smarter.</title>
+<meta name="description" content="Analyze anything in seconds. Free.">
+<style>
+:root{--bg:#0a1220;--panel:#111a2e;--line:#1f2b45;--text:#eef2fb;--muted:#9aa7c2;--accent:#2f8cf0;--accent2:#7c5cff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.brand{font-weight:800;font-size:1.15rem;color:var(--accent)}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 18px;font-weight:700;font-size:.95rem;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.hero{text-align:center;padding:48px 0 24px}
+h1{font-size:clamp(2.2rem,7vw,4rem);line-height:1.05;margin:0 0 18px;font-weight:900;letter-spacing:-.02em}
+h1 span{color:var(--accent)}
+.hero p{color:var(--muted);max-width:600px;margin:0 auto 12px}
+.stats{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin:32px 0}
+.stats b{display:block;font-size:1.6rem;font-weight:900}
+.stats small{color:var(--muted)}
+.steps{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin:8px 0 28px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center}
+.step .n{color:var(--accent);font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.step h3{margin:6px 0 4px}
+.step p{margin:0;color:var(--muted);font-size:.92rem}
+.signup{display:flex;gap:8px;max-width:440px;margin:0 auto 28px}
+.signup input,.search input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:12px;border-radius:8px;font:inherit}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:36px}
+.chips div{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:.88rem;color:var(--muted)}
+.chips b{color:var(--text)}
+.search{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:40px}
+.tabs{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);padding:6px 16px;border-radius:8px;cursor:pointer}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.search .row{display:flex;gap:8px}
+.recent{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.recent a{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;text-decoration:none}
+footer{border-top:1px solid var(--line);padding:24px 0;text-align:center;color:var(--muted);font-size:.85rem}
+@media(max-width:520px){.signup{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><span class="brand">SampleIQ</span><a class="btn" href="#signup">Sign in</a></nav>
+
+<div class="hero">
+  <h1>Every Deal. Every Angle.<br><span>Every Decision, Smarter.</span></h1>
+  <p><strong>Analyze anything in seconds. Free.</strong></p>
+  <p>Replace with one or two lines on what your product does and who it is for.</p>
+</div>
+
+<div class="stats"><div><b>200+</b><small>results per search</small></div><div><b>40+</b><small>metrics</small></div><div><b>AI</b><small>summary</small></div><div><b>Free</b><small>to get started</small></div></div>
+
+<div class="steps"><div class="step"><div class="n">Step 1</div><h3>Search</h3><p>Enter a city or address.</p></div><div class="step"><div class="n">Step 2</div><h3>Analyze</h3><p>Instantly see the numbers that matter.</p></div><div class="step"><div class="n">Step 3</div><h3>Decide</h3><p>Know if it is worth pursuing.</p></div></div>
+
+<form id="signup" class="signup" action="https://formspree.io/f/REPLACE_ME" method="POST">
+  <input name="email" type="email" placeholder="your@email.com" required>
+  <button class="btn" type="submit">Get early access</button>
+</form>
+
+<div class="chips"><div><b>Buyers</b> - true costs before you offer</div><div><b>Investors</b> - returns and cash flow</div><div><b>Agents</b> - full listing data</div><div><b>Renters</b> - fair prices</div></div>
+
+<form class="search" action="#" method="GET">
+    <div class="tabs"><button type="button" class="on">For Sale</button><button type="button" class="">Recently Sold</button></div>
+    <div class="row"><input name="q" placeholder="City, address, or zip"><button class="btn" type="submit">Search</button></div>
+    <div class="recent"><a href="#?q=Pensacola%2C%20FL">Pensacola, FL</a><a href="#?q=Mobile%2C%20AL">Mobile, AL</a><a href="#?q=Destin%2C%20FL">Destin, FL</a><a href="#?q=Panama%20City%2C%20FL">Panama City, FL</a></div>
+  </form>
+</div>
+<footer><div class="wrap">&copy; 2026 SampleIQ</div></footer>
+</body>
+</html>
