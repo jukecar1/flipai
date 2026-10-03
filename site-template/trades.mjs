@@ -122,6 +122,20 @@ footer .wordmark{color:#fff}
 .sticky{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(15,28,46,.12)}
 .sticky .btn{flex:1;padding:13px 10px}
 .sticky .btn.alt{background:var(--soft);border:1px solid var(--line);color:var(--primary)}
+.chk{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:9px}
+.chk li{position:relative;padding-left:28px;font-weight:600;font-size:.97rem}
+.chk li::before{content:"";position:absolute;left:0;top:.2em;width:18px;height:18px;border-radius:50%;background:var(--soft) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${primary.replace('#', '%23')}' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5 9-10'/></svg>") center/11px no-repeat}
+@media(max-width:859px){
+  section{padding:44px 0}
+  h2{margin-bottom:20px}
+  .hero{padding:32px 0 36px}
+  .mosaic{height:280px}
+  .band{padding:40px 0}
+  .gal,.rate .grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 -20px;padding:0 20px 6px;scroll-padding:0 20px;scrollbar-width:none}
+  .gal::-webkit-scrollbar,.rate .grid::-webkit-scrollbar{display:none}
+  .gal img{flex:0 0 82%;width:82%;scroll-snap-align:start}
+  .rate .grid .card{flex:0 0 82%;scroll-snap-align:start}
+}
 @media(min-width:860px){
   nav.links{display:flex}
   .hero .wrap{grid-template-columns:1.1fr .9fr}
@@ -161,7 +175,7 @@ ${c.topBar ? `<div class="topbar">${esc(c.topBar)} &middot; <a href="${tel(c.pho
   <div class="eyebrow">What we do</div>
   <h2>Our services</h2>
   <div class="grid">${c.services
-    .map((s) => `<div class="card"><div class="ic">${icon(s.icon)}</div><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></div>`)
+    .map((s) => `<div class="card"><div class="ic">${icon(s.icon)}</div><h3>${esc(s.title)}</h3>${s.text ? `<p>${esc(s.text)}</p>` : ""}${s.items ? `<ul class="chk">${s.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}</div>`)
     .join("")}</div>
 </div></section>
 
