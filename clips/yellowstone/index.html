@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What if Yellowstone erupted?</title>
+<style>
+  :root { --serif: "Cormorant Garamond", "Liberation Serif", "Times New Roman", serif; --sans: "Helvetica Neue", Arial, "Liberation Sans", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+  #vignette { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay; }
+  .txt { position: absolute; color: #f4efe6; font-family: var(--serif); text-shadow: 0 1px 14px rgba(0,0,0,.55); }
+
+  #title { left: 9vw; right: 9vw; top: 15vh; text-align: center; font-size: 4.6vh; line-height: 1.12; font-weight: 500; opacity: 0; }
+
+  #hud { left: 6vw; top: 44vh; opacity: 0; }
+  #hud .label { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .9; }
+  #hud .value { font-size: 5.4vh; line-height: 1.02; font-weight: 500; margin-top: .3vh; font-variant-numeric: tabular-nums; }
+  #hud .sub { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .24em; text-transform: uppercase; opacity: .78; margin-top: .5vh; font-weight: 600; }
+
+  #caption { left: 7vw; right: 18vw; top: 54.5vh; font-style: italic; font-size: 3vh; line-height: 1.15; opacity: 0; }
+
+  #end { position: absolute; inset: 0; background: #07070a; opacity: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 12vw; }
+  #end .a { font-family: var(--serif); color: #f4efe6; font-size: 4.4vh; line-height: 1.15; }
+  #end .b { font-family: var(--serif); color: #f4efe6; font-size: 4.4vh; line-height: 1.15; font-style: italic; margin-top: 1.2vh; }
+  #end .c { font-family: var(--sans); color: #8d8a84; font-size: 1.15vh; letter-spacing: .22em; text-transform: uppercase; margin-top: 6vh; font-weight: 600; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <canvas id="map"></canvas>
+  <div id="vignette"></div>
+  <canvas id="grain" width="256" height="256"></canvas>
+  <div class="txt" id="title">What if Yellowstone erupted?</div>
+  <div class="txt" id="hud"><div class="label"></div><div class="value"></div><div class="sub"></div></div>
+  <div class="txt" id="caption"></div>
+  <div id="end">
+    <div class="a">The planet survives.</div>
+    <div class="b">Civilization doesn't.</div>
+    <div class="c">Chance of a supereruption in any given year<br>about 1 in 730,000 (USGS estimate)</div>
+  </div>
+</div>
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js" } }</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
