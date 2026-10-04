@@ -4,6 +4,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
 /* ------------------------------------------------------------------ *
  *  "What if Yellowstone erupted?"  — deterministic 17s timeline.
@@ -15,7 +17,30 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
  *  the eruption rising behind the forested hills.
  * ------------------------------------------------------------------ */
 
-const T_END = 17;
+const T_END = 62; // master (video) time in seconds
+
+// Master time -> scene time. The calm intro runs in real time (scene time -10..2),
+// then the eruption, flow, collapse and aftermath play in slow motion.
+const WARP = [[0, -10], [12, 2], [20, 4], [32, 7.3], [40, 10], [50, 13], [58, 15], [62, 17]];
+const warpM = (() => {
+  const n = WARP.length, h = [], d = [], m = new Array(n);
+  for (let k = 0; k < n - 1; k++) { h[k] = WARP[k + 1][0] - WARP[k][0]; d[k] = (WARP[k + 1][1] - WARP[k][1]) / h[k]; }
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let k = 1; k < n - 1; k++) {
+    if (d[k - 1] * d[k] > 0) { const w1 = 2 * h[k] + h[k - 1], w2 = h[k] + 2 * h[k - 1]; m[k] = (w1 + w2) / (w1 / d[k - 1] + w2 / d[k]); } else m[k] = 0;
+  }
+  return { h, m };
+})();
+function warp(T) {
+  if (T <= WARP[0][0]) return WARP[0][1] + (T - WARP[0][0]);
+  for (let k = 0; k < WARP.length - 1; k++) {
+    if (T <= WARP[k + 1][0]) {
+      const h = warpM.h[k], x = (T - WARP[k][0]) / h, x2 = x * x, x3 = x2 * x;
+      return (2 * x3 - 3 * x2 + 1) * WARP[k][1] + (x3 - 2 * x2 + x) * h * warpM.m[k] + (-2 * x3 + 3 * x2) * WARP[k + 1][1] + (x3 - x2) * h * warpM.m[k + 1];
+    }
+  }
+  return WARP[WARP.length - 1][1];
+}
 const P = new URLSearchParams(location.search);
 const DPR = +(P.get('dpr') || 1);
 
@@ -73,12 +98,17 @@ const wrap = document.getElementById('sceneWrap');
 const accCanvas = document.getElementById('acc');
 accCanvas.width = innerWidth * DPR; accCanvas.height = innerHeight * DPR;
 const actx = accCanvas.getContext('2d');
-const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { type: THREE.HalfFloatType, samples: 4 }));
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { type: THREE.HalfFloatType, samples: +(P.get('msaa') ?? 0) }));
 composer.setSize(innerWidth * DPR, innerHeight * DPR);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth * DPR, innerHeight * DPR), 0.15, 0.4, 1.6);
-composer.addPass(bloom);
+if (P.get('bloom') !== '0') composer.addPass(bloom);
 composer.addPass(new OutputPass());
+{
+  const fxaa = new ShaderPass(FXAAShader);
+  fxaa.material.uniforms['resolution'].value.set(1 / (innerWidth * DPR), 1 / (innerHeight * DPR));
+  composer.addPass(fxaa);
+}
 
 /* ---------- sky ---------- */
 const SUN_DIR = new THREE.Vector3(-0.58, 0.36, 0.62).normalize(); // low golden sun, behind-left of the camera
@@ -114,7 +144,7 @@ const sun = new THREE.DirectionalLight(0xfff0d6, 3);
 sun.position.copy(SUN_DIR).multiplyScalar(520).add(new THREE.Vector3(0, 0, -60));
 sun.target.position.set(0, 0, -60);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.mapSize.set(+(P.get('shadow') ?? 4096), +(P.get('shadow') ?? 4096));
 Object.assign(sun.shadow.camera, { left: -230, right: 230, top: 230, bottom: -230, near: 1, far: 1300 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.5;
@@ -485,7 +515,7 @@ function makeBison() {
     const rot = r() * 6.283;
     g.position.set(x, hAt(x, z), z); g.rotation.y = rot;
     scene.add(g); n++;
-    tossables.push({ g, x, y: hAt(x, z), z, kind: 'bison', k: 1, spin: r() * 2 - 1, baseRot: rot, rot0: rot, drive: 0.4 + r() * 0.5, flee: 7 + r() * 4, fleeT: 2.4 + r() * 0.6, dirx: Math.sin(rot), dirz: Math.cos(rot) });
+    tossables.push({ g, x, y: hAt(x, z), z, kind: 'bison', k: 1, spin: r() * 2 - 1, baseRot: rot, rot0: rot, drive: 0.4 + r() * 0.5, flee: 7 + r() * 4, fleeT: -1.4 + r() * 0.8, dirx: Math.sin(rot), dirz: Math.cos(rot) });
   }
 }
 const jackets = [0xd33a2c, 0x2f6fb3, 0xf0c534, 0xf2f2f2, 0x2a9d5a, 0xe8802c, 0x7a4fb0, 0x1d1d22, 0x3fa7c9];
@@ -520,7 +550,7 @@ function makePerson(r) {
     g.scale.setScalar(child ? 0.66 : 0.9 + r() * 0.08);
     g.position.set(x, y, z); scene.add(g);
     const drive = (r() < 0.5 ? -1 : 1) * (0.5 + r() * 0.5);
-    tossables.push({ g, x, y, z, kind: 'ped', k: 1, spin: r() * 2 - 1, drive, flee: 4.8 + r() * 2.2, fleeT: 2.15 + r() * 0.5, dirx: 0, dirz: 1, zCap: 21, legs: pr.legs, arms: pr.arms, phase: r() * 6.28 });
+    tossables.push({ g, x, y, z, kind: 'ped', k: 1, spin: r() * 2 - 1, drive, flee: 4.8 + r() * 2.2, fleeT: 0.2 + r() * 1.3, dirx: 0, dirz: 1, zCap: 21, legs: pr.legs, arms: pr.arms, phase: r() * 6.28 });
   }
 }
 
@@ -601,7 +631,7 @@ const puffTex = (() => {
   x.putImageData(id, 0, 0);
   const t = toTex(c); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; return t;
 })();
-const AMB_N = 70, SMOKE_N = PLUME_N + 1100 + 12 * 22 + AMB_N + 40;
+const CLOUD_N = 16 * 9, AMB_N = 70, SMOKE_N = PLUME_N + 1100 + 12 * 22 + AMB_N + 40 + 260 + CLOUD_N + 40;
 const smokeGeo = new THREE.PlaneGeometry(1, 1);
 const smokeAlpha = new THREE.InstancedBufferAttribute(new Float32Array(SMOKE_N).fill(1), 1);
 smokeGeo.setAttribute('aAlpha', smokeAlpha);
@@ -759,6 +789,7 @@ function toss(o, p, dz) {
 }
 
 function update(t) {
+  pc = 0;
   /* sky / fog / lights */
   kfc(t, SKY_H, horC); kfc(t, SKY_T, topC);
   skyMat.uniforms.hor.value.copy(horC);
@@ -789,9 +820,9 @@ function update(t) {
   ashLayer.position.y = 0.12 + 0.55 * smooth((t - 7.3) / 4);
 
   /* camera: overlook platform */
-  const pitch = kf(t, [[0, -3], [1.8, -2], [2.4, 5], [3.2, 26], [4.0, 34], [4.8, 14], [5.6, 3], [6.6, 0], [7.3, 1], [8, 3], [10, -3], [13, -5], [17, -5]]);
-  const yaw = kf(t, [[0, -15], [1.6, -16], [2.6, -4], [4.0, 0], [5.6, 2], [6.6, 6], [7.2, 26], [7.8, 34], [9, 32], [11, 28], [14, 24], [17, 20]]);
-  const amp = kf(t, [[0, 0.01], [1.4, 0.03], [2, 0.14], [2.7, 0.4], [4, 0.32], [4.6, 0.3], [6, 0.7], [7.3, 1.25], [8.6, 0.45], [10, 0.07], [13, 0.03], [17, 0.0]]);
+  const pitch = kf(t, [[-10, -4], [-4, -3.5], [0, -2.5], [1.8, -2], [2.4, 5], [3.2, 26], [4.0, 34], [4.8, 14], [5.6, 3], [6.6, 0], [7.3, 1], [8, 3], [10, -3], [13, -5], [17, -5]]);
+  const yaw = kf(t, [[-10, -27], [-6.5, -17], [-3.5, -8], [-1, -11], [0, -14], [1.6, -16], [2.6, -4], [4.0, 0], [5.6, 2], [6.6, 6], [7.2, 26], [7.8, 34], [9, 32], [11, 28], [14, 24], [17, 20]]);
+  const amp = kf(t, [[-10, 0.0], [-4, 0.01], [-1.2, 0.05], [0.6, 0.1], [1.4, 0.12], [2, 0.16], [2.7, 0.4], [4, 0.32], [4.6, 0.3], [6, 0.7], [7.3, 1.25], [8.6, 0.45], [10, 0.07], [13, 0.03], [17, 0.0]]);
   const sh = (a, b) => Math.sin(t * a + b);
   camera.position.set(CAM.x + amp * 0.16 * (sh(41, 1) + 0.6 * sh(23, 2)), CAM.y + amp * 0.12 * (sh(37, 0) + 0.5 * sh(19, 4)), CAM.z);
   camera.rotation.order = 'YXZ';
@@ -799,20 +830,20 @@ function update(t) {
   camera.rotation.y = THREE.MathUtils.degToRad(yaw) + amp * 0.0035 * sh(29, 3);
   camera.rotation.x = THREE.MathUtils.degToRad(pitch) + amp * 0.004 * sh(33, 5);
   camera.rotation.z = amp * 0.008 * sh(17, 6);
-  camera.position.x += 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 2.3 + 1);
+  camera.position.x += Math.min(0, t) * 0.05 + 0.05 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 2.3 + 1);
   camera.position.y += 0.04 * Math.sin(t * 1.1 + 2);
   camera.rotation.y += 0.0016 * Math.sin(t * 0.8 + 1) ;
   camera.rotation.x += 0.0012 * Math.sin(t * 1.3);
-  const fov = kf(t, [[0, 61], [4, 55], [7, 55], [9, 58], [17, 56]]);
+  const fov = kf(t, [[-10, 66], [0, 61], [4, 55], [7, 55], [9, 58], [17, 56]]);
   if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
 
   /* Old Faithful: erupts for the tourists, then the world ends */
-  const JH = 72 * smooth((t - 0.1) / 0.9) * (1 - smooth((t - 2.3) / 1.3));
+  const JH = 72 * smooth((t + 6.5) / 1.4) * (1 - smooth((t - 1.2) / 1.8));
   for (let i = 0; i < JET_N; i++) {
     const p = jetData[i];
     if (JH < 0.5) { dummy.scale.setScalar(0); dummy.position.set(0, -999, 0); }
     else {
-      const f = (p.f + t * 0.9) % 1;
+      const f = (((p.f + t * 0.9) % 1) + 1) % 1;
       const h = f * JH;
       const sp = 0.5 + f * 6.5 * (0.3 + p.u * p.u);
       dummy.position.set(GEYSER.x + Math.cos(p.a + t) * sp, 3.4 + h, GEYSER.z + Math.sin(p.a + t) * sp);
@@ -820,9 +851,14 @@ function update(t) {
     }
     dummy.rotation.set(p.w, p.w, 0);
     dummy.updateMatrix(); jet.setMatrixAt(i, dummy.matrix);
+    if (JH >= 0.5) {
+      const ff = (((p.f + t * 0.9) % 1) + 1) % 1, hh = ff * JH, spd = 0.5 + ff * 6.5 * (0.3 + p.u * p.u);
+      const L = 1.05 - ff * 0.12;
+      addPuff(GEYSER.x + Math.cos(p.a + t) * spd, 3.4 + hh, GEYSER.z + Math.sin(p.a + t) * spd, (3.2 + (1 - ff) * 2.4 + ff * 7.5) * p.s, p.w, L, L, L * 1.02, 0.82 * (1 - smooth((ff - 0.7) / 0.3) * 0.6));
+    }
   }
-  jet.instanceMatrix.needsUpdate = true;
-  geyserSteam.pts.material.opacity = 0.5 * smooth((t - 0.5) / 1.0) * (1 - smooth((t - 3.0) / 2.2));
+  jet.instanceMatrix.needsUpdate = true; jet.visible = false;
+  geyserSteam.pts.material.opacity = 0.5 * smooth((t + 6) / 1.5) * (1 - smooth((t - 1.5) / 2.5));
   for (let i = 0; i < geyserSteam.seed.length; i++) {
     const s = geyserSteam.seed[i];
     geyserSteam.pos[i * 3] = GEYSER.x + (s[0]) * 40 + t * 3 * s[2];
@@ -832,15 +868,26 @@ function update(t) {
   geyserSteam.geo.attributes.position.needsUpdate = true;
 
   /* pool steam, clouds, birds */
-  steam.pts.material.opacity = 0.32 * (1 - smooth((t - 3.5) / 2.5));
+  steam.pts.material.opacity = (0.2 + 0.2 * smooth((t + 4) / 5)) * (1 - smooth((t - 3.5) / 2.5));
   for (let i = 0; i < steam.seed.length; i++) {
-    const s = steam.seed[i], ph = (s[2] + t * 0.12) % 1;
+    const s = steam.seed[i], ph = (((s[2] + t * 0.12) % 1) + 1) % 1;
     steam.pos[i * 3] = s[0] + Math.sin(t * 0.7 + i) * 1.5 + ph * 3;
     steam.pos[i * 3 + 1] = 0.8 + ph * s[3];
     steam.pos[i * 3 + 2] = s[1];
   }
   steam.geo.attributes.position.needsUpdate = true;
-  clouds.pts.material.opacity = 0.9 * (1 - smooth((t - 3.2) / 2.2));
+  clouds.pts.material.opacity = 0;
+  {
+    const ca = 1 - smooth((t - 3.0) / 2.4), warm = smooth((t - 2.5) / 2);
+    if (ca > 0.01) for (let c = 0; c < 16; c++) {
+      const cx = (hash2(c, 21) - 0.5) * 2600 + t * 4, cy = 330 + hash2(c, 22) * 330, cz = -900 - hash2(c, 23) * 1500, cw = 160 + hash2(c, 24) * 240;
+      for (let k = 0; k < 9; k++) {
+        const ox = (hash2(c * 9 + k, 31) - 0.5) * cw * 2.2, oy = (hash2(c * 9 + k, 32) - 0.35) * cw * 0.55, sz = cw * (0.55 + hash2(c * 9 + k, 33) * 0.7);
+        const L = 0.96 - Math.max(0, -oy / cw) * 0.15;
+        addPuff(cx + ox, cy + oy, cz + (hash2(c * 9 + k, 34) - 0.5) * 120, sz, hash2(c * 9 + k, 35) * 0.5 - 0.25, L * (1 - warm * 0.25), L * (0.97 - warm * 0.32), L * (0.93 - warm * 0.4), 0.8 * ca);
+      }
+    }
+  }
   clouds.pts.material.color.set(0xffffff).lerp(tmpC.set(0xb59a85), smooth((t - 2.5) / 2));
   for (let i = 0; i < clouds.seed.length; i++) {
     const s = clouds.seed[i];
@@ -848,7 +895,7 @@ function update(t) {
   }
   clouds.geo.attributes.position.needsUpdate = true;
   for (let i = 0; i < BIRDS; i++) {
-    const b = birdData[i], flee = clamp((t - 2.2) / 2);
+    const b = birdData[i], flee = clamp((t + 1.6) / 2.4);
     const a = b.a + t * b.sp;
     dummy.position.set(Math.cos(a) * b.r + flee * flee * 400, b.y + flee * 60 + Math.sin(t * 2 + i) * 3, -90 + Math.sin(a) * b.r * 0.6 - flee * 20);
     dummy.scale.set(1.6, 1.0 + 0.7 * Math.sin(t * b.f + i), 1);
@@ -859,7 +906,6 @@ function update(t) {
   birds.visible = t < 7;
 
   /* smoke: eruption column (soft depth-sorted billboards) */
-  pc = 0;
   const dayL = kf(t, [[0, 1], [3, 1], [5, 0.72], [7, 0.4], [10, 0.22], [13, 0.5], [17, 0.6]]);
   for (let i = 0; i < PLUME_N; i++) {
     const p = plumeData[i], a = t - p.tb;
@@ -891,8 +937,8 @@ function update(t) {
   /* smoke: pyroclastic flow rolling across the basin */
   const f = flowFront(t);
   const flowA = 1 - smooth((t - 6.8) / 0.9);
-  flowLight.position.set(0, 45, f + 70);
-  flowLight.intensity = t >= FLOW_T0 && flowA > 0.02 ? kf(t, [[4, 0], [4.6, 1.4e5], [7, 1.8e5], [8, 0]]) : 0;
+  flowLight.position.set(0, 70, f + 90);
+  flowLight.intensity = t >= FLOW_T0 && flowA > 0.02 ? kf(t, [[4, 0], [4.6, 6e4], [7, 8e4], [8, 0]]) : 0;
   if (t >= FLOW_T0 - 0.2 && flowA > 0.01) {
     const D = Math.max(0, 30 - f), fl = kf(t, [[4, 1], [6, 0.85], [7, 0.55]]);
     for (let i = 0; i < FLOW_N; i++) {
@@ -1030,12 +1076,13 @@ const mctx = mapCanvas.getContext('2d');
 mapCanvas.width = innerWidth * DPR; mapCanvas.height = innerHeight * DPR;
 const US = [[-124.7,48.4],[-123.2,48.2],[-122.8,49],[-95.2,49],[-94.6,48.7],[-93,48.6],[-91.4,48.1],[-89.6,48.0],[-88.4,48.3],[-84.8,46.9],[-83.0,46.0],[-82.5,43.0],[-83.1,42.0],[-79.0,42.8],[-79.0,43.3],[-76.5,43.6],[-75,44.9],[-71.5,45.0],[-70.2,46.5],[-69.2,47.4],[-67.8,47.0],[-67.0,44.8],[-70.0,43.7],[-70.7,42.7],[-70.0,41.8],[-71.5,41.4],[-73.7,40.9],[-74.0,40.5],[-74.1,39.7],[-75.0,38.8],[-75.5,37.5],[-76.0,36.9],[-75.5,35.3],[-77.5,34.5],[-79.0,33.5],[-81.0,32.0],[-81.4,30.5],[-80.0,26.8],[-80.4,25.2],[-81.2,25.3],[-82.6,27.5],[-83.0,29.0],[-84.0,30.1],[-86.5,30.4],[-88.0,30.3],[-89.5,30.2],[-89.2,29.0],[-91.0,29.2],[-93.8,29.7],[-95.0,29.0],[-97.2,27.8],[-97.2,26.0],[-99.1,26.4],[-100.5,28.5],[-101.5,29.8],[-103.0,29.0],[-104.5,29.7],[-106.5,31.8],[-108.2,31.8],[-108.2,31.3],[-111.0,31.3],[-114.8,32.5],[-117.1,32.5],[-118.5,34.0],[-120.6,34.6],[-121.9,36.6],[-122.5,37.8],[-123.8,39.5],[-124.3,40.4],[-124.1,42.0],[-124.5,43.0],[-124.0,46.2]];
 const YS = [-110.6, 44.4];
-function drawMap(t) {
+function drawMap(T) {
+  const t = T;
   const W = mapCanvas.width, H = mapCanvas.height;
-  const op = smooth((t - 9.85) / 0.5) * (1 - smooth((t - 13.0) / 0.45));
+  const op = smooth((T - 39.6) / 1.0) * (1 - smooth((T - 49.2) / 0.9));
   mapCanvas.style.opacity = op;
   if (op <= 0.001) return;
-  const k = clamp((t - 10.1) / 2.9);
+  const k = clamp((T - 41) / 7.2);
   const e = easeOut(k);
   const cosL = Math.cos((38 * Math.PI) / 180);
   const spanX = (125 - 66.5) * cosL, spanY = 50 - 24.5;
@@ -1120,31 +1167,51 @@ function fmtElapsed(t) {
 }
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const BEATS = [
-  { a: 0, b: 2, label: 'Ground', value: () => 'Rising', sub: (k) => `Quake M ${(4.6 + 2.6 * smooth(k)).toFixed(1)}`, cap: 'The ground has been rising for years.' },
-  { a: 2, b: 4, label: 'Plume height', value: (k) => `${Math.round(30 * easeOut(k * 1.1))} mi`, sub: (k) => `Ejecta ${fmt(240 * smooth(k))} mi³`, cap: 'It throws a mountain into the sky.' },
-  { a: 4, b: 7, label: 'Flow speed', value: (k) => `${Math.round(lerp(150, 450, smooth(k)))} mph`, sub: (k) => `Temp ${fmt(lerp(500, 1300, smooth(k)))} °F`, cap: 'Nothing outruns it.' },
-  { a: 7, b: 10, label: 'Ash depth', value: (k) => `${(3 * smooth(k)).toFixed(1)} ft`, sub: (k) => `Visibility ${fmt(300 * (1 - smooth(k)))} ft`, cap: "By afternoon it's night." },
-  { a: 10, b: 13, label: 'Sunlight', value: (k) => `${Math.round(100 - 40 * smooth(k))}%`, sub: (k) => fmtElapsed(10 + 3 * k), cap: 'Crops fail across the Midwest.' },
-  { a: 13, b: 15, label: 'Global temperature', value: (k) => `−${Math.round(10 * smooth(k))} °F`, sub: (k) => fmtElapsed(13 + 2 * k), cap: 'Volcanic winter. Years of it.' },
+  { a: 0.6, b: 6.2, label: 'Visitors in the basin', value: (k) => fmt(3412 + 360 * smooth(k)), sub: () => 'Old Faithful erupting now' },
+  { a: 5.6, b: 9.0, label: 'Ground uplift', value: (k) => `${(9.8 * smooth(k)).toFixed(1)} in`, sub: (k) => `Quake swarm ${fmt(18 + 400 * smooth(k))} today` },
+  { a: 9.0, b: 12.0, label: 'Quake magnitude', value: (k) => `M ${(4.6 + 2.6 * smooth(k)).toFixed(1)}`, sub: () => 'Crowd evacuating' },
+  { a: 12.0, b: 20.0, label: 'Plume height', value: (k) => `${Math.round(30 * easeOut(k * 1.1))} mi`, sub: (k) => `Ejecta ${fmt(240 * smooth(k))} mi³` },
+  { a: 20.0, b: 32.0, label: 'Flow speed', value: (k) => `${Math.round(lerp(150, 450, smooth(k)))} mph`, sub: (k) => `Temp ${fmt(lerp(500, 1300, smooth(k)))} °F` },
+  { a: 32.0, b: 40.0, label: 'Ash depth', value: (k) => `${(3 * smooth(k)).toFixed(1)} ft`, sub: (k) => `Visibility ${fmt(300 * (1 - smooth(k)))} ft` },
+  { a: 40.0, b: 50.0, label: 'Sunlight', value: (k) => `${Math.round(100 - 40 * smooth(k))}%`, sub: (k) => fmtElapsed(10 + 3 * k) },
+  { a: 50.0, b: 58.0, label: 'Global temperature', value: (k) => `−${Math.round(10 * smooth(k))} °F`, sub: (k) => fmtElapsed(13 + 2 * k) },
 ];
-function updateOverlay(t) {
-  elTitle.style.opacity = smooth(t / 0.5) * (1 - smooth((t - 2.15) / 0.5));
-  const beat = BEATS.find((b) => t >= b.a && t < b.b) || BEATS[BEATS.length - 1];
-  const k = clamp((t - beat.a) / (beat.b - beat.a));
-  hLabel.textContent = beat.label;
-  hValue.textContent = beat.value(k);
-  hSub.textContent = beat.sub(k);
-  const sw = Math.min(smooth((t - beat.a) / 0.25), 1 - smooth((t - (beat.b - 0.12)) / 0.12));
-  hud.style.opacity = (t < 15 ? Math.max(sw, 0.0) : 1 - smooth((t - 15) / 0.3)) * smooth((t - 0.3) / 0.4);
-  const cs = beat.a + (beat.a === 0 ? 0.5 : 0.15), ce = beat.b - 0.05;
-  cap.textContent = beat.cap;
-  const co = smooth((t - cs) / 0.35) * (1 - smooth((t - (ce - 0.3)) / 0.3));
-  cap.style.opacity = t < 15 ? co : 0;
-  cap.style.transform = `translateY(${(1 - smooth((t - cs) / 0.35)) * 6}px)`;
-  end.style.opacity = smooth((t - 14.8) / 0.5);
-  end.querySelector('.a').style.opacity = smooth((t - 15.1) / 0.45);
-  end.querySelector('.b').style.opacity = smooth((t - 15.6) / 0.45);
-  end.querySelector('.c').style.opacity = smooth((t - 16.1) / 0.5) * 0.9;
+const CAPS = [
+  [1.2, 5.3, 'Every year, four million people come to watch the ground boil.'],
+  [5.5, 8.0, 'Beneath them, a magma chamber 55 miles long is filling.'],
+  [8.2, 10.2, 'The animals leave first.'],
+  [10.4, 11.9, 'Then the ground starts to shake.'],
+  [12.3, 16.0, 'It throws a mountain into the sky.'],
+  [16.3, 19.8, 'Ash climbs 30 miles, far higher than any jet can fly.'],
+  [20.3, 24.0, 'A wall of burning ash races across the basin.'],
+  [24.3, 28.0, 'Nothing outruns it.'],
+  [28.3, 31.8, "The old lodge doesn't stand a chance."],
+  [32.3, 36.0, "By afternoon, it's night."],
+  [36.3, 39.8, 'Wet ash is heavy enough to collapse roofs.'],
+  [40.4, 44.5, 'Within days, ash reaches the Midwest.'],
+  [44.8, 49.6, 'Crops fail across the breadbasket.'],
+  [50.3, 54.0, 'Volcanic winter.'],
+  [54.3, 57.8, 'Sunlight stays dim for years.'],
+];
+function updateOverlay(T) {
+  elTitle.style.opacity = smooth(T / 0.8) * (1 - smooth((T - 4.4) / 0.7));
+  const beat = BEATS.find((b) => T >= b.a && T < b.b);
+  if (beat) {
+    const k = clamp((T - beat.a) / (beat.b - beat.a));
+    hLabel.textContent = beat.label; hValue.textContent = beat.value(k); hSub.textContent = beat.sub(k);
+    hud.style.opacity = Math.min(smooth((T - beat.a) / 0.3), 1 - smooth((T - (beat.b - 0.15)) / 0.15));
+  } else hud.style.opacity = 0;
+  const cp = CAPS.find((c) => T >= c[0] - 0.05 && T < c[1] + 0.05);
+  if (cp) {
+    cap.textContent = cp[2];
+    const fin = smooth((T - cp[0]) / 0.4);
+    cap.style.opacity = fin * (1 - smooth((T - (cp[1] - 0.4)) / 0.4));
+    cap.style.transform = `translateY(${(1 - fin) * 6}px)`;
+  } else cap.style.opacity = 0;
+  end.style.opacity = smooth((T - 57.8) / 0.7);
+  end.querySelector('.a').style.opacity = smooth((T - 58.6) / 0.6);
+  end.querySelector('.b').style.opacity = smooth((T - 59.8) / 0.6);
+  end.querySelector('.c').style.opacity = smooth((T - 61.0) / 0.7) * 0.9;
 }
 
 {
@@ -1158,21 +1225,22 @@ function updateOverlay(t) {
 /* ---------- public API ---------- */
 // Renders one output frame. With sub > 1 the frame is the average of `sub` samples spread
 // across `dt` seconds (motion blur).
-function renderAt(t, sub = 1, dt = 1 / 60) {
-  t = clamp(t, 0, T_END);
+function renderAt(T, sub = 1, dt = 1 / 60) {
+  T = clamp(T, 0, T_END);
   for (let j = 0; j < sub; j++) {
-    const tt = clamp(t + (sub > 1 ? (j / (sub - 1) - 0.5) * dt : 0), 0, T_END);
-    update(tt);
+    const Tj = clamp(T + (sub > 1 ? (j / (sub - 1) - 0.5) * dt : 0), 0, T_END);
+    update(warp(Tj));
     composer.render();
     actx.globalAlpha = 1 / (j + 1);
     actx.drawImage(glCanvas, 0, 0);
   }
   actx.globalAlpha = 1;
-  drawMap(t);
-  updateOverlay(t);
+  drawMap(T);
+  updateOverlay(T);
 }
 window.renderAt = renderAt;
-window.dbg = { scene, camera, renderer };
+window.dbg = { scene, camera, renderer, sun, composer, bloom };
+window.warp = warp;
 window.T_END = T_END;
 
 await Promise.all([
