@@ -1227,7 +1227,8 @@ function updateOverlay(T) {
 // across `dt` seconds (motion blur).
 function renderAt(T, sub = 1, dt = 1 / 60) {
   T = clamp(T, 0, T_END);
-  for (let j = 0; j < sub; j++) {
+  // the opaque end card covers the whole frame, so the 3D scene needn't be re-rendered
+  for (let j = 0; j < (T > 58.9 ? 0 : sub); j++) {
     const Tj = clamp(T + (sub > 1 ? (j / (sub - 1) - 0.5) * dt : 0), 0, T_END);
     update(warp(Tj));
     composer.render();
