@@ -48,7 +48,7 @@ await page.waitForFunction('window.READY === true', null, { timeout: 120000 });
 fs.mkdirSync(outDir, { recursive: true });
 const shot = async (t, sub = 1, dt = 1 / 60) => {
   await page.evaluate(([tt, ss, dd]) => window.renderAt(tt, ss, dd), [t, sub, dt]);
-  return page.screenshot({ type: 'jpeg', quality: 92 });
+  return page.screenshot({ type: 'jpeg', quality: 92, timeout: 600000 });
 };
 
 if (stills) {
