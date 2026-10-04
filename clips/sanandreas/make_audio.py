@@ -42,8 +42,8 @@ alert="0.5*(sin(2*PI*853*t)+sin(2*PI*960*t))*lt(mod(t-5.4,0.62),0.3)*gt(t,5.4)*l
 src_ae=lambda e: f"aevalsrc='{e}':s=44100:d={D}"
 inputs=[
  f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=13",                                                            # 0 rumble bed (event-shaped)
- src_ae(f"0.07*{N(1)}*({bumps})"),                                                                           # 1 passing cars (calm only)
- src_ae(f"0.09*{N(2)}*gt(mod(t,0.9),0.8)*(0.5+0.5*sin(2*PI*14*t))*lt(t,{T(12.0):.2f})*(1-smoothstep)".replace("*(1-smoothstep)","")), # 2 birds
+ src_ae(f"0.05*{N(1)}*({bumps})"),                                                                           # 1 passing cars (calm only)
+ src_ae(f"0.0*{N(2)}*gt(mod(t,0.9),0.8)*(0.5+0.5*sin(2*PI*14*t))*lt(t,{T(12.0):.2f})*(1-smoothstep)".replace("*(1-smoothstep)","")), # 2 birds
  src_ae(f"{N(3)}*0.9*({decays(topple,3.5)}+{decays(freeway,3.0)}*1.1)"),                                    # 3 collapses
  src_ae(f"sin(2*PI*42*t)*(gt(t,{tP:.2f})*0.7*exp(-(t-{tP:.2f})*5)+gt(t,{tS:.2f})*1.1*exp(-(t-{tS:.2f})*1.6))"),# 4 booms
  src_ae(f"{N(4)}*1.3*({decays(panc,1.6)})"),                                                                 # 5 pancake
