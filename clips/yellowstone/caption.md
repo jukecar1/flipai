@@ -1,0 +1,3 @@
+What if Yellowstone erupted?
+Beneath the geysers and hot springs of Yellowstone sits one of the biggest volcanic systems on Earth. The ground there slowly rises and falls, and a supereruption could throw around 240 cubic miles of rock and ash into the sky. Watch from a boardwalk overlook as Old Faithful goes quiet: tourists run, bison stampede, a wall of burning ash races across the basin faster than a car, the lodge is torn apart... and then the sky goes dark. Ash buries the Midwest, crops fail, and the planet cools for years. Would you make it off the boardwalk?
+#whatif #yellowstone #volcano #science #geology #disaster #simulation #pov #apocalypse #fyp
