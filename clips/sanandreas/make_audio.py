@@ -28,38 +28,50 @@ def pw(points, mapped=False):
         expr=f"if(lt(t,{t1:.3f}),{v0}+({v1}-{v0})*(t-{t0:.3f})/({t1-t0:.3f}),{expr})"
     return f"if(lt(t,{pts[0][0]:.3f}),{pts[0][1]},{expr})"
 def decays(times, rate): return "+".join(f"exp(-(t-{c:.3f})*{rate})*gt(t,{c:.3f})" for c in times)
+
 D=62
 tP,tS=T(12.0),T(15.0)
+N=lambda k: f"(random({k})*2-1)"
 topple=[T(x) for x in (17.2,18.9,20.6)]
 freeway=[T(24.0+0.4*i) for i in range(12)]
 panc=[T(x) for x in (29.8,33.0,35.4)]
-# a handful of short, quiet car-alarm chirps and one distant siren pass, instead of anything continuous
 chirps=[T(x) for x in (18.6,21.5,25.0,28.5,33.0,37.0)]
-chirp_expr="+".join(f"gt(t,{c:.2f})*lt(t,{c+0.55:.2f})*gt(mod(t-{c:.2f},0.18),0.06)" for c in chirps)
+chirp_gate="+".join(f"gt(t,{c:.2f})*lt(t,{c+0.55:.2f})*gt(mod(t-{c:.2f},0.18),0.06)" for c in chirps)
+bumps="+".join(f"exp(-pow((t-{c})/0.8,2))" for c in (1.1,2.7,4.2,5.7,7.3,8.8))
 alert="0.5*(sin(2*PI*853*t)+sin(2*PI*960*t))*lt(mod(t-5.4,0.62),0.3)*gt(t,5.4)*lt(t,6.9)*0.35+0.5*(sin(2*PI*853*t)+sin(2*PI*960*t))*lt(mod(t-19.0,0.5),0.26)*gt(t,19.0)*lt(t,22.0)*0.4"
+src_ae=lambda e: f"aevalsrc='{e}':s=44100:d={D}"
+inputs=[
+ f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=13",                                                            # 0 rumble bed (event-shaped)
+ src_ae(f"0.07*{N(1)}*({bumps})"),                                                                           # 1 passing cars (calm only)
+ src_ae(f"0.09*{N(2)}*gt(mod(t,0.9),0.8)*(0.5+0.5*sin(2*PI*14*t))*lt(t,{T(12.0):.2f})*(1-smoothstep)".replace("*(1-smoothstep)","")), # 2 birds
+ src_ae(f"{N(3)}*0.9*({decays(topple,3.5)}+{decays(freeway,3.0)}*1.1)"),                                    # 3 collapses
+ src_ae(f"sin(2*PI*42*t)*(gt(t,{tP:.2f})*0.7*exp(-(t-{tP:.2f})*5)+gt(t,{tS:.2f})*1.1*exp(-(t-{tS:.2f})*1.6))"),# 4 booms
+ src_ae(f"{N(4)}*1.3*({decays(panc,1.6)})"),                                                                 # 5 pancake
+ src_ae(f"{N(5)}*({pw([(15.4,0),(16,0.22),(27,0.18),(30,0.0)],True)})*gt(sin(t*173)*sin(t*91)+0.4*sin(t*229),0.55)"), # 6 glass
+ src_ae(f"{N(6)}*gt(random(7),0.992)*({pw([(30.5,0),(33,1.0),(46,1.0)],True)})*2.2"),                         # 7 fire crackle
+ src_ae(f"0.7*sin(2*PI*1250*t)*({chirp_gate})"),                                                              # 8 alarm chirps
+ src_ae(f"sin(2*PI*700*t-300/0.16*cos(2*PI*0.16*t))*({pw([(0,0),(T(36.2),0),(T(37.5),0.03),(T(40.5),0.03),(T(41.5),0)])})"), # 9 distant siren
+ src_ae(alert),                                                                                               # 10 phone alert
+]
 fc=f"""
-[0]highpass=f=70,lowpass=f=650,volume='{pw([(0,0.11),(T(12.0),0.12),(T(14.8),0.1),(T(16),0.04),(T(30),0.035),(T(46),0.025)])}':eval=frame[city];
-[10]highpass=f=2600,lowpass=f=5200,volume='0.09*lt(t,{T(12.0):.2f})*gt(sin(t*7.1)*sin(t*2.3+1),0.2)*gt(mod(t,0.7),0.5)':eval=frame[birds];
-[1]lowpass=f=100,volume='{pw([(0,0),(9.9,0.0),(14,0.15),(19.0,0.26),(T(15.0),0.95),(T(17),1.0),(T(36),0.85),(T(41),0.35),(T(42),0.7),(T(44),0.3),(62,0.1)])}':eval=frame[rumble];
-[5]volume='gt(t,{tP:.2f})*0.7*exp(-(t-{tP:.2f})*5)+gt(t,{tS:.2f})*1.1*exp(-(t-{tS:.2f})*1.6)':eval=frame[boom];
-[3]lowpass=f=2400,volume='0.95*({decays(topple,3.5)})':eval=frame[topple];
-[4]lowpass=f=1800,volume='1.0*({decays(freeway,3.0)})':eval=frame[fwy];
-[6]volume='1.5*({decays(panc,1.6)})':eval=frame[panc];
-[2]highpass=f=3200,volume='{pw([(15.4,0),(16,0.2),(27,0.16),(30,0.0)],True)}*gt(sin(t*173)*sin(t*91)+sin(t*229)*0.4,0.55)':eval=frame[glass];
-[8]lowpass=f=1800,volume='0.05*({chirp_expr})':eval=frame[alarm];
-[9]lowpass=f=1400,volume='{pw([(0,0),(T(36.2),0),(T(37.5),0.035),(T(40.5),0.035),(T(41.5),0)])}':eval=frame[siren];
-[11]highpass=f=1500,volume='{pw([(30.5,0),(33,0.1),(46,0.1)],True)}*gt(sin(t*311)*sin(t*47)+0.3*sin(t*523),0.45)':eval=frame[fire];
-[12]highpass=f=2500,lowpass=f=6000,volume='{pw([(19.4,0),(20.5,0.03),(24,0.03),(28,0.0)],True)}':eval=frame[hiss];
-[14]volume='1.0':eval=frame[alert];
-[city][birds][rumble][boom][topple][fwy][panc][glass][alarm][siren][fire][hiss][alert]amix=inputs=13:normalize=0,alimiter=limit=0.9,volume=0.85,afade=t=in:d=0.4,afade=t=out:st=60.4:d=1.6,pan=stereo|c0=c0|c1=c0[o]"""
-inp=[f"anoisesrc=d={D}:c=pink:r=44100:a=1:seed=11",f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=13",f"anoisesrc=d={D}:c=white:r=44100:a=1:seed=12",
-     f"anoisesrc=d={D}:c=pink:r=44100:a=1:seed=14",f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=15",f"sine=f=42:d={D}:r=44100",
-     f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=18",f"anoisesrc=d={D}:c=white:r=44100:a=0.1:seed=19",
-     f"aevalsrc='sin(2*PI*1250*t)':s=44100:d={D}",
-     f"aevalsrc='sin(2*PI*700*t-300/0.16*cos(2*PI*0.16*t))':s=44100:d={D}",
-     f"anoisesrc=d={D}:c=white:r=44100:a=1:seed=22",f"anoisesrc=d={D}:c=white:r=44100:a=1:seed=20",f"anoisesrc=d={D}:c=white:r=44100:a=1:seed=21",
-     f"sine=f=100:d={D}:r=44100",f"aevalsrc='{alert}':s=44100:d={D}"]
+[0]highpass=f=28,lowpass=f=90,volume='{pw([(0,0),(9.9,0.0),(14,0.12),(19.0,0.22),(T(15.0),0.8),(T(17),0.9),(T(36),0.7),(T(41),0.3),(T(42),0.55),(T(44),0.25),(62,0.0)])}':eval=frame[rumble];
+[1]highpass=f=90,lowpass=f=620[cars];
+[2]highpass=f=2800,lowpass=f=5400[birds];
+[3]highpass=f=40,lowpass=f=2400[crash];
+[4]anull[boom];
+[5]highpass=f=35,lowpass=f=1600[panc];
+[6]highpass=f=3000[glass];
+[7]highpass=f=1200,lowpass=f=6500[fire];
+[8]lowpass=f=1800[alarm];
+[9]lowpass=f=1400[siren];
+[10]anull[alert];
+[rumble][cars][birds][crash][boom][panc][glass][fire][alarm][siren][alert]amix=inputs=11:normalize=0,highpass=f=25[o]"""
 cmd=["ffmpeg","-v","error","-y"]
-for i in inp: cmd+=["-f","lavfi","-i",i]
-cmd+=["-filter_complex",fc.replace("\n",""),"-map","[o]","-ar","44100","-c:a","pcm_s16le","audio.wav"]
-r=subprocess.run(cmd,capture_output=True,text=True); print(r.stderr[:600] or 'ok')
+for i in inputs: cmd+=["-f","lavfi","-i",i]
+cmd+=["-filter_complex",fc.replace("\n",""),"-map","[o]","-ar","44100","-c:a","pcm_s16le","raw.wav"]
+r=subprocess.run(cmd,capture_output=True,text=True); print(r.stderr[:500] or 'mixed')
+# normalise to a safe peak with one linear gain (no limiter pumping)
+v=subprocess.run(["ffmpeg","-i","raw.wav","-af","volumedetect","-f","null","-"],capture_output=True,text=True).stderr
+mx=float([l for l in v.splitlines() if 'max_volume' in l][0].split(':')[1].split()[0])
+gain=-3.0-mx
+r=subprocess.run(["ffmpeg","-v","error","-y","-i","raw.wav","-af",f"volume={gain}dB,afade=t=in:d=0.4,afade=t=out:st=60.4:d=1.6,pan=stereo|c0=c0|c1=c0","audio.wav"],capture_output=True,text=True); print('gain',round(gain,1),'dB',r.stderr[:200] or 'ok')
