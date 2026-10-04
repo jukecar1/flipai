@@ -13,7 +13,9 @@
   * { box-sizing: border-box; margin: 0; padding: 0; font-feature-settings: "lnum" 1, "tnum" 1; font-variant-numeric: lining-nums tabular-nums; }
   html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
   #stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
-  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #sceneWrap { position: absolute; inset: 0; }
+  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
+  canvas#acc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
   #vignette { position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%); }
@@ -37,7 +39,7 @@
 </head>
 <body>
 <div id="stage">
-  <canvas id="gl"></canvas>
+  <div id="sceneWrap"><canvas id="gl"></canvas><canvas id="acc"></canvas></div>
   <canvas id="map"></canvas>
   <div id="vignette"></div>
   <canvas id="grain" width="256" height="256"></canvas>

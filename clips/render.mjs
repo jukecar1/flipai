@@ -19,6 +19,7 @@ const stills = opt('stills', null);
 const outDir = path.resolve(opt('dir', path.join(root, 'clips', '.frames', clip)));
 const outFile = path.resolve(opt('out', path.join(root, 'clips', `${clip}.mp4`)));
 const audio = opt('audio', null);
+const blur = +opt('blur', 3);
 
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
@@ -41,8 +42,8 @@ await page.goto(`http://localhost:${port}/clips/${clip}/index.html?manual&dpr=${
 await page.waitForFunction('window.READY === true', null, { timeout: 60000 });
 
 fs.mkdirSync(outDir, { recursive: true });
-const shot = async (t, file) => {
-  await page.evaluate((tt) => window.renderAt(tt), t);
+const shot = async (t, file, sub = 1, dt = 1 / 60) => {
+  await page.evaluate(([tt, ss, dd]) => window.renderAt(tt, ss, dd), [t, sub, dt]);
   await page.screenshot({ path: file, type: 'jpeg', quality: 93 });
 };
 
@@ -54,7 +55,8 @@ if (stills) {
   const n = Math.round(T * fps);
   const t0 = Date.now();
   for (let i = 0; i < n; i++) {
-    await shot(i / fps, path.join(outDir, `f_${String(i).padStart(5, '0')}.jpg`));
+    const tc = i / fps;
+    await shot(tc, path.join(outDir, `f_${String(i).padStart(5, '0')}.jpg`), tc > 1.9 && tc < 9.6 ? blur : 1, 0.5 / fps);
     if (i % 30 === 0) console.log(`frame ${i}/${n}  ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
   const ff = ['-y', '-framerate', String(fps), '-i', path.join(outDir, 'f_%05d.jpg')];
