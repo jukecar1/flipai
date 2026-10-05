@@ -546,7 +546,7 @@ const BEATS = [
 ];
 const CAPS = [
   [5.0, 8.8, 'Banks, airlines, hospitals and shops all depend on the internet.'],
-  [9.6, 13.7, 'Messages, email, video and social media stop.'],
+  [9.6, 13.7, 'Wi-Fi and mobile data both go dark. Messages, email and video stop.'],
   [14.0, 18.7, 'Card readers and ATMs go offline. Cash only.'],
   [19.0, 23.7, 'Airlines lose check-in and crew scheduling. Flights get cancelled.'],
   [24.0, 28.7, 'Online banking and stock trading stop.'],
@@ -559,18 +559,18 @@ const CAPS = [
 
 /* ---------- phone screens ---------- */
 const APPS = [['Mail', '#2f7cf6', 'M'], ['Maps', '#34a853', 'N'], ['Chat', '#25d366', 'C'], ['Pay', '#111', 'P'], ['Music', '#fa3c5a', 'S'], ['Video', '#e50914', 'V'], ['News', '#f5a623', 'N'], ['Bank', '#0a6ebd', 'B'], ['Photos', '#e8a0c8', 'F'], ['Calls', '#34c759', 'T'], ['Store', '#007aff', 'A'], ['Notes', '#f7d14a', 'N'], ['Weather', '#4aa3df', 'W'], ['Clock', '#222', 'C'], ['Files', '#6e7bf2', 'D'], ['Ride', '#000', 'R']];
-const statusBar = (T, off, back) => `<div class="sb"><span>${fmtClock(localOf(hourOf(T))).replace(' ', ' ')}</span><span class="sbr">${off ? '<i class="nosig"></i>' : '<i class="sig"></i><i class="wifi"></i>'}<i class="bat"></i></span></div>`;
+const statusBar = (T, off, back) => `<div class="sb"><span>${fmtClock(localOf(hourOf(T))).replace(' ', ' ')}</span><span class="sbr">${off ? '<em>No Service</em>' : '<i class="sig"></i><i class="wifi"></i>'}<i class="bat"></i></span></div>`;
 const iconGrid = (grey, badges) => `<div class="grid ${grey ? 'grey' : ''}">${APPS.map(([n, c, g], i) => `<div class="app"><div class="ic" style="background:${c}">${g}${badges && [0, 2, 5, 9, 11].includes(i) ? `<b>${['99+', '312', '48', '27', '99+'][[0, 2, 5, 9, 11].indexOf(i)]}</b>` : ''}</div><div class="nm">${n}</div></div>`).join('')}</div>`;
 const SCENES = [
   { a: -1, html: (T) => statusBar(T, false) + iconGrid(false, false) + (T > 5 ? `<div class="notif" style="opacity:${smooth((T - 5.4) / 0.4) * (1 - smooth((T - 8.4) / 0.4))}"><b>Chat</b> Dinner at 7? See you there</div>` : '') },
-  { a: 9.2, html: (T) => statusBar(T, true) + `<div class="banner red">No Internet Connection</div>` + iconGrid(true, false) },
+  { a: 9.2, html: (T) => statusBar(T, true) + `<div class="banner red">No Wi-Fi or Mobile Data</div>` + iconGrid(true, false) },
   { a: 14.0, html: (T) => statusBar(T, true) + `<div class="card"><div class="ct">Card reader</div><div class="amt">$48.20</div><div class="stat bad">Declined</div><div class="sm">Payment network unavailable</div><div class="cash">CASH ONLY</div></div>` },
   { a: 19.0, html: (T) => statusBar(T, true) + `<div class="hdr">Departures</div><div class="fl"><span>UA 218</span><span>ORD</span><span class="bad">CANCELLED</span></div><div class="fl"><span>DL 402</span><span>ATL</span><span class="bad">CANCELLED</span></div><div class="fl"><span>AA 77</span><span>DFW</span><span class="warn">DELAYED</span></div><div class="fl"><span>WN 1530</span><span>DEN</span><span class="bad">CANCELLED</span></div><div class="fl"><span>B6 915</span><span>BOS</span><span class="warn">DELAYED</span></div><div class="fl"><span>AS 340</span><span>SEA</span><span class="bad">CANCELLED</span></div>` },
   { a: 24.0, html: (T) => statusBar(T, true) + `<div class="hdr">Bank</div><div class="panel"><div class="ic2">B</div><div class="stat bad">Service unavailable</div><div class="sm">Please try again later</div></div><div class="hdr s2">Markets</div><div class="panel"><div class="stat warn">Live prices unavailable</div></div>` },
   { a: 29.0, html: (T) => statusBar(T, true) + `<div class="hdr">Patient records</div>${['Charts', 'Lab results', 'Imaging', 'Medications', 'Scheduling'].map((r) => `<div class="row"><span>${r}</span><span class="bad">Unavailable</span></div>`).join('')}` },
   { a: 34.0, html: (T) => statusBar(T, true) + `<div class="hdr">Deliveries</div>${['Route 14', 'Route 22', 'Route 31', 'Route 08'].map((r) => `<div class="row"><span>${r}</span><span class="warn">Waiting for data</span></div>`).join('')}<div class="sm cen">Orders cannot be updated</div>` },
   { a: 39.0, html: (T) => statusBar(T, true) + `<div class="vc">${[0, 1, 2, 3].map((k) => `<div class="tile"><div class="av" style="background:${['#7a5a3a', '#3a5a7a', '#5a3a6a', '#3a6a5a'][k]}"></div></div>`).join('')}</div><div class="banner red">Connection lost</div><div class="sm cen">Reconnecting…</div>` },
-  { a: 44.0, html: (T) => statusBar(T, true) + `<div class="banner red">No Internet Connection</div>` + iconGrid(true, false) },
+  { a: 44.0, html: (T) => statusBar(T, true) + `<div class="banner red">No Wi-Fi or Mobile Data</div>` + iconGrid(true, false) },
   { a: 50.0, html: (T) => statusBar(T, false) + `<div class="banner green">Back online</div>` + iconGrid(false, true) },
 ];
 let lastScene = -2, lastHTML = '';
