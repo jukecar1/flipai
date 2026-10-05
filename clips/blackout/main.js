@@ -598,20 +598,34 @@ const CAPS = [
   [48.0, 53.0, 'Months in: no records, no payments, no coordination.'],
   [53.6, 57.4, 'Civilization doesn’t end overnight. It loses its systems one by one.'],
 ];
-/* systems panel: every row flips to OFFLINE on its own day */
-const SYSTEMS = [
-  ['Payments', 0.02], ['Air travel', 0.08], ['911 dispatch', 0.5], ['Hospitals', 0.9],
-  ['Food & fuel', 2.0], ['Power grid', 4.0], ['Water plants', 6.0], ['Shipping', 12.0],
-];
+/* live status card: every value is read from the same state that drives the city, so it always matches what is on screen */
+const burning = (d) => { let n = 0; for (const f of FIRES) if (d - f.day > 0.15) n++; return n; };
+function pct(v, hi, lo) { return v >= hi ? 'ok' : v >= lo ? 'warn' : 'bad'; }
+function rowsAt(T) {
+  const d = dayOf(T), out = T >= T_OUT;
+  const lit = litFrac(d) * 100, tr = traffic(d) * 100, fires = burning(d);
+  const R = (name, cls, txt, just) => `<div class="sy ${cls}${just ? ' just' : ''}"><span class="dot"></span><span class="sn">${name}</span><span class="ss">${txt}</span></div>`;
+  const j = (day) => out && d >= day && d < day + 0.2 + day * 0.1;
+  return [
+    R('Payments', out ? 'bad' : 'ok', out ? 'OFFLINE' : 'ONLINE', j(0)),
+    R('Air travel', !out ? 'ok' : d < 0.9 ? 'warn' : 'bad', !out ? 'ONLINE' : d < 0.9 ? 'LANDING' : 'GROUNDED', j(0.9)),
+    R('Road traffic', pct(tr, 70, 20), `${Math.round(tr)}%`, false),
+    R('City power', pct(lit, 70, 15), `${Math.round(lit)}% lit`, false),
+    R('Fires burning', fires === 0 ? 'ok' : fires < 6 ? 'warn' : 'bad', fires === 0 ? 'NONE' : String(fires), false),
+    R('Hospitals', !out || d < 0.9 ? 'ok' : d < 6 ? 'warn' : 'bad', !out || d < 0.9 ? 'ONLINE' : d < 6 ? 'GENERATORS' : 'OFFLINE', j(6)),
+    R('Food & fuel', d < 1 ? 'ok' : d < 3 ? 'warn' : 'bad', d < 1 ? 'STOCKED' : d < 3 ? 'LOW' : 'OUT', j(3)),
+    R('Water plants', d < 4 ? 'ok' : d < 6 ? 'warn' : 'bad', d < 4 ? 'RUNNING' : d < 6 ? 'WEAK' : 'OFFLINE', j(6)),
+    R('Shipping', d < 2 ? 'ok' : d < 30 ? 'warn' : 'bad', d < 2 ? 'MOVING' : d < 30 ? 'STALLED' : 'IDLE', j(30)),
+  ];
+}
 let lastHTML = '';
 function updatePanel(T) {
-  const d = dayOf(T), tt = T < T_OUT ? -1 : d;
-  const rows = SYSTEMS.map(([n, dd]) => { const off = tt >= dd; const just = tt >= dd && tt < dd + 0.25 + dd * 0.1; return `<div class="sy ${off ? 'off' : 'on'}${just ? ' just' : ''}"><span class="dot"></span><span class="sn">${n}</span><span class="ss">${off ? 'OFFLINE' : 'ONLINE'}</span></div>`; }).join('');
-  const offN = SYSTEMS.filter(([, dd]) => tt >= dd).length;
-  const html = `<div class="ph">SYSTEMS STATUS</div>${rows}<div class="pf"><b>${offN}</b> of ${SYSTEMS.length} offline</div>`;
+  const rows = rowsAt(T);
+  const bad = rows.filter((r) => r.includes('class="sy bad')).length;
+  const html = `<div class="ph">LIVE STATUS</div>${rows.join('')}<div class="pf"><b>${bad}</b> of ${rows.length} failed</div>`;
   if (html !== lastHTML) { screenEl.innerHTML = html; lastHTML = html; }
   const rise = smooth(T / 0.9);
-  phone.style.transform = `translate(0, ${(1 - rise) * 8}vh) rotate(${Math.sin(T * 0.7) * 0.4 + 1}deg)`;
+  phone.style.transform = `translate(0, ${(1 - rise) * 4}vh)`;
   phone.style.opacity = rise;
 }
 function updateOverlay(T) {
