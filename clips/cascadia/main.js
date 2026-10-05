@@ -117,14 +117,21 @@ const skyMat = new THREE.ShaderMaterial({
     hor: { value: new THREE.Color(0xf2b27a) },
     sunDir: { value: SUN_DIR },
     sunCol: { value: new THREE.Color(0xffd9a0) },
-    sunAmt: { value: 1 },
+    sunAmt: { value: 1 }, cloudAmt: { value: 1 }, time: { value: 0 },
   },
   vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
   fragmentShader: `
-    uniform vec3 top, hor, sunDir, sunCol; uniform float sunAmt; varying vec3 vP;
+    uniform vec3 top, hor, sunDir, sunCol; uniform float sunAmt, cloudAmt, time; varying vec3 vP;
+    float ch(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float cnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(ch(i), ch(i+vec2(1,0)), f.x), mix(ch(i+vec2(0,1)), ch(i+vec2(1,1)), f.x), f.y); }
     void main(){
       float h = clamp(vP.y, 0.0, 1.0);
       vec3 c = mix(hor, top, pow(smoothstep(0.0, 0.42, h), 0.55));
+      vec2 cu = vP.xz / (vP.y + 0.12) * 0.55;
+      float cn = cnoise(cu * 1.3 + vec2(time * 0.004, 0.0)) * 0.55 + cnoise(cu * 2.7 + 7.0) * 0.3 + cnoise(cu * 6.1 + 3.0) * 0.15;
+      float cm = smoothstep(0.5, 0.78, cn) * smoothstep(0.02, 0.2, vP.y) * cloudAmt;
+      vec3 ccol = mix(vec3(0.62,0.64,0.7), vec3(1.0,0.95,0.86), clamp(0.55 + (0.3 - cn) * 1.4, 0.0, 1.0));
+      c = mix(c, ccol * (0.85 + 0.3 * pow(max(dot(normalize(vP), sunDir), 0.0), 3.0)), cm * 0.85);
       float s = max(dot(normalize(vP), sunDir), 0.0);
       c += sunCol * (pow(s, 12.0) * 0.35 + pow(s, 600.0) * 2.2) * sunAmt;
       gl_FragColor = vec4(c, 1.0);
@@ -388,7 +395,15 @@ const terrainGeo = new THREE.PlaneGeometry(1, 1, tileXs.length - 1, tileZs.lengt
   terrainGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   terrainGeo.computeVertexNormals();
 }
-const terrain = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+const detailTex = (() => {
+  const c = mkCanvas(512, 512), x = c.getContext('2d'), r = rng(5);
+  x.fillStyle = '#c8c8c8'; x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 26000; i++) { const v = 150 + r() * 105; x.fillStyle = `rgba(${v},${v},${v},.55)`; x.fillRect(r() * 512, r() * 512, 1 + r() * 3, 1 + r() * 3); }
+  for (let i = 0; i < 2600; i++) { x.strokeStyle = `rgba(${r() < 0.5 ? '40,40,40' : '255,255,255'},.18)`; x.lineWidth = 1; const a = r() * 512, b = r() * 512; x.beginPath(); x.moveTo(a, b); x.lineTo(a + (r() - 0.5) * 9, b + (r() - 0.5) * 9); x.stroke(); }
+  return toTex(c);
+})();
+{ const uv = terrainGeo.attributes.uv; for (let j = 0; j < tileZs.length; j++) for (let i = 0; i < tileXs.length; i++) uv.setXY(j * tileXs.length + i, tileXs[i] / 14, tileZs[j] / 14); }
+const terrain = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ vertexColors: true, map: detailTex }));
 terrain.receiveShadow = true;
 scene.add(terrain);
 
@@ -438,6 +453,7 @@ scene.add(sea);
 function winTex(base, seed, floors, bays) {
   const w = 64 * bays, h = 64 * floors, c = mkCanvas(w, h), x = c.getContext('2d'), r = rng(seed);
   x.fillStyle = shade(base, 1); x.fillRect(0, 0, w, h);
+  for (let k = 0; k < h / 8; k++) { x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(0, k * 8 + 6, w, 2); }
   for (let i = 0; i < 1200; i++) { x.fillStyle = `rgba(${r() < 0.5 ? '255,255,255' : '0,0,0'},${0.03 + r() * 0.04})`; x.fillRect(r() * w, r() * h, 3, 3); }
   for (let f = 0; f < floors; f++) for (let b = 0; b < bays; b++) {
     const wx = b * 64 + 14, wy = f * 64 + 14;
@@ -451,14 +467,20 @@ function winTex(base, seed, floors, bays) {
 const PASTELS = [0xe4d8c0, 0xd8b99a, 0xc9d6d8, 0xe9c8b4, 0xb7c9b4, 0xd7cfa8, 0xcdbcd0, 0xe6a98d, 0xf0ecdf, 0xa9c1d6];
 const roofCols = [0x5b4e48, 0x4a4f55, 0x6b4a3c, 0x3d4650];
 const hexMat = (c) => new THREE.MeshLambertMaterial({ color: c });
-const roofMats = roofCols.map(hexMat);
+const shingleTex = (() => {
+  const c = mkCanvas(128, 128), x = c.getContext('2d'), r = rng(17);
+  x.fillStyle = '#d0d0d0'; x.fillRect(0, 0, 128, 128);
+  for (let row = 0; row < 16; row++) for (let col = 0; col < 8; col++) { const v = 170 + r() * 70; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(col * 16 + (row % 2) * 8 - 8, row * 8, 15, 7); }
+  const t = toTex(c); t.repeat.set(3, 3); return t;
+})();
+const roofMats = roofCols.map((c) => new THREE.MeshLambertMaterial({ color: c, map: shingleTex }));
 function gableGeo(w, d, hgt) { // ridge along x
   const g = new THREE.BufferGeometry(), hw = w / 2 + 0.6, hd = d / 2 + 0.6;
   const v = [-hw, 0, -hd, hw, 0, -hd, 0, 0, 0]; void v;
   const P_ = [[-hw, 0, hd], [hw, 0, hd], [hw, 0, -hd], [-hw, 0, -hd], [-hw, hgt, 0], [hw, hgt, 0]];
   const idx = [[0, 1, 5], [0, 5, 4], [2, 3, 4], [2, 4, 5], [3, 0, 4], [1, 2, 5]];
   const pos = []; idx.forEach((t) => t.forEach((i) => pos.push(...P_[i])));
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); const uvs = []; for (let i = 0; i < pos.length; i += 3) uvs.push(pos[i] / 6, (pos[i + 1] + pos[i + 2]) / 6); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.computeVertexNormals(); return g;
 }
 const buildings = [];
 const BH = (b) => b.h;
@@ -468,7 +490,10 @@ function addBuilding(x, z, w, d, floors, seed, opts = {}) {
   const tex = winTex(base, seed, floors, bays); tex.repeat.set(1, 1);
   const g = new THREE.Group();
   const sideM = new THREE.MeshLambertMaterial({ map: tex });
-  const plain = hexMat(base);
+  const sc = mkCanvas(64, 64), sx = sc.getContext('2d'); sx.fillStyle = shade(base, 1); sx.fillRect(0, 0, 64, 64);
+  for (let k = 0; k < 8; k++) { sx.fillStyle = 'rgba(0,0,0,.16)'; sx.fillRect(0, k * 8 + 6, 64, 2); sx.fillStyle = 'rgba(255,255,255,.12)'; sx.fillRect(0, k * 8, 64, 1.5); }
+  const stex = toTex(sc); stex.repeat.set(Math.max(1, w / 4), Math.max(1, h / 4));
+  const plain = new THREE.MeshLambertMaterial({ map: stex });
   const geo = new THREE.BoxGeometry(w, h, d); geo.translate(0, h / 2, 0);
   const body = new THREE.Mesh(geo, [plain, plain, plain, plain, sideM, sideM]); // +z, -z faces carry windows
   body.castShadow = true; body.receiveShadow = true; g.add(body);
@@ -528,7 +553,7 @@ const poles = [];
 const TREES = [];
 {
   const r = rng(77);
-  for (let i = 0; i < 5200; i++) {
+  for (let i = 0; i < 9000; i++) {
     const x = (r() - 0.5) * 1700, z = 135 + r() * 1100 - (r() < 0.12 ? 160 : 0);
     const y = gh(x, z);
     if (y < 4) continue;
@@ -544,17 +569,18 @@ const TREES = [];
 }
 const coneA = new THREE.ConeGeometry(0.34, 0.62, 7); coneA.translate(0, 0.35, 0);
 const coneB = new THREE.ConeGeometry(0.24, 0.5, 7); coneB.translate(0, 0.72, 0);
-const treeMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-const treesA = new THREE.InstancedMesh(coneA, treeMat, TREES.length), treesB = new THREE.InstancedMesh(coneB, treeMat, TREES.length);
+const coneC = new THREE.ConeGeometry(0.14, 0.4, 7); coneC.translate(0, 1.05, 0);
+const treeMat = new THREE.MeshLambertMaterial({ color: 0xffffff, map: detailTex });
+const treesA = new THREE.InstancedMesh(coneA, treeMat, TREES.length), treesB = new THREE.InstancedMesh(coneB, treeMat, TREES.length), treesC = new THREE.InstancedMesh(coneC, treeMat, TREES.length);
 {
   const m = new THREE.Matrix4(), c = new THREE.Color();
   TREES.forEach((t, i) => {
     m.compose(new THREE.Vector3(t.x, t.y - 0.4, t.z), new THREE.Quaternion(), new THREE.Vector3(t.s, t.s * 1.35, t.s));
-    treesA.setMatrixAt(i, m); treesB.setMatrixAt(i, m);
-    c.setRGB(0.12 * t.tone, 0.26 * t.tone, 0.14 * t.tone); treesA.setColorAt(i, c); treesB.setColorAt(i, c);
+    treesA.setMatrixAt(i, m); treesB.setMatrixAt(i, m); treesC.setMatrixAt(i, m);
+    c.setRGB(0.1 * t.tone, 0.24 * t.tone, 0.13 * t.tone); treesA.setColorAt(i, c); treesB.setColorAt(i, c); treesC.setColorAt(i, c);
   });
   treesA.castShadow = false; treesB.castShadow = false;
-  scene.add(treesA, treesB);
+  scene.add(treesA, treesB, treesC);
 }
 
 // logs, beach grass tufts (cheap), rocks
@@ -567,11 +593,11 @@ const treesA = new THREE.InstancedMesh(coneA, treeMat, TREES.length), treesB = n
 }
 // haystack rock offshore (iconic)
 {
-  const g = new THREE.ConeGeometry(14, 52, 9, 3); const p = g.attributes.position;
+  const g = new THREE.ConeGeometry(14, 52, 14, 8); const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const k = hash2(p.getX(i) * 3.1, p.getZ(i) * 3.1 + p.getY(i)); p.setX(i, p.getX(i) * (0.85 + k * 0.3)); p.setZ(i, p.getZ(i) * (0.85 + k * 0.3)); }
   g.computeVertexNormals();
-  const m = new THREE.Mesh(g, hexMat(0x55524e)); m.position.set(-120, 22, -190); m.castShadow = true; scene.add(m);
-  const m2 = new THREE.Mesh(new THREE.ConeGeometry(5, 18, 7), hexMat(0x55524e)); m2.position.set(-88, 6, -168); scene.add(m2);
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x77736c, map: detailTex })); m.position.set(-120, 22, -190); m.castShadow = true; scene.add(m);
+  const m2 = new THREE.Mesh(new THREE.ConeGeometry(5, 18, 7), new THREE.MeshLambertMaterial({ color: 0x77736c, map: detailTex })); m2.position.set(-88, 6, -168); scene.add(m2);
 }
 
 /* ---------- cars ---------- */
@@ -670,6 +696,7 @@ function update(t) {
   kfc(t, SKY_H, horC); kfc(t, SKY_T, topC);
   skyMat.uniforms.hor.value.copy(horC); skyMat.uniforms.top.value.copy(topC);
   skyMat.uniforms.sunAmt.value = kf(t, [[0, 1], [15, 0.9], [26, 0.2], [66, 0.1]]);
+  skyMat.uniforms.cloudAmt.value = kf(t, [[0, 0.8], [20, 0.9], [40, 1.2], [66, 1.4]]); skyMat.uniforms.time.value = t;
   scene.fog.color.copy(horC);
   scene.fog.density = kf(t, [[0, 0.00028], [14, 0.0003], [17, 0.0005], [30, 0.0008], [44, 0.0009], [66, 0.001]]);
   renderer.toneMappingExposure = kf(t, [[0, 1.0], [30, 1.0], [66, 1.0]]);
@@ -704,6 +731,8 @@ function update(t) {
     if (!waveOn && z > -2) { y = -8; }
     else {
       y = waterY(x, z, t);
+      if (z < -20 && z > -130) { const dep = y - gy; if (dep > 0 && dep < 2.5) foam = Math.max(foam, (1 - dep / 2.5) * 0.9); }
+      if (z < -50 && z > -140 && !waveOn) { const sb = Math.sin(z * 0.16 - t * 0.9 + x * 0.015); if (sb > 0.8 && (y - gy) < 7) foam = Math.max(foam, (sb - 0.8) * 3); }
       if (waveOn) { const dist = zf - z; if (dist > -6 && dist < 18) foam = (1 - Math.abs(dist - 4) / 14) * 0.9; turb = clamp(((t - T_WAVE0) / 3)) * smooth((y - gy) / 2 + 0.3) * (dist > -2 ? 1 : 0.5); if (z < -60) turb *= 0.85; }
       if (waveOn && z > zf + 8) y = -8; // not reached yet
       else if (y - gy < 0.05 && z > -40) y = -8; // shallow ground above the surface hides the sheet
@@ -734,8 +763,8 @@ function update(t) {
   /* poles */
   for (const p of poles) { const lean = E * 0.015 * Math.sin(t * 6 + p.ph) + (p.x > -60 && p.x < 40 ? smooth((t - 22) / 8) * 0.12 : 0) + smooth((t - T_WAVE0 - 2 - (p.x * 0 )) / 6) * 0.05; p.m.rotation.z = lean; p.arm.position.x = p.x + Math.sin(lean) * 10; p.arm.rotation.z = lean; }
   /* trees sway during the quake (scale jitter on a sample) -- cheap: shake whole forest slightly */
-  treesA.position.y = treesB.position.y = E * 0.12 * Math.sin(t * 17);
-  treesA.position.x = treesB.position.x = E * 0.1 * Math.sin(t * 13);
+  treesA.position.y = treesB.position.y = treesC.position.y = E * 0.12 * Math.sin(t * 17);
+  treesA.position.x = treesB.position.x = treesC.position.x = E * 0.1 * Math.sin(t * 13);
 
   /* cars */
   for (const c of cars) {
@@ -933,9 +962,9 @@ const BEATS = [
   { a: 9.0, b: 19.0, label: 'Rupture length', value: (k, T) => `${Math.round(600 * clamp((T - 9.9) / 8.2))} mi`, sub: () => 'Seafloor unzipping' },
   { a: 19.2, b: 22.0, label: 'Seconds until shaking', value: (k) => `${Math.max(0, Math.ceil(3 - 3 * k))}`, sub: () => 'Earthquake early warning' },
   { a: 22.0, b: 37.0, label: 'Shaking duration', value: (k) => mmss(270 * smooth(k)), sub: () => 'Magnitude 9, up to 5 minutes' },
-  { a: 37.0, b: 44.0, label: 'Coastal land drops', value: (k) => `${(6 * smooth(k)).toFixed(1)} ft`, sub: () => 'Up to 6 feet in places' },
-  { a: 44.0, b: 50.0, label: 'Time since the quake', value: (k) => mmss(300 + 540 * smooth(k)), sub: () => 'First wave: ~15 minutes' },
-  { a: 50.0, b: 57.6, label: 'Wave height at shore', value: (k) => `${Math.round(30 * smooth(k))} ft`, sub: () => 'Worst-case scenarios exceed 80 ft' },
+  { a: 37.0, b: 44.0, label: 'Coastal land drops', value: (k) => `${(6 * smooth(k)).toFixed(1)} ft`, sub: () => 'Oregon coast: roughly 3 to 6 ft' },
+  { a: 44.0, b: 50.0, label: 'Time since the quake', value: (k) => mmss(300 + 540 * smooth(k)), sub: () => 'First waves: roughly 15 to 20 minutes' },
+  { a: 50.0, b: 57.6, label: 'Wave height at shore', value: (k) => `${Math.round(30 * smooth(k))} ft`, sub: () => 'Oregon models: 30 ft up to 80+ ft' },
 ];
 const CAPS = [
   [1.0, 4.6, 'Millions of people live in the shadow of the Cascadia Subduction Zone.'],
@@ -947,7 +976,7 @@ const CAPS = [
   [27.4, 31.8, 'Older buildings fail first.'],
   [32.3, 36.6, 'Then the shaking stops.'],
   [37.2, 43.5, 'The coast has dropped. And the ocean pulls away.'],
-  [44.0, 49.5, 'You have about 15 minutes to reach high ground.'],
+  [44.0, 49.5, 'People on the coast have about 15 minutes to reach high ground.'],
   [50.0, 57.0, 'Then the wave arrives.'],
 ];
 function updateOverlay(T) {
