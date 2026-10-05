@@ -436,11 +436,27 @@ const lampL = LAMPD.map(() => pointsLayer(820, 5.5, 0xffc880, () => 0));
   all.forEach((p, k) => { const c = k % 4; if (cnt[c] < 820) { lampL[c].pos.set(p, cnt[c] * 3); cnt[c]++; } });
   lampL.forEach((L, c) => { L.geo.setDrawRange(0, cnt[c]); L.geo.attributes.position.needsUpdate = true; L.pts.material.fog = false; });
 }
-const NCARS = 900;
+const NCARS = 760;
 const heads = pointsLayer(NCARS, 4.2, 0xfff0d6, (i) => i), tails = pointsLayer(NCARS, 3.6, 0xff3a28, (i) => i);
-const CARS = Array.from({ length: NCARS }, (_, i) => { const r = rng(2000 + i); return { row: r() < 0.5, line: Math.floor(r() * 20), lane: (r() < 0.5 ? -1 : 1) * (2 + r() * 3), v: 14 + r() * 20, ph: r() * 3000, dir: r() < 0.5 ? 1 : -1, rank: i / NCARS }; });
 heads.pts.material.fog = tails.pts.material.fog = false;
 const traffic = (d) => (d < 0.25 ? 1 : d < 1 ? lerp(1, 0.5, (d - 0.25) / 0.75) : d < 3 ? lerp(0.5, 0.14, (d - 1) / 2) : d < 10 ? lerp(0.14, 0.02, (d - 3) / 7) : 0);
+const stopDayOf = (rank) => { for (let d = 0.25; d < 12; d += 0.01) if (traffic(d) <= rank) return d; return 12; };
+const CAR_COLS = [0xd9d9d3, 0x1a1a1c, 0x2b4a86, 0xb21f24, 0xc8cacc, 0x6c7378, 0xe0b92a, 0x2f6b4a, 0xf2f2ee, 0x25282c, 0x7a3b2e, 0xa8b0b8];
+const CARS = Array.from({ length: NCARS }, (_, i) => {
+  const r = rng(2000 + i), row = r() < 0.5;
+  const line = row ? Math.floor(Math.pow(r(), 1.4) * 13) : -6 + Math.floor(r() * 13);
+  const rank = i / NCARS, sd = stopDayOf(rank);
+  return { row, line, lane: (r() < 0.5 ? -1 : 1) * (2.2 + r() * 2.6), v: 14 + r() * 20, ph: r() * 3000, dir: r() < 0.5 ? 1 : -1, rank, stopDay: sd, stopT: TofDay(sd), col: CAR_COLS[Math.floor(r() * CAR_COLS.length)], jit: (r() - 0.5) * 0.7, jx: (r() - 0.5) * 3, burnDay: r() < 0.2 && sd > 0.6 ? Math.max(2.0, sd + 0.4 + r() * 5) : null, ph2: r() * 6 };
+});
+const carBodyGeo = new THREE.BoxGeometry(4.6, 1.15, 2.0); carBodyGeo.translate(0, 0.9, 0);
+const carCabGeo = new THREE.BoxGeometry(2.5, 0.9, 1.8); carCabGeo.translate(-0.2, 1.85, 0);
+const carMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const carBody = new THREE.InstancedMesh(carBodyGeo, carMat, NCARS), carCab = new THREE.InstancedMesh(carCabGeo, new THREE.MeshLambertMaterial({ color: 0x1b2430 }), NCARS);
+carBody.frustumCulled = carCab.frustumCulled = false; scene.add(carBody, carCab);
+CARS.forEach((c, i) => carBody.setColorAt(i, new THREE.Color(c.col)));
+const CAR_S = 2.1; // a little oversized so they read from the balcony
+const carDummy = new THREE.Object3D(), carCol = new THREE.Color(), charC = new THREE.Color(0x151210);
+const carFire = pointsLayer(NCARS, 30, 0xff7a24, () => 0); carFire.pts.material.fog = false; carFire.pts.material.blending = THREE.AdditiveBlending;
 /* stars, beacons, aircraft */
 const stars = pointsLayer(1400, 6, 0xffffff, () => 0);
 { const r = rng(7); for (let i = 0; i < 1400; i++) { const u = r() * 6.283, v = 0.08 + r() * 0.92, rr = 5200; stars.pos.set([Math.cos(u) * Math.sqrt(1 - v * v) * rr, v * rr, Math.sin(u) * Math.sqrt(1 - v * v) * rr - 800], i * 3); } stars.geo.attributes.position.needsUpdate = true; stars.pts.material.fog = false; }
@@ -528,17 +544,32 @@ function update(T) {
   const tr = traffic(d);
   heads.pts.material.opacity = 0.35 + 0.65 * nf; tails.pts.material.opacity = 0.3 + 0.6 * nf;
   stars.pts.material.sizeAttenuation = false; stars.pts.material.size = 2.6; stars.pts.material.opacity = 0.9 * smooth((nf - 0.7) / 0.3) * (1 - smooth(blend * 1.2));
+  let nBurnCars = 0;
   for (let i = 0; i < NCARS; i++) {
-    const c = CARS[i];
-    if (c.rank > tr) { heads.pos[i * 3 + 1] = tails.pos[i * 3 + 1] = -60; continue; }
-    const s = ((c.ph + c.dir * c.v * T * (1 - 0.6 * smooth((d - 0.5) / 3))) % 1700 + 1700) % 1700;
-    let x, z;
-    if (c.row) { x = -750 + s * 0.88; z = -c.line * PITCH + PITCH / 2 + c.lane; }
-    else { x = (c.line - 10) * PITCH * 0.8 + PITCH / 2 + c.lane; z = -s + 40; }
-    heads.pos[i * 3] = x; heads.pos[i * 3 + 1] = 0.9; heads.pos[i * 3 + 2] = z;
-    tails.pos[i * 3] = x - (c.row ? c.dir * 1.6 : 0); tails.pos[i * 3 + 1] = 0.9; tails.pos[i * 3 + 2] = z + (c.row ? 0 : c.dir * 1.6);
+    const c = CARS[i], moving = T < c.stopT;
+    const Te = Math.min(T, c.stopT);
+    const s = ((c.ph + c.dir * c.v * Te) % 1700 + 1700) % 1700;
+    let x, z, yaw;
+    if (c.row) { x = -750 + s * 0.88; z = -c.line * PITCH + PITCH / 2 + c.lane; yaw = c.dir > 0 ? 0 : Math.PI; }
+    else { x = c.line * PITCH + PITCH / 2 + c.lane; z = -s + 40; yaw = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+    if (!moving) { const k = smooth((T - c.stopT) / 0.5); yaw += c.jit * k; if (c.row) z += c.jx * k * 0.5; else x += c.jx * k * 0.5; }
+    carDummy.position.set(x, 0.1, z); carDummy.rotation.set(0, -yaw, 0); carDummy.scale.setScalar(CAR_S);
+    carDummy.updateMatrix(); carBody.setMatrixAt(i, carDummy.matrix); carCab.setMatrixAt(i, carDummy.matrix);
+    const burn = c.burnDay === null ? 0 : smooth((d - c.burnDay) / 0.5);
+    if (burn > 0) carBody.setColorAt(i, carCol.setHex(c.col).lerp(charC, smooth((d - c.burnDay - 0.3) / 0.6)));
+    if (moving && T >= 0) { heads.pos[i * 3] = x + (c.row ? c.dir * 2.4 : 0); heads.pos[i * 3 + 1] = 1.6; heads.pos[i * 3 + 2] = z + (c.row ? 0 : c.dir * 2.4); tails.pos[i * 3] = x - (c.row ? c.dir * 2.4 : 0); tails.pos[i * 3 + 1] = 1.6; tails.pos[i * 3 + 2] = z - (c.row ? 0 : c.dir * 2.4); }
+    else { heads.pos[i * 3 + 1] = tails.pos[i * 3 + 1] = -60; }
+    if (burn > 0.02 && d < 120) {
+      nBurnCars++;
+      carFire.pos[i * 3] = x; carFire.pos[i * 3 + 1] = 2.6; carFire.pos[i * 3 + 2] = z;
+      const fl = 0.8 + 0.2 * Math.sin(T * 19 + c.ph2 * 5);
+      for (let q = 0; q < 5; q++) { const u = q / 5; addPuff(x + Math.sin(T * 0.8 + c.ph2 + q) * 2 + q * 1.6, 3 + q * 7, z + Math.cos(T * 0.7 + q) * 1.5, 7 + q * 5, c.ph2 + q, q < 1 ? 1.0 : 0.15, q < 1 ? 0.5 : 0.13, q < 1 ? 0.18 : 0.12, (q < 1 ? 0.35 * fl : 0.3 * (1 - u * 0.7)) * burn); }
+    } else carFire.pos[i * 3 + 1] = -60;
   }
+  carBody.instanceMatrix.needsUpdate = true; carCab.instanceMatrix.needsUpdate = true; if (carBody.instanceColor) carBody.instanceColor.needsUpdate = true;
+  carFire.geo.attributes.position.needsUpdate = true; carFire.pts.material.opacity = 0.8;
   heads.geo.attributes.position.needsUpdate = true; tails.geo.attributes.position.needsUpdate = true;
+  window.__burnCars = nBurnCars;
   beacons.pts.material.opacity = (0.35 + 0.65 * (Math.sin(T * 5) > 0 ? 1 : 0)) * (0.4 + 0.6 * nf) * (0.2 + 0.8 * lit);
   for (const bm of billMeshes) bm.visible = d < bm.userData.t.death;
   drawBill(T);
@@ -599,7 +630,7 @@ const CAPS = [
   [53.6, 57.4, 'Civilization doesn’t end overnight. It loses its systems one by one.'],
 ];
 /* live status card: every value is read from the same state that drives the city, so it always matches what is on screen */
-const burning = (d) => { let n = 0; for (const f of FIRES) if (d - f.day > 0.15) n++; return n; };
+const burning = (d) => { let n = 0; for (const f of FIRES) if (d - f.day > 0.15) n++; for (const c of CARS) if (c.burnDay !== null && d - c.burnDay > 0.15) n++; return n; };
 function pct(v, hi, lo) { return v >= hi ? 'ok' : v >= lo ? 'warn' : 'bad'; }
 function rowsAt(T) {
   const d = dayOf(T), out = T >= T_OUT;
@@ -609,9 +640,9 @@ function rowsAt(T) {
   return [
     R('Payments', out ? 'bad' : 'ok', out ? 'OFFLINE' : 'ONLINE', j(0)),
     R('Air travel', !out ? 'ok' : d < 0.9 ? 'warn' : 'bad', !out ? 'ONLINE' : d < 0.9 ? 'LANDING' : 'GROUNDED', j(0.9)),
-    R('Road traffic', pct(tr, 70, 20), `${Math.round(tr)}%`, false),
+    R('Cars moving', pct(tr, 70, 20), `${Math.round(tr)}%`, false),
     R('City power', pct(lit, 70, 15), `${Math.round(lit)}% lit`, false),
-    R('Fires burning', fires === 0 ? 'ok' : fires < 6 ? 'warn' : 'bad', fires === 0 ? 'NONE' : String(fires), false),
+    R('Fires burning', fires === 0 ? 'ok' : fires < 10 ? 'warn' : 'bad', fires === 0 ? 'NONE' : String(fires), false),
     R('Hospitals', !out || d < 0.9 ? 'ok' : d < 6 ? 'warn' : 'bad', !out || d < 0.9 ? 'ONLINE' : d < 6 ? 'GENERATORS' : 'OFFLINE', j(6)),
     R('Food & fuel', d < 1 ? 'ok' : d < 3 ? 'warn' : 'bad', d < 1 ? 'STOCKED' : d < 3 ? 'LOW' : 'OUT', j(3)),
     R('Water plants', d < 4 ? 'ok' : d < 6 ? 'warn' : 'bad', d < 4 ? 'RUNNING' : d < 6 ? 'WEAK' : 'OFFLINE', j(6)),
