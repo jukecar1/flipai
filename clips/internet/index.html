@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What if the internet went down for 24 hours?</title>
+<style>
+  @font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 500; src: url(../fonts/cormorant-garamond-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 500; src: url(../fonts/cormorant-garamond-latin-500-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 600; src: url(../fonts/cormorant-garamond-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 600; src: url(../fonts/cormorant-garamond-latin-600-italic.woff2) format("woff2"); }
+  :root { --serif: "Cormorant Garamond", "Liberation Serif", "Times New Roman", serif; --sans: "Helvetica Neue", Arial, "Liberation Sans", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-feature-settings: "lnum" 1, "tnum" 1; font-variant-numeric: lining-nums tabular-nums; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+  #sceneWrap { position: absolute; inset: 0; }
+  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
+  canvas#acc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+  #vignette { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay; }
+  .txt { position: absolute; color: #f4efe6; font-family: var(--serif); text-shadow: 0 1px 14px rgba(0,0,0,.55); }
+
+  #title { left: 8vw; right: 8vw; top: 13vh; text-align: center; font-size: 5.2vh; line-height: 1.12; font-weight: 500; opacity: 0; }
+
+  #hud { left: 5.5vw; top: 46vh; opacity: 0; }
+  #hud .label { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .9; }
+  #hud .value { font-size: 5.6vh; line-height: 1.02; font-weight: 500; margin-top: .3vh; font-variant-numeric: tabular-nums; }
+  #hud .sub { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .24em; text-transform: uppercase; opacity: .78; margin-top: .5vh; font-weight: 600; }
+
+  #caption { left: 4vw; right: 4vw; top: 61vh; text-align: center; font-style: italic; font-weight: 500; font-size: 3.3vh; line-height: 1.15; opacity: 0; }
+
+  #alertX { position: absolute; left: 6vw; right: 6vw; top: 7.2vh; display: flex; gap: 1.6vh; align-items: center; padding: 1.5vh 1.8vh; border-radius: 2.2vh; background: rgba(28,28,32,.9); box-shadow: 0 1vh 3vh rgba(0,0,0,.45); color: #f4f1ea; font-family: var(--sans); opacity: 0; }
+  #alert .ico { width: 5vh; height: 5vh; flex: none; border-radius: 1.2vh; background: #e23b2e; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 3vh; }
+  #alert .t { font-weight: 800; font-size: 1.55vh; letter-spacing: .08em; }
+  #alert .b { font-size: 1.45vh; margin-top: .3vh; opacity: .92; line-height: 1.25; }
+  #end { position: absolute; inset: 0; background: #07070a; opacity: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 12vw; }
+  #end .a { font-family: var(--serif); color: #f4efe6; font-size: 4.8vh; line-height: 1.15; }
+  #end .b { font-family: var(--serif); color: #f4efe6; font-size: 4.4vh; line-height: 1.15; font-style: italic; margin-top: 1.2vh; }
+  #end .c { font-family: var(--sans); color: #8d8a84; font-size: 1.15vh; letter-spacing: .22em; text-transform: uppercase; margin-top: 6vh; font-weight: 600; line-height: 1.7; }
+
+  #phone { position: absolute; right: 6vw; bottom: 5vh; width: 36vw; height: 47vh; border-radius: 4.6vh; background: #08080b; padding: .8vh; box-shadow: 0 0 5vh rgba(120,160,255,.28), 0 2vh 5vh rgba(0,0,0,.6), inset 0 0 0 .22vh #44444c; transform-origin: 70% 100%; opacity: 0; }
+  #screen { position: relative; width: 100%; height: 100%; border-radius: 3.9vh; overflow: hidden; background: #0e1117; color: #f4f1ea; font-family: var(--sans); }
+  #screen .sb { display: flex; justify-content: space-between; padding: 1.5vh 2.2vh .6vh; font-size: 1.25vh; font-weight: 700; letter-spacing: .02em; }
+  #screen .sbr { display: flex; gap: .5vh; align-items: center; }
+  #screen i { display: inline-block; height: 1vh; background: #f4f1ea; border-radius: .15vh; }
+  #screen i.sig { width: 1.3vh; clip-path: polygon(0 100%, 25% 100%, 25% 60%, 50% 60%, 50% 30%, 75% 30%, 75% 0, 100% 0, 100% 100%); }
+  #screen i.wifi { width: 1.2vh; border-radius: 50% 50% 0 0; }
+  #screen i.nosig { width: 1.3vh; background: #8a8f99; clip-path: polygon(0 100%, 25% 100%, 25% 60%, 50% 60%, 50% 30%, 75% 30%, 75% 0, 100% 0, 100% 100%); opacity: .5; }
+  #screen i.bat { width: 2vh; border-radius: .3vh; }
+  #screen .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5vh .3vh; padding: 2.4vh .8vh 1vh; }
+  #screen .grid.grey { filter: grayscale(1); opacity: .42; }
+  #screen .app { display: flex; flex-direction: column; align-items: center; }
+  #screen .ic { position: relative; width: 3.9vh; height: 3.9vh; border-radius: 1vh; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.7vh; color: #fff; box-shadow: inset 0 0 0 .1vh rgba(255,255,255,.12); }
+  #screen .ic b { position: absolute; top: -.7vh; right: -.9vh; background: #ff3b30; color: #fff; font-size: 1.05vh; min-width: 2vh; height: 2vh; border-radius: 1vh; display: flex; align-items: center; justify-content: center; padding: 0 .4vh; }
+  #screen .nm { font-size: .95vh; margin-top: .6vh; opacity: .9; }
+  #screen .banner { margin: 1.4vh 1.4vh 0; padding: 1.1vh 1.4vh; border-radius: 1.2vh; font-size: 1.4vh; font-weight: 700; text-align: center; }
+  #screen .banner.red { background: #7a1f1a; } #screen .banner.green { background: #17623a; }
+  #screen .notif { position: absolute; left: 1.2vh; right: 1.2vh; top: 4.2vh; background: rgba(60,64,74,.96); border-radius: 1.4vh; padding: 1.2vh 1.4vh; font-size: 1.3vh; }
+  #screen .card { margin: 4vh 1.8vh; padding: 2.2vh 1.6vh; border-radius: 1.8vh; background: #171b24; text-align: center; }
+  #screen .ct { font-size: 1.2vh; letter-spacing: .2em; text-transform: uppercase; opacity: .7; }
+  #screen .amt { font-size: 4.6vh; font-weight: 700; margin: 1.6vh 0; font-family: var(--serif); }
+  #screen .stat { font-size: 2.1vh; font-weight: 800; } #screen .stat.bad, #screen .bad { color: #ff5a4a; } #screen .warn { color: #ffb340; }
+  #screen .sm { font-size: 1.25vh; opacity: .75; margin-top: .8vh; } #screen .cen { text-align: center; padding: 1vh; }
+  #screen .cash { margin-top: 2vh; display: inline-block; padding: .9vh 1.6vh; border: .2vh solid #f4f1ea; border-radius: .8vh; font-size: 1.3vh; font-weight: 800; letter-spacing: .18em; }
+  #screen .hdr { font-size: 2vh; font-weight: 800; padding: 1.6vh 1.8vh .8vh; } #screen .hdr.s2 { padding-top: 2.4vh; }
+  #screen .fl { display: flex; justify-content: space-between; white-space: nowrap; padding: 1.3vh 1.6vh; font-size: 1.2vh; border-top: .1vh solid rgba(255,255,255,.08); font-weight: 600; }
+  #screen .row { display: flex; justify-content: space-between; padding: 1.4vh 1.8vh; font-size: 1.4vh; border-top: .1vh solid rgba(255,255,255,.08); }
+  #screen .panel { margin: .6vh 1.6vh; padding: 2vh 1.4vh; background: #171b24; border-radius: 1.4vh; text-align: center; }
+  #screen .ic2 { width: 5vh; height: 5vh; margin: 0 auto 1vh; border-radius: 1.2vh; background: #0a6ebd; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 2.4vh; }
+  #screen .vc { display: grid; grid-template-columns: 1fr 1fr; gap: .8vh; padding: 2vh 1.4vh .6vh; } #screen .tile { aspect-ratio: 1; background: #171b24; border-radius: 1.2vh; display: flex; align-items: center; justify-content: center; filter: grayscale(.8); } #screen .av { width: 38%; aspect-ratio: 1; border-radius: 50%; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #title { top: 14vh; } #caption { top: 12vh; left: 5vw; right: 5vw; font-size: 3.2vh; }
+  #hud { left: 5.5vw; top: 54vh; width: 50vw; } #hud .value { font-size: 4.8vh; }
+  #hud, #hud * { text-shadow: 0 0 10px rgba(0,0,0,.85), 0 1px 3px rgba(0,0,0,.9); }
+  #hud .sub { line-height: 1.5; letter-spacing: .14em; font-size: 1.05vh; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="sceneWrap"><canvas id="gl"></canvas><canvas id="acc"></canvas></div>
+    <div id="vignette"></div>
+  <canvas id="grain" width="256" height="256"></canvas>
+  <div id="flash"></div>
+  <div id="phone"><div id="screen"></div></div>
+  <div class="txt" id="title">What if the internet went down for 24 hours?</div>
+  <div class="txt" id="hud"><div class="label"></div><div class="value"></div><div class="sub"></div></div>
+  <div class="txt" id="caption"></div>
+  <div id="end">
+    <div class="a">We’ve never lost all of it at once.</div>
+    <div class="b">One faulty update grounded thousands of flights.</div>
+    <div class="c">CrowdStrike outage, July 19, 2024</div>
+  </div>
+</div>
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
