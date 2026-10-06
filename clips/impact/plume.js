@@ -1,9 +1,9 @@
 
   /* ===== the impact: asteroid streak, flash, plume, ejecta (driven by master time) ===== */
-  const PB = { x: -1900, z: -3450 };
+  const PB = { x: -380, z: -3450 };
   // approach: a bright streak falling toward the horizon (about 7 real seconds, shown a little slower)
   if (Tm > 10.3 && Tm < 14.4) {
-    const u = (Tm - 10.5) / 3.5, A = [-1100, 720, -3250], B = [PB.x + 20, 25, PB.z + 40];
+    const u = (Tm - 10.5) / 3.5, A = [-60, 700, -3250], B = [PB.x + 20, 25, PB.z + 40];
     for (let k = 0; k < 46; k++) {
       const uu = u - k * 0.012; if (uu < 0) break;
       const x = lerp(A[0], B[0], uu), y = lerp(A[1], B[1], uu), z = lerp(A[2], B[2], uu);
@@ -37,8 +37,8 @@
     ejecta.pts.material.opacity = 0.95 * ea;
     if (ea > 0.01) for (let i = 0; i < EJ_N; i++) {
       const e = EJ[i], p = (Tm * 0.5 + e.ph) % 1;
-      for (let j = 0; j < 6; j++) {
-        const q = p * 640 - j * 16, k = (i * 6 + j) * 3;
+      for (let j = 0; j < 14; j++) {
+        const q = p * 640 - j * 7, k = (i * 14 + j) * 3;
         ejecta.pos[k] = e.x + 0.34 * q; ejecta.pos[k + 1] = e.y - 0.92 * q; ejecta.pos[k + 2] = e.z + 0.12 * q;
       }
     }
