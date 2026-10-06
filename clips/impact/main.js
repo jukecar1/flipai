@@ -555,13 +555,68 @@ const cars = [];
   }
 }
 /* ---------- pedestrians ---------- */
+
+/* ---------- pedestrians: jointed humans (tapered limbs, bending knees and elbows) ---------- */
+const H_SKIN = [0xe3b895, 0xc89b7b, 0x8a5a3a, 0xf0c9a8, 0x6e4630, 0xd8a47c].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+const H_HAIR = [0x1b1410, 0x3a2616, 0x8a6a3a, 0xc9b27a, 0x777777, 0x0e0c0a].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+const H_TOP = [0x1f2a3a, 0x2c2c30, 0x6b2b2b, 0xd8d4c8, 0x3c5a7a, 0x4a5a3a, 0xb8782a, 0x2a2a2a, 0x7a6a8a, 0xa8b0b8].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+const H_PANT = [0x1c2434, 0x2a2a2e, 0x4a4036, 0x5a6270, 0x161616, 0x6a5a48].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+const H_SHOE = [0x1a1a1a, 0xe8e6e0, 0x3a2a20].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+const GEO = {
+  thigh: new THREE.CapsuleGeometry(0.082, 0.34, 4, 10), shin: new THREE.CapsuleGeometry(0.062, 0.34, 4, 10), foot: new THREE.BoxGeometry(0.1, 0.075, 0.27),
+  torso: new THREE.CapsuleGeometry(0.15, 0.26, 4, 12), pelvis: new THREE.CapsuleGeometry(0.15, 0.06, 4, 12), uarm: new THREE.CapsuleGeometry(0.048, 0.24, 4, 8), farm: new THREE.CapsuleGeometry(0.04, 0.22, 4, 8),
+  hand: new THREE.SphereGeometry(0.043, 8, 6), head: new THREE.SphereGeometry(0.105, 14, 12), hair: new THREE.SphereGeometry(0.112, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), neck: new THREE.CylinderGeometry(0.05, 0.056, 0.1, 8),
+  coat: new THREE.CylinderGeometry(0.17, 0.25, 0.55, 14, 1, true), pack: new THREE.BoxGeometry(0.3, 0.38, 0.14), bag: new THREE.BoxGeometry(0.28, 0.2, 0.1), glasses: new THREE.BoxGeometry(0.16, 0.035, 0.03),
+};
+function makeHuman(r) {
+  const g = new THREE.Group(), pick = (a) => a[Math.floor(r() * a.length)];
+  const skin = pick(H_SKIN), hair = pick(H_HAIR), top = pick(H_TOP), pant = pick(H_PANT), shoe = pick(H_SHOE), sleeveSkin = r() < 0.22, coat = r() < 0.34;
+  const mk = (geo, mat, x, y, z, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
+  const hips = new THREE.Group(); hips.position.y = 0.94; g.add(hips);
+  mk(GEO.pelvis, pant, 0, 0.0, 0, hips).scale.set(1.05, 1, 0.75);
+  const torso = mk(GEO.torso, top, 0, 0.3, 0, hips); torso.scale.set(1.12, 1, 0.72);
+  if (coat) { const c = mk(GEO.coat, top, 0, -0.1, 0, hips); c.scale.set(1, 1, 0.8); c.material = top.clone(); c.material.side = THREE.DoubleSide; }
+  mk(GEO.neck, skin, 0, 0.62, 0, hips); const head = mk(GEO.head, skin, 0, 0.74, 0.01, hips); head.scale.set(0.9, 1.08, 1);
+  const hr = mk(GEO.hair, hair, 0, 0.76, -0.005, hips); hr.rotation.x = -0.2; hr.scale.set(0.95, 1.05, 1.02);
+  if (r() < 0.3) mk(GEO.glasses, new THREE.MeshLambertMaterial({ color: 0x111111 }), 0, 0.75, 0.098, hips);
+  if (r() < 0.32) { const pk = mk(GEO.pack, pick(H_TOP), 0, 0.3, -0.16, hips); }
+  else if (r() < 0.3) { const bg = mk(GEO.bag, pick(H_SHOE), 0.22, -0.05, 0.02, hips); }
+  const leg = (sx) => {
+    const th = new THREE.Group(); th.position.set(sx * 0.095, 0, 0); hips.add(th);
+    mk(GEO.thigh, pant, 0, -0.2, 0, th);
+    const sh = new THREE.Group(); sh.position.set(0, -0.4, 0); th.add(sh);
+    mk(GEO.shin, pant, 0, -0.2, 0, sh); mk(GEO.foot, shoe, 0, -0.42, 0.06, sh);
+    return { th, sh };
+  };
+  const arm = (sx) => {
+    const ua = new THREE.Group(); ua.position.set(sx * 0.2, 0.46, 0); hips.add(ua);
+    mk(GEO.uarm, top, 0, -0.15, 0, ua);
+    const fa = new THREE.Group(); fa.position.set(0, -0.3, 0); ua.add(fa);
+    mk(GEO.farm, sleeveSkin ? skin : top, 0, -0.14, 0, fa); mk(GEO.hand, skin, 0, -0.29, 0, fa);
+    return { ua, fa };
+  };
+  const L = leg(-1), R = leg(1), AL = arm(-1), AR = arm(1);
+  if (r() < 0.28) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.1, 10), new THREE.MeshLambertMaterial({ color: 0xf4f1ea })); cup.position.set(0, -0.32, 0.05); AR.fa.add(cup); AR.hold = true; }
+  const sc = 0.93 + r() * 0.12; g.scale.setScalar(sc);
+  return { g, hips, L, R, AL, AR };
+}
+function poseHuman(h, ph, amp, panic, fall) {
+  const s = Math.sin(ph), c = Math.cos(ph);
+  h.L.th.rotation.x = -0.55 * amp * s; h.R.th.rotation.x = 0.55 * amp * s;
+  h.L.sh.rotation.x = 0.9 * amp * Math.max(0, c); h.R.sh.rotation.x = 0.9 * amp * Math.max(0, -c);
+  const swing = 0.45 * amp;
+  h.AL.ua.rotation.set(swing * s * 1.0 * (1 - panic) - 1.5 * panic, 0, 0.06 + 0.4 * panic); h.AR.ua.rotation.set(-swing * s * (1 - panic) - 1.3 * panic, 0, -0.06 - 0.4 * panic);
+  if (h.AR.hold) h.AR.ua.rotation.set(-0.5 * (1 - panic) - 1.3 * panic, 0, -0.06);
+  h.AL.fa.rotation.x = -(0.25 + 0.25 * Math.max(0, -s)) * (1 - panic) - 0.5 * panic; h.AR.fa.rotation.x = -(0.25 + 0.25 * Math.max(0, s)) * (1 - panic) - 0.5 * panic - (h.AR.hold ? 1.2 * (1 - panic) : 0);
+  h.hips.position.y = 0.94 + 0.022 * Math.abs(c) * amp; h.hips.rotation.y = 0.06 * s * amp; h.hips.rotation.x = 0.05 * amp;
+}
 const people = [];
 {
   const r = rng(52);
-  for (let i = 0; i < 60; i++) {
-    const pr = makePerson(r), g = pr.g; NO_SHADOW(g); g.scale.setScalar(0.94 + r() * 0.1); scene.add(g);
+  for (let i = 0; i < 64; i++) {
+    const pr = makeHuman(r), g = pr.g; scene.add(g);
     const cross = i % 6 === 0, side = r() < 0.5 ? -1 : 1, ci = Math.floor(r() * 5);
-    people.push({ g, legs: pr.legs, arms: pr.arms, side, cross, z0: cross ? INTS[ci] + 11.4 + (r() - 0.5) * 2 : 12 - r() * 330, x0: cross ? (r() - 0.5) * 24 : side * (AVE + 1.8 + r() * 3.8), dirv: r() < 0.5 ? -1 : 1, sp: 1.0 + r() * 0.7, ph: r() * 6.28, fallT: 24.4 + r() * 3, fx: (r() - 0.5) * 1.6, runT: 31 + r() * 5, run: r() < 0.45 });
+    people.push({ g, h: pr, side, cross, z0: cross ? INTS[ci] + 11.4 + (r() - 0.5) * 2 : 14 - Math.pow(r(), 1.7) * 330, x0: cross ? (r() - 0.5) * 24 : side * (AVE + 1.8 + r() * 3.8), dirv: r() < 0.5 ? -1 : 1, sp: 1.0 + r() * 0.7, ph: r() * 6.28, fallT: 24.4 + r() * 3, fx: (r() - 0.5) * 1.6, runT: 31 + r() * 5, run: r() < 0.45 });
   }
 }
 /* ---------- the person we are: a hand with a coffee ---------- */
@@ -593,9 +648,9 @@ const SHARDS_N = 520, shards = [];
 }
 const shardMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xcfefff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }), SHARDS_N);
 shardMesh.frustumCulled = false; scene.add(shardMesh);
-const CHUNK_N = SHEDS.length * 30, chunks = [];
+const CHUNK_N = SHEDS.length * 26, chunks = [];
 {
-  const r = rng(909); SHEDS.forEach((b, bi) => { for (let k = 0; k < 30; k++) chunks.push({ b, t0: 25.5 + bi * 1.1 + r() * 3, y0: Math.min(b.h, 14 + r() * 40), oz: (r() - 0.5) * b.d, sx: 0.15 + r() * 0.6, sy: 0.12 + r() * 0.4, sz: 0.15 + r() * 0.5, drift: 1 + r() * 9, spin: (r() - 0.5) * 8, col: r() < 0.65 ? 0x7a3a2c : 0xb5aa98 }); });
+  const r = rng(909); SHEDS.forEach((b, bi) => { for (let k = 0; k < 26; k++) chunks.push({ b, t0: 25.5 + bi * 1.1 + r() * 3, y0: Math.min(b.h, 14 + r() * 40), oz: (r() - 0.5) * b.d, sx: k < 3 ? 0.5 + r() * 0.4 : 0.1 + r() * 0.2, sy: k < 3 ? 0.3 + r() * 0.25 : 0.06 + r() * 0.12, sz: k < 3 ? 0.4 + r() * 0.3 : 0.1 + r() * 0.18, drift: 1 + r() * 9, spin: (r() - 0.5) * 8, col: r() < 0.65 ? 0x6b3226 : 0x8f8678 }); });
 }
 const chunkMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), CHUNK_N);
 chunkMesh.frustumCulled = false; chunkMesh.castShadow = true; scene.add(chunkMesh);
@@ -707,12 +762,13 @@ function update(Tm) {
     if (p.cross) { x = fmod(p.x0 + p.dirv * p.sp * tt + 13, 26) - 13; z = p.z0; face = p.dirv > 0 ? -Math.PI / 2 : Math.PI / 2; face = p.dirv > 0 ? Math.PI / 2 : -Math.PI / 2; }
     else { x = p.x0; z = fmod(p.z0 + p.dirv * p.sp * tt + 340, 360) - 340 + 30; face = p.dirv > 0 ? Math.PI : 0; }
     const f = smooth((t - p.fallT) / 0.45) * (1 - smooth((t - p.runT + 1.2) / 1.0)), moving = t < 22.0;
-    let sw = moving ? Math.sin(tt * 6.2 + p.ph) * 0.45 : 0;
-    if (t > p.runT && p.run) { const rt = t - p.runT; z += -4.2 * rt * (p.dirv > 0 ? -1 : 1) * 0.0 + p.dirv * 3.6 * rt; sw = Math.sin(t * 11 + p.ph) * 0.8; face = p.dirv > 0 ? Math.PI : 0; }
-    p.legs[0].rotation.x = sw; p.legs[1].rotation.x = -sw; p.arms[0].rotation.x = -sw * 0.8; p.arms[1].rotation.x = sw * 0.8;
-    if (!moving && f > 0 && f < 1) { p.arms[0].rotation.x = -1.5 * f; p.arms[1].rotation.x = -1.5 * f; }
-    p.g.position.set(x + E * 0.1 * Math.sin(t * 14 + p.ph) + p.fx * f * 0.6, 0.16 - 0.18 * f, z);
-    p.g.rotation.set(-1.5 * f, face, (p.fx > 0 ? 1 : -1) * 0.3 * f + E * 0.03 * Math.sin(t * 12 + p.ph));
+    const running = t > p.runT && p.run;
+    if (running) { const rt = t - p.runT; z += p.dirv * 3.6 * rt; face = p.dirv > 0 ? Math.PI : 0; }
+    const panic = smooth((t - p.fallT + 0.3) / 0.5) * (1 - smooth((t - p.runT + 1.0) / 0.8)) , phase = running ? t * 13 + p.ph : tt * 6.4 + p.ph;
+    const amp = running ? 1.5 : (moving ? 1.0 : 0.0);
+    poseHuman(p.h, phase, amp, f > 0.02 ? Math.max(panic, f) : (t > 22.0 ? 0.35 * smooth((t - 22.0) / 0.5) : 0), f);
+    p.g.position.set(x + E * 0.1 * Math.sin(t * 14 + p.ph) + p.fx * f * 0.6, 0.16 - 0.1 * f, z);
+    p.g.rotation.set(-1.45 * f, face, (p.fx > 0 ? 1 : -1) * 0.3 * f + E * 0.03 * Math.sin(t * 12 + p.ph));
   }
   /* cracks */
   for (const c of cracks) { const w = c.w * smooth((t - 24.5 - c.k * 0.12) / 1.6) * (1 + 0.5 * smooth((t - 30) / 8)); c.m.visible = w > 0.01; c.m.scale.set(c.len * 1.04, 1, w); }
