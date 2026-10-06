@@ -1,0 +1,25 @@
+const BEATS = [
+  { a: 0.6, b: 4.8, label: 'Asteroid diameter', value: () => '10 km', sub: () => '6 miles: wider than Everest is tall' },
+  { a: 4.8, b: 8.9, label: 'Impact speed', value: (k) => `${Math.round(20 * smooth(k * 1.4))} km/s`, sub: () => 'About 45,000 mph' },
+  { a: 9.0, b: 14.0, label: 'Impact in', value: (k) => `0:0${Math.max(0, Math.ceil(7 * (1 - k)))}`, sub: () => 'You are 1,100 km (680 mi) away' },
+  { a: 14.3, b: 19.4, label: 'Seismic waves arrive in', value: (k) => mmss(137 * (1 - k)), sub: () => 'Compressed. P-waves travel about 8 km/s' },
+  { a: 19.6, b: 22.0, label: 'Seismic waves', value: () => 'Here', sub: () => 'S-waves follow about 2 minutes later' },
+  { a: 22.0, b: 40.0, label: 'Equivalent magnitude', value: (k) => `${(9.4 + 1.9 * smooth(k)).toFixed(1)}`, sub: () => 'Estimates: 9.4 to 11.3. Record: 9.5 (Chile, 1960)' },
+  { a: 40.0, b: 47.0, label: 'Energy released', value: (k) => `${Math.round(100 * smooth(k))} million Mt`, sub: () => 'Of TNT. About 10,000x all nuclear weapons' },
+  { a: 50.0, b: 54.4, label: 'Heat from the sky (model)', value: (k) => `${(6 * smooth(k)).toFixed(1)} kW/m²`, sub: () => 'Peak: about 6x midday sun (Melosh 1990)' },
+  { a: 54.6, b: 57.6, label: 'Gulf tsunami height', value: () => '300+ m', sub: () => 'About 1 hour after impact (Range 2022)' },
+];
+const CAPS = [
+  [1.0, 4.6, '66 million years ago, a 10-kilometer asteroid hit what is now Mexico.'],
+  [5.0, 8.8, 'What if it happened again, 680 miles from your city?'],
+  [9.3, 13.8, 'It arrives faster than you can react.'],
+  [14.4, 19.2, 'A flash on the horizon. Then a column of rock vapor rising into space.'],
+  [19.6, 23.0, 'Seismic waves arrive within minutes.'],
+  [23.4, 27.6, 'A mega-earthquake, far stronger than any ever recorded.'],
+  [28.0, 31.8, 'Older buildings fail first.'],
+  [32.2, 36.2, 'Overpasses fall onto the roads below.'],
+  [37.0, 42.4, 'Then the concrete towers pancake.'],
+  [42.8, 47.4, 'Broken gas and power lines start fires.'],
+  [48.0, 52.8, 'Rock thrown into space falls back through the sky.'],
+  [53.2, 57.5, 'Then a tsunami. Then years of darkness.'],
+];
