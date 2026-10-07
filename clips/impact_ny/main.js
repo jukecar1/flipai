@@ -858,8 +858,8 @@ const CAPS = [
 ];
 const FACTS = [
   [35.4, 'Energy released', '100 million megatons', 'About 10,000x all nuclear weapons combined'],
-  [38.2, 'Fireball radius', 'about 136 km', 'Collins, Melosh & Marcus (2005) formula. Manhattan is inside it'],
-  [41.0, 'Crater', 'about 120 km wide', 'Same formulas. It excavates rock more than 20 km deep'],
+  [38.2, 'Fireball radius', 'about 85 miles', 'Radius. Collins, Melosh & Marcus (2005) formula. Manhattan is inside it'],
+  [41.0, 'Crater', 'about 75 miles wide', 'Same formulas. It excavates rock more than 12 miles deep'],
   [43.8, 'Global heat pulse', 'an oven on broil, for about an hour', 'Melosh et al. 1990, Toon et al. 1997'],
   [46.6, 'Dark and cold', 'for about a decade', 'Dust, soot and aerosols block the sun'],
   [49.4, 'Species lost', 'about 75%', 'The K-Pg mass extinction, 66 million years ago'],
