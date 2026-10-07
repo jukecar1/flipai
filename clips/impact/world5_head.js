@@ -219,25 +219,79 @@ const cars = [];
 
 /* ---------- pedestrians: jointed humans (tapered limbs, bending knees and elbows) ---------- */
 const H_SKIN = [0xe3b895, 0xc89b7b, 0x8a5a3a, 0xf0c9a8, 0x6e4630, 0xd8a47c].map((c) => new THREE.MeshLambertMaterial({ color: c }));
-const H_HAIR = [0x1b1410, 0x3a2616, 0x8a6a3a, 0xc9b27a, 0x777777, 0x0e0c0a].map((c) => new THREE.MeshLambertMaterial({ color: c }));
+/* ---------- painted faces (canvas textures wrapped on the head) ---------- */
+const SKIN_HEX = [0xe3b895, 0xc89b7b, 0x8a5a3a, 0xf0c9a8, 0x6e4630, 0xd8a47c];
+const EYE_COLS = ['#5a3a22', '#3e6a8a', '#4a6a3a', '#2a1c14', '#6a5a3a', '#4a4a52'];
+const FACE_MATS = [];
+function paintFace(skinHex, eyeCol, seed) {
+  const r = rng(seed), W = 1024, H = 512, c = mkCanvas(W, H), x = c.getContext('2d');
+  const base = new THREE.Color(skinHex), sh = (f) => `rgb(${Math.min(255, base.r * 255 * f) | 0},${Math.min(255, base.g * 255 * f) | 0},${Math.min(255, base.b * 255 * f) | 0})`;
+  x.fillStyle = sh(1); x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${r() < 0.5 ? '255,235,220' : '60,30,20'},${0.02 + r() * 0.035})`; x.fillRect(r() * W, r() * H, 1 + r() * 2, 1 + r() * 2); }
+  const U = (u) => u * W, V = (v) => (1 - v) * H, cx = U(0.25);
+  const blob = (px, py, rx, ry, col, a) => {
+    const m = Math.max(rx, ry), g = x.createRadialGradient(px, py, 0, px, py, m);
+    g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0));
+    x.save(); x.translate(px, py); x.scale(rx / m, ry / m); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, m, 0, 6.283); x.fill(); x.restore();
+  };
+  blob(cx - 62, V(0.46), 52, 40, 'rgba(220,110,100,A)', 0.2); blob(cx + 62, V(0.46), 52, 40, 'rgba(220,110,100,A)', 0.2);
+  blob(cx, V(0.66), 80, 34, 'rgba(255,240,225,A)', 0.14); blob(cx - 118, V(0.5), 38, 80, 'rgba(40,20,10,A)', 0.22); blob(cx + 118, V(0.5), 38, 80, 'rgba(40,20,10,A)', 0.22);
+  blob(cx, V(0.33), 70, 28, 'rgba(40,20,10,A)', 0.18);
+  const dark = sh(0.55);
+  for (const ux of [0.0, 0.5, 1.0]) blob(U(ux), V(0.5), 20, 30, 'rgba(190,100,90,A)', 0.35);
+  const sepx = 46, ey = V(0.545), look = (r() - 0.5) * 3;
+  for (const s of [-1, 1]) {
+    const ex = cx + s * sepx;
+    x.fillStyle = 'rgba(40,20,15,.18)'; x.beginPath(); x.ellipse(ex, ey - 2, 25, 14, 0, 0, 6.283); x.fill();
+    x.fillStyle = '#f2eee8'; x.beginPath(); x.moveTo(ex - 20, ey); x.quadraticCurveTo(ex, ey - 15, ex + 20, ey); x.quadraticCurveTo(ex, ey + 11, ex - 20, ey); x.fill();
+    x.save(); x.beginPath(); x.moveTo(ex - 20, ey); x.quadraticCurveTo(ex, ey - 15, ex + 20, ey); x.quadraticCurveTo(ex, ey + 11, ex - 20, ey); x.clip();
+    x.fillStyle = eyeCol; x.beginPath(); x.arc(ex + look + 1, ey - 1, 9.5, 0, 6.283); x.fill();
+    const ig = x.createRadialGradient(ex + look + 1, ey - 1, 2, ex + look + 1, ey - 1, 9.5); ig.addColorStop(0, 'rgba(0,0,0,0)'); ig.addColorStop(1, 'rgba(0,0,0,.45)');
+    x.fillStyle = ig; x.beginPath(); x.arc(ex + look + 1, ey - 1, 9.5, 0, 6.283); x.fill();
+    x.fillStyle = '#0a0806'; x.beginPath(); x.arc(ex + look + 1, ey - 1, 4.4, 0, 6.283); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.arc(ex + look - 2, ey - 4, 2.1, 0, 6.283); x.fill();
+    x.fillStyle = 'rgba(30,20,15,.35)'; x.fillRect(ex - 22, ey - 16, 44, 6);
+    x.restore();
+    x.strokeStyle = 'rgba(25,15,10,.9)'; x.lineWidth = 2.6; x.beginPath(); x.moveTo(ex - 21, ey + 0.5); x.quadraticCurveTo(ex, ey - 16, ex + 21, ey + 0.5); x.stroke();
+    x.strokeStyle = 'rgba(60,30,20,.4)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(ex - 19, ey + 2); x.quadraticCurveTo(ex, ey + 11, ex + 19, ey + 2); x.stroke();
+    x.strokeStyle = 'rgba(70,40,30,.28)'; x.lineWidth = 2; x.beginPath(); x.moveTo(ex - 22, ey - 17); x.quadraticCurveTo(ex, ey - 24, ex + 22, ey - 15); x.stroke();
+    const bt = 3 + r() * 3.2, by = V(0.605) - 6;
+    x.fillStyle = `rgba(${40 + ((r() * 30) | 0)},${25 + ((r() * 14) | 0)},18,.85)`;
+    x.beginPath(); x.moveTo(ex - 26, by + 7); x.quadraticCurveTo(ex, by - 6, ex + 27, by + 5); x.lineTo(ex + 27, by + 5 + bt); x.quadraticCurveTo(ex, by - 6 + bt, ex - 26, by + 7 + bt); x.fill();
+  }
+  blob(cx, V(0.5), 14, 40, 'rgba(255,240,225,A)', 0.18); blob(cx - 11, V(0.46), 12, 26, 'rgba(50,25,15,A)', 0.2);
+  x.fillStyle = 'rgba(60,30,25,.55)'; x.beginPath(); x.ellipse(cx - 9, V(0.435), 5.5, 3.2, 0.3, 0, 6.283); x.fill(); x.beginPath(); x.ellipse(cx + 9, V(0.435), 5.5, 3.2, -0.3, 0, 6.283); x.fill();
+  x.strokeStyle = 'rgba(60,30,25,.4)'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 14, V(0.44)); x.quadraticCurveTo(cx, V(0.425), cx + 14, V(0.44)); x.stroke();
+  const dk = skinHex === 0x6e4630 || skinHex === 0x8a5a3a;
+  const my = V(0.375), lipc = `hsl(${(r() * 12) | 0},${(34 + r() * 18) | 0}%,${dk ? 28 : 46}%)`, w = 32 + r() * 6, open = r() < 0.4 ? 5 : 0;
+  x.fillStyle = lipc; x.beginPath(); x.moveTo(cx - w, my); x.quadraticCurveTo(cx - w / 2, my - 11, cx, my - 8); x.quadraticCurveTo(cx + w / 2, my - 11, cx + w, my); x.quadraticCurveTo(cx, my + 1, cx - w, my); x.fill();
+  if (open) { x.fillStyle = '#2a0e0e'; x.beginPath(); x.moveTo(cx - w * 0.8, my); x.quadraticCurveTo(cx, my + open + 3, cx + w * 0.8, my); x.quadraticCurveTo(cx, my + 1, cx - w * 0.8, my); x.fill(); }
+  x.fillStyle = lipc; x.beginPath(); x.moveTo(cx - w, my); x.quadraticCurveTo(cx, my + 17 + open, cx + w, my); x.quadraticCurveTo(cx, my + 4 + open, cx - w, my); x.fill();
+  x.strokeStyle = dark; x.lineWidth = 2.2; x.beginPath(); x.moveTo(cx - w, my); x.quadraticCurveTo(cx, my + 3 + open, cx + w, my); x.stroke();
+  blob(cx, my + 24, 26, 12, 'rgba(60,30,20,A)', 0.2);
+  x.strokeStyle = 'rgba(70,40,30,.25)'; x.lineWidth = 2; for (const s of [-1, 1]) { x.beginPath(); x.moveTo(cx + s * 24, V(0.43)); x.quadraticCurveTo(cx + s * 34, my - 6, cx + s * (w + 4), my - 2); x.stroke(); }
+  const t = toTex(c); return new THREE.MeshLambertMaterial({ map: t });
+}
+for (let i = 0; i < SKIN_HEX.length; i++) for (let k = 0; k < 2; k++) FACE_MATS.push(paintFace(SKIN_HEX[i], EYE_COLS[(i + k * 3) % EYE_COLS.length], 4000 + i * 17 + k * 5));
+const H_HAIR =[0x1b1410, 0x3a2616, 0x8a6a3a, 0xc9b27a, 0x777777, 0x0e0c0a].map((c) => new THREE.MeshLambertMaterial({ color: c }));
 const H_TOP = [0x1f2a3a, 0x2c2c30, 0x6b2b2b, 0xd8d4c8, 0x3c5a7a, 0x4a5a3a, 0xb8782a, 0x2a2a2a, 0x7a6a8a, 0xa8b0b8].map((c) => new THREE.MeshLambertMaterial({ color: c }));
 const H_PANT = [0x1c2434, 0x2a2a2e, 0x4a4036, 0x5a6270, 0x161616, 0x6a5a48].map((c) => new THREE.MeshLambertMaterial({ color: c }));
 const H_SHOE = [0x1a1a1a, 0xe8e6e0, 0x3a2a20].map((c) => new THREE.MeshLambertMaterial({ color: c }));
 const GEO = {
   thigh: new THREE.CapsuleGeometry(0.082, 0.34, 4, 10), shin: new THREE.CapsuleGeometry(0.062, 0.34, 4, 10), foot: new THREE.BoxGeometry(0.1, 0.075, 0.27),
   torso: new THREE.CapsuleGeometry(0.15, 0.26, 4, 12), pelvis: new THREE.CapsuleGeometry(0.15, 0.06, 4, 12), uarm: new THREE.CapsuleGeometry(0.048, 0.24, 4, 8), farm: new THREE.CapsuleGeometry(0.04, 0.22, 4, 8),
-  hand: new THREE.SphereGeometry(0.043, 8, 6), head: new THREE.SphereGeometry(0.105, 14, 12), hair: new THREE.SphereGeometry(0.112, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), neck: new THREE.CylinderGeometry(0.05, 0.056, 0.1, 8),
+  hand: new THREE.SphereGeometry(0.043, 8, 6), head: new THREE.SphereGeometry(0.105, 14, 12), hair: new THREE.SphereGeometry(0.112, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.38), neck: new THREE.CylinderGeometry(0.05, 0.056, 0.1, 8),
   coat: new THREE.CylinderGeometry(0.17, 0.25, 0.55, 14, 1, true), pack: new THREE.BoxGeometry(0.3, 0.38, 0.14), bag: new THREE.BoxGeometry(0.28, 0.2, 0.1), glasses: new THREE.BoxGeometry(0.16, 0.035, 0.03),
 };
 function makeHuman(r) {
   const g = new THREE.Group(), pick = (a) => a[Math.floor(r() * a.length)];
-  const skin = pick(H_SKIN), hair = pick(H_HAIR), top = pick(H_TOP), pant = pick(H_PANT), shoe = pick(H_SHOE), sleeveSkin = r() < 0.22, coat = r() < 0.34;
+  const vi = Math.floor(r() * H_SKIN.length), skin = H_SKIN[vi], faceMat = FACE_MATS[vi * 2 + (r() < 0.5 ? 0 : 1)], hair = pick(H_HAIR), top = pick(H_TOP), pant = pick(H_PANT), shoe = pick(H_SHOE), sleeveSkin = r() < 0.22, coat = r() < 0.34;
   const mk = (geo, mat, x, y, z, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; };
   const hips = new THREE.Group(); hips.position.y = 0.94; g.add(hips);
   mk(GEO.pelvis, pant, 0, 0.0, 0, hips).scale.set(1.05, 1, 0.75);
   const torso = mk(GEO.torso, top, 0, 0.3, 0, hips); torso.scale.set(1.12, 1, 0.72);
   if (coat) { const c = mk(GEO.coat, top, 0, -0.1, 0, hips); c.scale.set(1, 1, 0.8); c.material = top.clone(); c.material.side = THREE.DoubleSide; }
-  mk(GEO.neck, skin, 0, 0.62, 0, hips); const head = mk(GEO.head, skin, 0, 0.74, 0.01, hips); head.scale.set(0.9, 1.08, 1);
+  mk(GEO.neck, skin, 0, 0.62, 0, hips); const head = mk(GEO.head, faceMat, 0, 0.74, 0.01, hips); head.scale.set(0.9, 1.08, 1);
   const hr = mk(GEO.hair, hair, 0, 0.76, -0.005, hips); hr.rotation.x = -0.2; hr.scale.set(0.95, 1.05, 1.02);
   if (r() < 0.3) mk(GEO.glasses, new THREE.MeshLambertMaterial({ color: 0x111111 }), 0, 0.75, 0.098, hips);
   if (r() < 0.32) { const pk = mk(GEO.pack, pick(H_TOP), 0, 0.3, -0.16, hips); }
