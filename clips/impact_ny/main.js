@@ -469,6 +469,7 @@ const glassTexN = [makeGlassTile(41), makeGlassTile(42)];
 const glassMatsN = glassTexN.map((t) => new THREE.MeshLambertMaterial({ map: t }));
 const NYC_FAC = [0, 1, 2, 3, 4, 7, 9, 11].map((i) => facadeMats[i]);
 const buildings = [];
+const FARTOW = [];
 const SHEDS = [];
 {
   const r = rng(212);
@@ -501,10 +502,9 @@ const SHEDS = [];
   }
   // far downtown towers closing the avenue
   const gm = new THREE.MeshLambertMaterial({ map: glassTexN[1] });
-  for (let i = 0; i < 26; i++) { const w = 28 + r() * 26, h = 120 + r() * 220, d = 28 + r() * 26; const m = texBox(w, h, d, gm, roofMat, 12, 12); m.position.set((r() - 0.5) * 360, h / 2, -900 - r() * 700); scene.add(m); }
+  for (let i = 0; i < 26; i++) { const w = 28 + r() * 26, h = 120 + r() * 220, d = 28 + r() * 26; const m = texBox(w, h, d, gm, roofMat, 12, 12); m.position.set((r() - 0.5) * 360, h / 2, -900 - r() * 700); scene.add(m); FARTOW.push({ m, h, seed: r() }); }
   // the older brick buildings that shed their facade
-  const old = buildings.filter((b) => b.brick && b.z < 0 && b.z > -300 && b.h < 80);
-  for (let i = 0; i < 9; i++) SHEDS.push(old[Math.floor(hash2(i, 91) * old.length)]);
+  for (const b of buildings) if (b.z < 40 && b.z > -420) SHEDS.push(b);
 }
 /* ---------- street furniture ---------- */
 const lampMat = new THREE.MeshLambertMaterial({ color: 0x2e3336 });
@@ -641,16 +641,16 @@ const mugW = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.034, 0.105, 14), 
 const CUPS = Array.from({ length: 7 }, (_, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.03 + hash2(i, 5) * 0.03, 0.006, 0.025 + hash2(i, 6) * 0.03), new THREE.MeshLambertMaterial({ color: 0xf4f1ea })); m.visible = false; scene.add(m); return { m, vx: (hash2(i, 7) - 0.5) * 1.6, vz: (hash2(i, 8) - 0.5) * 1.6, vy: 0.6 + hash2(i, 9) * 1.2 }; });
 
 /* ---------- falling glass + facade chunks + cracks ---------- */
-const SHARDS_N = 520, shards = [];
+const SHARDS_N = 1100, shards = [];
 {
-  const r = rng(808), pool = buildings.filter((b) => b.z < 20 && b.z > -240);
+  const r = rng(808), pool = buildings.filter((b) => b.z < 40 && b.z > -420);
   for (let i = 0; i < SHARDS_N; i++) { const b = pool[Math.floor(r() * pool.length)]; shards.push({ b, t0: 23.5 + r() * 14, y0: 10 + r() * Math.min(60, b.h - 10), oz: (r() - 0.5) * b.d, s: 0.35 + r() * 0.8, spin: (r() - 0.5) * 9, drift: 0.5 + r() * 3 }); }
 }
 const shardMesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xcfefff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }), SHARDS_N);
 shardMesh.frustumCulled = false; scene.add(shardMesh);
-const CHUNK_N = SHEDS.length * 26, chunks = [];
+const CHUNK_N = SHEDS.length * 12, chunks = [];
 {
-  const r = rng(909); SHEDS.forEach((b, bi) => { for (let k = 0; k < 26; k++) chunks.push({ b, t0: 25.5 + bi * 1.1 + r() * 3, y0: Math.min(b.h, 14 + r() * 40), oz: (r() - 0.5) * b.d, sx: k < 3 ? 0.5 + r() * 0.4 : 0.1 + r() * 0.2, sy: k < 3 ? 0.3 + r() * 0.25 : 0.06 + r() * 0.12, sz: k < 3 ? 0.4 + r() * 0.3 : 0.1 + r() * 0.18, drift: 1 + r() * 9, spin: (r() - 0.5) * 8, col: r() < 0.65 ? 0x6b3226 : 0x8f8678 }); });
+  const r = rng(909); SHEDS.forEach((b, bi) => { for (let k = 0; k < 12; k++) chunks.push({ b, t0: 25.5 + bi * 1.1 + r() * 3, y0: Math.min(b.h, 14 + r() * 40), oz: (r() - 0.5) * b.d, sx: k < 3 ? 0.5 + r() * 0.4 : 0.1 + r() * 0.2, sy: k < 3 ? 0.3 + r() * 0.25 : 0.06 + r() * 0.12, sz: k < 3 ? 0.4 + r() * 0.3 : 0.1 + r() * 0.18, drift: 1 + r() * 9, spin: (r() - 0.5) * 8, col: r() < 0.65 ? 0x6b3226 : 0x8f8678 }); });
 }
 const chunkMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), CHUNK_N);
 chunkMesh.frustumCulled = false; chunkMesh.castShadow = true; scene.add(chunkMesh);
@@ -680,10 +680,15 @@ const dummy = new THREE.Object3D();
 const tmpC = new THREE.Color(), horC = new THREE.Color(), topC = new THREE.Color();
 const SKY_H = [[0, 0xe9dcc4], [40, 0xe9dcc4], [46, 0xd8b890], [50, 0xd4651f], [56, 0xe5502a]];
 const SKY_T = [[0, 0x4f8fd8], [40, 0x4f8fd8], [46, 0x6f7a9a], [50, 0x5a2a2a], [56, 0x3a1412]];
-const T_IMP = 14.4, T_FR0 = 16.0, V_FRONT = 36, Z_FAR = -520;
+const T_IMP = 14.4, T_FR0 = 17.0, V_FRONT = 75, Z_FAR = -520;
 const hitT = (z) => T_FR0 + (z - Z_FAR) / V_FRONT;
 const NY_H = [[0, 0xe9dcc4], [12, 0xe9dcc4], [13.9, 0xfff6e4], [15.4, 0xffd9a0], [17, 0xe8742a], [24, 0xd4501c], [34, 0xc84010]];
 const NY_T = [[0, 0x4f8fd8], [12, 0x4f8fd8], [13.9, 0xfff0d8], [15.4, 0xffb870], [17, 0xb0501c], [24, 0x6a2410], [34, 0x4a1c10]];
+const RUB_PER = 7;
+const rubMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), buildings.length * RUB_PER);
+rubMesh.frustumCulled = false; rubMesh.castShadow = true; rubMesh.receiveShadow = true; scene.add(rubMesh);
+const RUBD = buildings.map((b, bi) => Array.from({ length: RUB_PER }, (_, k) => ({ ox: (hash2(bi * 7 + k, 1) - 0.5) * b.w * 0.8, oz: (hash2(bi * 7 + k, 2) - 0.5) * b.d * 0.9, sx: 3 + hash2(bi * 7 + k, 3) * 6, sy: 0.7 + hash2(bi * 7 + k, 4) * 2.2 * (0.45 + Math.min(1, b.h / 110)), sz: 3 + hash2(bi * 7 + k, 5) * 7, ry: hash2(bi * 7 + k, 6) * 3.14 })));
+{ const c = new THREE.Color(), cols = [0x3c3a38, 0x4a433c, 0x2e2c2b, 0x57493d, 0x6b3b2c]; for (let i = 0; i < buildings.length * RUB_PER; i++) rubMesh.setColorAt(i, c.set(cols[Math.floor(hash2(i, 9) * cols.length)])); }
 const EJ_N = 1; const ejecta = { pts: { material: {} }, geo: { attributes: { position: {} } }, pos: [] };
 let curT = 0;
 function update(Tm) {
@@ -747,11 +752,15 @@ function update(Tm) {
 
   /* buildings: untouched, then the front strips and collapses them */
   let nb = 0;
-  for (const b of buildings) {
-    const hT = hitT(b.z), p = smooth((t - hT) / 2.8), q = Math.pow(p, 1.5);
-    b.g.scale.set(1, 1 - 0.66 * q, 1); b.g.rotation.set(0, 0, b.side * 0.28 * q * (0.5 + 0.5 * Math.sin(b.seed * 5))); b.g.position.x = b.x - b.side * 3.0 * q; b.g.position.y = -0.5 * q;
-    if (b.z > -320 && b.z < 30 && nb < 40 && t > hT - 0.1 && t < hT + 9) { nb++; const sT = t - hT, a = 0.7 * Math.exp(-sT * 0.28) * clamp(sT * 3); for (let k = 0; k < 10; k++) { const hx = hash2(nb * 9 + k, 1) - 0.5, hh = hash2(nb * 9 + k, 3); const fire = k < 4 && sT > 0.6; addPuff(b.x - b.side * (b.w / 2 + hx * 14), 2 + hh * b.h * 0.5 * (1 - 0.5 * q) + sT * 2.2, b.z + (hash2(nb * 9 + k, 2) - 0.5) * b.d, 8 + hh * 10 + sT * 5, hx * 3, fire ? 1.6 : 0.62, fire ? 0.62 : 0.55, fire ? 0.2 : 0.48, fire ? 0.55 * Math.min(1, sT / 1.5) : a); } }
+  for (let bi = 0; bi < buildings.length; bi++) {
+    const b = buildings[bi], hT = hitT(b.z), pr = (t - hT) / 1.7, p = smooth(pr), q = Math.pow(p, 1.1);
+    b.g.visible = p < 0.985;
+    b.g.scale.set(1 + 0.12 * q, Math.max(0.03, 1 - 0.97 * q), 1 + 0.12 * q); b.g.rotation.set(0.12 * q * Math.sin(b.seed * 3), 0, b.side * 0.34 * q * (0.5 + 0.5 * Math.sin(b.seed * 5))); b.g.position.x = b.x - b.side * 3.0 * q; b.g.position.y = -0.5 * q;
+    for (let k = 0; k < RUB_PER; k++) { const d = RUBD[bi][k], s = smooth((p - 0.2) / 0.7); dummy.position.set(b.x + d.ox, 0.5 * d.sy * s, b.z + d.oz); dummy.scale.set(Math.max(0.001, d.sx * s), Math.max(0.001, d.sy * s), Math.max(0.001, d.sz * s)); dummy.rotation.set(0, d.ry, 0); dummy.updateMatrix(); rubMesh.setMatrixAt(bi * RUB_PER + k, dummy.matrix); }
+    if (b.z > -420 && b.z < 40 && nb < 70 && t > hT - 0.1 && t < hT + 14) { nb++; const sT = t - hT, a = 0.5 * Math.exp(-sT * 0.22) * clamp(sT * 3); for (let k = 0; k < 11; k++) { const hx = hash2(nb * 9 + k, 1) - 0.5, hh = hash2(nb * 9 + k, 3); const fire = k < 5 && sT > 0.5; addPuff(b.x - b.side * (b.w / 2 + hx * 14), 2 + hh * b.h * 0.5 * (1 - 0.6 * q) + sT * (fire ? 3.2 : 2.2), b.z + (hash2(nb * 9 + k, 2) - 0.5) * b.d, (fire ? 7 : 8) + hh * 10 + sT * (fire ? 3 : 5), hx * 3, fire ? 1.7 : 0.62, fire ? 0.62 : 0.55, fire ? 0.2 : 0.48, fire ? 0.7 * Math.min(1, sT / 1.2) : a); } }
   }
+  rubMesh.instanceMatrix.needsUpdate = true; if (rubMesh.instanceColor) rubMesh.instanceColor.needsUpdate = true;
+  for (const f of FARTOW) { const p = smooth((t - 17.0 - f.seed * 1.8) / 1.6); f.m.visible = p < 0.985; f.m.scale.set(1 + 0.1 * p, Math.max(0.03, 1 - 0.97 * p), 1 + 0.1 * p); f.m.position.y = f.h / 2 * (1 - 0.97 * p); if (p > 0.1 && p < 1) addPuff(f.m.position.x, 10 + f.h * 0.3 * (1 - p), f.m.position.z, 60 + f.seed * 40, f.seed * 4, 0.62, 0.5, 0.42, 0.45 * (1 - p * 0.4)); }
   /* vehicles: brake at the flash, ignite in the heat, are thrown by the front */
   for (let i = 0; i < cars.length; i++) {
     const c = cars[i], tb = 14.0, drive = t < tb ? t : tb + 0.7 * (1 - Math.exp(-(t - tb) / 0.7));
@@ -843,9 +852,9 @@ const CAPS = [
   [1.0, 4.6, 'A 10-kilometer asteroid is on its way. What if it hit New York?'],
   [5.0, 7.2, 'You would get about seven seconds of warning.'],
   [7.9, 13.9, 'The sky is the only sign.'],
-  [16.5, 21.0, 'Heat first. Everything flammable ignites at once.'],
-  [21.6, 26.8, 'Then the shock front tears down the avenue.'],
-  [27.4, 30.6, 'Nothing inside the fireball survives.'],
+  [15.6, 19.0, 'Heat first. Everything flammable ignites at once.'],
+  [19.6, 24.0, 'Then the shock front tears down the avenue.'],
+  [24.8, 30.2, 'Nothing inside the fireball survives.'],
 ];
 const FACTS = [
   [35.4, 'Energy released', '100 million megatons', 'About 10,000x all nuclear weapons combined'],
