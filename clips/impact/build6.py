@@ -23,6 +23,10 @@ def patch_tail(tail):
     trep("const EJ_N = 1;",open('impact/snip_rub_decl.js').read()+"const EJ_N = 1;")
     a=tail.index("  let nb = 0;"); b=tail.index("  /* vehicles: brake at the flash")
     tail=tail[:a]+open('impact/snip_bld_loop.js').read()+tail[b:]
+    trep("const moving = t < 10.0 + p.ph * 0.3, s = Math.max(0, t - hitT(z)), f = smooth(s / 0.4) * (1 - 0);","const moving = t < 10.0 + p.ph * 0.3, s = Math.max(0, t - hitT(z)), f = smooth(s / 0.4), fk = Math.max(f, 0.95 * smooth((t - 15.7 - (p.ph % 1.0) * 1.2) / 0.6));")
+    trep("poseHuman(p.h, tt * 6.4 + p.ph, moving ? 1.0 : 0.0, Math.max(0.55 * startled, f), f);","poseHuman(p.h, tt * 6.4 + p.ph, moving ? 1.0 : 0.0, Math.max(0.55 * startled, fk), fk);")
+    trep("p.g.rotation.set(-1.45 * f - 0.25 * startled * (1 - f), face, (p.fx > 0 ? 1 : -1) * 0.3 * f);","p.g.rotation.set(-1.45 * fk - 0.25 * startled * (1 - fk), face, (p.fx > 0 ? 1 : -1) * 0.3 * fk);")
+    trep("0.16 + (f > 0 ? Math.max(0, 3 * s - 4.9 * s * s * 0.8) : 0) - 0.4 * startled * 0.2","0.16 + (f > 0 ? Math.max(0, 3 * s - 4.9 * s * s * 0.8) : 0) - 0.1 * fk")
     return tail
 # monkeypatch: wrap file reads used by build5
 import builtins

@@ -782,11 +782,11 @@ function update(Tm) {
     let x, z, face;
     if (p.cross) { x = fmod(p.x0 + p.dirv * p.sp * tt + 13, 26) - 13; z = p.z0; face = p.dirv > 0 ? Math.PI / 2 : -Math.PI / 2; }
     else { x = p.x0; z = fmod(p.z0 + p.dirv * p.sp * tt + 340, 360) - 340 + 30; face = p.dirv > 0 ? Math.PI : 0; }
-    const moving = t < 10.0 + p.ph * 0.3, s = Math.max(0, t - hitT(z)), f = smooth(s / 0.4) * (1 - 0);
+    const moving = t < 10.0 + p.ph * 0.3, s = Math.max(0, t - hitT(z)), f = smooth(s / 0.4), fk = Math.max(f, 0.95 * smooth((t - 15.7 - (p.ph % 1.0) * 1.2) / 0.6));
     const startled = smooth((t - 14.3) / 0.4);
-    poseHuman(p.h, tt * 6.4 + p.ph, moving ? 1.0 : 0.0, Math.max(0.55 * startled, f), f);
-    p.g.position.set(x + p.dirv * 0 + (f > 0 ? 6 * Math.min(s, 1.5) * (p.fx > 0 ? 1 : -1) : 0), 0.16 + (f > 0 ? Math.max(0, 3 * s - 4.9 * s * s * 0.8) : 0) - 0.4 * startled * 0.2, z + (f > 0 ? 9 * Math.min(s, 2) : 0));
-    p.g.rotation.set(-1.45 * f - 0.25 * startled * (1 - f), face, (p.fx > 0 ? 1 : -1) * 0.3 * f);
+    poseHuman(p.h, tt * 6.4 + p.ph, moving ? 1.0 : 0.0, Math.max(0.55 * startled, fk), fk);
+    p.g.position.set(x + p.dirv * 0 + (f > 0 ? 6 * Math.min(s, 1.5) * (p.fx > 0 ? 1 : -1) : 0), 0.16 + (f > 0 ? Math.max(0, 3 * s - 4.9 * s * s * 0.8) : 0) - 0.1 * fk, z + (f > 0 ? 9 * Math.min(s, 2) : 0));
+    p.g.rotation.set(-1.45 * fk - 0.25 * startled * (1 - fk), face, (p.fx > 0 ? 1 : -1) * 0.3 * fk);
   }
   /* shock front: glass, brick, cracks, dust wall */
   for (const c of cracks) { const w = c.w * smooth((t - hitT(c.m.position.z) - c.k * 0.05) / 0.8); c.m.visible = w > 0.01; c.m.scale.set(c.len * 1.04, 1, w * 3); }
