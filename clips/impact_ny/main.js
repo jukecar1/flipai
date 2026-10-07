@@ -680,7 +680,7 @@ const dummy = new THREE.Object3D();
 const tmpC = new THREE.Color(), horC = new THREE.Color(), topC = new THREE.Color();
 const SKY_H = [[0, 0xe9dcc4], [40, 0xe9dcc4], [46, 0xd8b890], [50, 0xd4651f], [56, 0xe5502a]];
 const SKY_T = [[0, 0x4f8fd8], [40, 0x4f8fd8], [46, 0x6f7a9a], [50, 0x5a2a2a], [56, 0x3a1412]];
-const T_IMP = 14.4, T_FR0 = 17.0, V_FRONT = 75, Z_FAR = -520;
+const T_IMP = 14.4, T_FR0 = 16.2, V_FRONT = 100, Z_FAR = -520;
 const hitT = (z) => T_FR0 + (z - Z_FAR) / V_FRONT;
 const NY_H = [[0, 0xe9dcc4], [12, 0xe9dcc4], [13.9, 0xfff6e4], [15.4, 0xffd9a0], [17, 0xe8742a], [24, 0xd4501c], [34, 0xc84010]];
 const NY_T = [[0, 0x4f8fd8], [12, 0x4f8fd8], [13.9, 0xfff0d8], [15.4, 0xffb870], [17, 0xb0501c], [24, 0x6a2410], [34, 0x4a1c10]];
@@ -688,7 +688,7 @@ const RUB_PER = 7;
 const rubMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), buildings.length * RUB_PER);
 rubMesh.frustumCulled = false; rubMesh.castShadow = true; rubMesh.receiveShadow = true; scene.add(rubMesh);
 const RUBD = buildings.map((b, bi) => Array.from({ length: RUB_PER }, (_, k) => ({ ox: (hash2(bi * 7 + k, 1) - 0.5) * b.w * 0.8, oz: (hash2(bi * 7 + k, 2) - 0.5) * b.d * 0.9, sx: 3 + hash2(bi * 7 + k, 3) * 6, sy: 0.7 + hash2(bi * 7 + k, 4) * 2.2 * (0.45 + Math.min(1, b.h / 110)), sz: 3 + hash2(bi * 7 + k, 5) * 7, ry: hash2(bi * 7 + k, 6) * 3.14 })));
-{ const c = new THREE.Color(), cols = [0x3c3a38, 0x4a433c, 0x2e2c2b, 0x57493d, 0x6b3b2c]; for (let i = 0; i < buildings.length * RUB_PER; i++) rubMesh.setColorAt(i, c.set(cols[Math.floor(hash2(i, 9) * cols.length)])); }
+{ const c = new THREE.Color(), cols = [0x5a544e, 0x6a5e52, 0x46423e, 0x7a6a5a, 0x8a4a34]; for (let i = 0; i < buildings.length * RUB_PER; i++) rubMesh.setColorAt(i, c.set(cols[Math.floor(hash2(i, 9) * cols.length)])); }
 const EJ_N = 1; const ejecta = { pts: { material: {} }, geo: { attributes: { position: {} } }, pos: [] };
 let curT = 0;
 function update(Tm) {
@@ -719,7 +719,7 @@ function update(Tm) {
   const E = 0.1 * smooth((t - 15.3) / 0.5) + 0.9 * smooth((t - hitT(14) + 1.0) / 1.2);
   rig.position.set(wx + E * 0.1 * (sh(17.3, 1) + 0.6 * sh(9.7, 2)), 1.7 - 0.55 * flinch + bob + E * 0.06 * sh(23.1, 4), wz + E * 0.08 * sh(13.7, 6) + 1.5 * hitC);
   rig.rotation.set(E * 0.03 * sh(7.7, 8) + 0.25 * flinch, E * 0.02 * sh(5.9, 9), E * 0.05 * sh(6.1, 10) + walk * 0.01 * Math.sin(t * 5.5));
-  const yaw = kf(t, [[0, 6], [8, 3], [10, 8], [12.5, 14], [14.2, 18], [16, 6], [24, 1], [31, 0]]);
+  const yaw = kf(t, [[0, 6], [8, 3], [10, 2], [12.5, -4], [14.2, -6], [16, 6], [24, 1], [31, 0]]);
   const pitch = kf(t, [[0, 1], [8.6, 3], [10.2, 20], [12.5, 30], [14.2, 36], [15.8, -6], [17, 2], [26, 3], [32, 6]]);
   camera.position.set(0, 0, 0); camera.rotation.order = 'YXZ';
   camera.rotation.set(THREE.MathUtils.degToRad(pitch) + 0.002 * sh(1.3, 1) + E * 0.03 * sh(14, 2), THREE.MathUtils.degToRad(yaw) + 0.003 * sh(0.8, 2) + E * 0.03 * sh(11, 4), 0.002 * sh(1.1, 3));
@@ -760,7 +760,7 @@ function update(Tm) {
     if (b.z > -420 && b.z < 40 && nb < 70 && t > hT - 0.1 && t < hT + 14) { nb++; const sT = t - hT, a = 0.5 * Math.exp(-sT * 0.22) * clamp(sT * 3); for (let k = 0; k < 11; k++) { const hx = hash2(nb * 9 + k, 1) - 0.5, hh = hash2(nb * 9 + k, 3); const fire = k < 5 && sT > 0.5; addPuff(b.x - b.side * (b.w / 2 + hx * 14), 2 + hh * b.h * 0.5 * (1 - 0.6 * q) + sT * (fire ? 3.2 : 2.2), b.z + (hash2(nb * 9 + k, 2) - 0.5) * b.d, (fire ? 7 : 8) + hh * 10 + sT * (fire ? 3 : 5), hx * 3, fire ? 1.7 : 0.62, fire ? 0.62 : 0.55, fire ? 0.2 : 0.48, fire ? 0.7 * Math.min(1, sT / 1.2) : a); } }
   }
   rubMesh.instanceMatrix.needsUpdate = true; if (rubMesh.instanceColor) rubMesh.instanceColor.needsUpdate = true;
-  for (const f of FARTOW) { const p = smooth((t - 17.0 - f.seed * 1.8) / 1.6); f.m.visible = p < 0.985; f.m.scale.set(1 + 0.1 * p, Math.max(0.03, 1 - 0.97 * p), 1 + 0.1 * p); f.m.position.y = f.h / 2 * (1 - 0.97 * p); if (p > 0.1 && p < 1) addPuff(f.m.position.x, 10 + f.h * 0.3 * (1 - p), f.m.position.z, 60 + f.seed * 40, f.seed * 4, 0.62, 0.5, 0.42, 0.45 * (1 - p * 0.4)); }
+  for (const f of FARTOW) { const p = smooth((t - 16.2 - f.seed * 1.8) / 1.6); f.m.visible = p < 0.985; f.m.scale.set(1 + 0.1 * p, Math.max(0.03, 1 - 0.97 * p), 1 + 0.1 * p); f.m.position.y = f.h / 2 * (1 - 0.97 * p); if (p > 0.1 && p < 1) addPuff(f.m.position.x, 10 + f.h * 0.3 * (1 - p), f.m.position.z, 60 + f.seed * 40, f.seed * 4, 0.62, 0.5, 0.42, 0.45 * (1 - p * 0.4)); }
   /* vehicles: brake at the flash, ignite in the heat, are thrown by the front */
   for (let i = 0; i < cars.length; i++) {
     const c = cars[i], tb = 14.0, drive = t < tb ? t : tb + 0.7 * (1 - Math.exp(-(t - tb) / 0.7));
@@ -852,9 +852,9 @@ const CAPS = [
   [1.0, 4.6, 'A 10-kilometer asteroid is on its way. What if it hit New York?'],
   [5.0, 7.2, 'You would get about seven seconds of warning.'],
   [7.9, 13.9, 'The sky is the only sign.'],
-  [15.6, 19.0, 'Heat first. Everything flammable ignites at once.'],
-  [19.6, 24.0, 'Then the shock front tears down the avenue.'],
-  [24.8, 30.2, 'Nothing inside the fireball survives.'],
+  [15.4, 17.6, 'Heat first. Everything flammable ignites at once.'],
+  [17.9, 22.0, 'Then the shock front tears down the avenue.'],
+  [22.8, 30.2, 'Nothing inside the fireball survives.'],
 ];
 const FACTS = [
   [35.4, 'Energy released', '100 million megatons', 'About 10,000x all nuclear weapons combined'],

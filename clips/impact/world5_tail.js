@@ -32,7 +32,7 @@ function update(Tm) {
   const E = 0.1 * smooth((t - 15.3) / 0.5) + 0.9 * smooth((t - hitT(14) + 1.0) / 1.2);
   rig.position.set(wx + E * 0.1 * (sh(17.3, 1) + 0.6 * sh(9.7, 2)), 1.7 - 0.55 * flinch + bob + E * 0.06 * sh(23.1, 4), wz + E * 0.08 * sh(13.7, 6) + 1.5 * hitC);
   rig.rotation.set(E * 0.03 * sh(7.7, 8) + 0.25 * flinch, E * 0.02 * sh(5.9, 9), E * 0.05 * sh(6.1, 10) + walk * 0.01 * Math.sin(t * 5.5));
-  const yaw = kf(t, [[0, 6], [8, 3], [10, 8], [12.5, 14], [14.2, 18], [16, 6], [24, 1], [31, 0]]);
+  const yaw = kf(t, [[0, 6], [8, 3], [10, 2], [12.5, -4], [14.2, -6], [16, 6], [24, 1], [31, 0]]);
   const pitch = kf(t, [[0, 1], [8.6, 3], [10.2, 20], [12.5, 30], [14.2, 36], [15.8, -6], [17, 2], [26, 3], [32, 6]]);
   camera.position.set(0, 0, 0); camera.rotation.order = 'YXZ';
   camera.rotation.set(THREE.MathUtils.degToRad(pitch) + 0.002 * sh(1.3, 1) + E * 0.03 * sh(14, 2), THREE.MathUtils.degToRad(yaw) + 0.003 * sh(0.8, 2) + E * 0.03 * sh(11, 4), 0.002 * sh(1.1, 3));

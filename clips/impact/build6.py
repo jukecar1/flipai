@@ -19,7 +19,7 @@ def patch_tail(tail):
         nonlocal tail
         assert a in tail, a[:70]
         tail=tail.replace(a,b,1)
-    trep("const T_IMP = 14.4, T_FR0 = 16.0, V_FRONT = 36, Z_FAR = -520;","const T_IMP = 14.4, T_FR0 = 17.0, V_FRONT = 75, Z_FAR = -520;")
+    trep("const T_IMP = 14.4, T_FR0 = 16.0, V_FRONT = 36, Z_FAR = -520;","const T_IMP = 14.4, T_FR0 = 16.2, V_FRONT = 100, Z_FAR = -520;")
     trep("const EJ_N = 1;",open('impact/snip_rub_decl.js').read()+"const EJ_N = 1;")
     a=tail.index("  let nb = 0;"); b=tail.index("  /* vehicles: brake at the flash")
     tail=tail[:a]+open('impact/snip_bld_loop.js').read()+tail[b:]
@@ -39,5 +39,5 @@ def fake_open(path,*a,**k):
         import io; return io.StringIO(t)
     return f
 builtins.open=fake_open
-src=src.replace("[16.5, 21.0, 'Heat first. Everything flammable ignites at once.'],\n  [21.6, 26.8, 'Then the shock front tears down the avenue.'],\n  [27.4, 30.6, 'Nothing inside the fireball survives.'],","[15.6, 19.0, 'Heat first. Everything flammable ignites at once.'],\n  [19.6, 24.0, 'Then the shock front tears down the avenue.'],\n  [24.8, 30.2, 'Nothing inside the fireball survives.'],")
+src=src.replace("[16.5, 21.0, 'Heat first. Everything flammable ignites at once.'],\n  [21.6, 26.8, 'Then the shock front tears down the avenue.'],\n  [27.4, 30.6, 'Nothing inside the fireball survives.'],","[15.4, 17.6, 'Heat first. Everything flammable ignites at once.'],\n  [17.9, 22.0, 'Then the shock front tears down the avenue.'],\n  [22.8, 30.2, 'Nothing inside the fireball survives.'],")
 exec(compile(src,'build5_patched','exec'))
