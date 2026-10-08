@@ -158,7 +158,7 @@ const gTorso = new THREE.CapsuleGeometry(0.17, 0.32, 4, 10), gHeadP = new THREE.
 const pr = rng(404), SKINS = [0xe3b895, 0xc89b7b, 0x8a5a3a, 0xf0c9a8, 0x6e4630, 0xd8a47c], HAIRS = [0x1b1410, 0x3a2616, 0x4a3320, 0x1b1410, 0x6e6e6e, 0x0e0c0a, 0x2c1e12, 0x6a4c2c], TOPS = [0x1f2a3a, 0x6b2b2b, 0xd8d4c8, 0x3c5a7a, 0x4a5a3a, 0xb8782a, 0x7a6a8a, 0xa8b0b8, 0x2c2c30];
 const pg = new THREE.Group(); cabin.add(pg);
 const mats = {}; const lam = (c) => mats[c] || (mats[c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }));
-const hairTex = noiseTex('#ffffff', 90, 128, 61, [3, 3], 2), hmats = {}; const hlam = (c) => hmats[c] || (hmats[c] = new THREE.MeshLambertMaterial({ color: c, map: hairTex }));
+const hairTex = noiseTex('#8c8c8c', 70, 128, 61, [3, 3], 2), hmats = {}; const hlam = (c) => hmats[c] || (hmats[c] = new THREE.MeshLambertMaterial({ color: c, map: hairTex }));
 {
   const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(); let i = 0, k = 0;
   const put = (mesh, idx, x, y, z, rx = 0) => { e.set(rx, 0, 0); q.setFromEuler(e); mtx.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(1, 1, 1)); mesh.setMatrixAt(idx, mtx); };
@@ -176,7 +176,7 @@ const hairTex = noiseTex('#ffffff', 90, 128, 61, [3, 3], 2), hmats = {}; const h
     const st = pr();
     if (st < 0.2) { const bun = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), hlam(hc)); bun.position.set(x, 1.42, z + 0.16); pg.add(bun); }
     else if (st < 0.4) { const lh = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.2, 4, 10), hlam(hc)); lh.position.set(x, 1.17, z + 0.17); lh.scale.set(1.1, 1, 0.6); pg.add(lh); }
-    else if (st < 0.52) { const cp = new THREE.Mesh(new THREE.SphereGeometry(0.118, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), lam(TOPS[Math.floor(pr() * 9)])); cp.position.set(x, 1.33, z + 0.11); cp.scale.set(0.95, 1.0, 1.02); pg.add(cp); }
+    else if (st < 0.52) { const cp = new THREE.Mesh(new THREE.SphereGeometry(0.128, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), lam([0x1f2a3a, 0x6b2b2b, 0x2c2c30, 0x3c5a7a, 0x4a5a3a][Math.floor(pr() * 5)])); cp.position.set(x, 1.335, z + 0.115); cp.scale.set(0.95, 1.0, 1.02); pg.add(cp); }
     const nose = new THREE.Mesh(gNose, lam(sk)); nose.rotation.x = -Math.PI / 2; nose.position.set(x, 1.29, z - 0.012); pg.add(nose);
     for (const sx of [-1, 1]) { const ea = new THREE.Mesh(gEar, lam(sk)); ea.position.set(x + sx * 0.093, 1.3, z + 0.1); pg.add(ea); const arm = new THREE.Mesh(gUarm, lam(tc)); arm.position.set(x + sx * 0.2, 0.75, z - 0.05); arm.rotation.x = 1.15; pg.add(arm); }
   }
@@ -241,7 +241,7 @@ function poseArm(arm, B, vis, side) {
 }
 // mask worn in front of the camera
 const wornMask = new THREE.Group(); camera.add(wornMask);
-{ const c = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.12, 20), maskMat); c.rotation.x = Math.PI / 2; c.scale.setScalar(0.62); c.position.set(0, -0.24, -0.34); wornMask.add(c); const b = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), bagMat); b.position.set(0, -0.36, -0.38); b.scale.set(0.5, 0.75, 0.3); wornMask.add(b); const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6), new THREE.MeshBasicMaterial({ color: 0xe8e6dd })); tube.position.set(0.06, 0.15, -0.28); tube.rotation.z = -0.1; wornMask.add(tube); wornMask.visible = false; }
+{ const c = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.12, 20), maskMat); c.rotation.x = Math.PI / 2; c.scale.setScalar(0.4); c.position.set(0, -0.27, -0.36); wornMask.add(c); const b = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), bagMat); b.position.set(0, -0.38, -0.4); b.scale.set(0.35, 0.5, 0.2); wornMask.add(b); const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6), new THREE.MeshBasicMaterial({ color: 0xe8e6dd })); tube.position.set(0.06, 0.15, -0.28); tube.rotation.z = -0.1; wornMask.add(tube); wornMask.visible = false; }
 
 /* ---------- camera path ---------- */
 const SEAT = new THREE.Vector3(-0.3, 1.27, 0.05);
