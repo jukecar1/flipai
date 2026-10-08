@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What if you opened a plane door mid-flight?</title>
+<style>
+  @font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 500; src: url(../fonts/cormorant-garamond-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 500; src: url(../fonts/cormorant-garamond-latin-500-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 600; src: url(../fonts/cormorant-garamond-latin-600-normal.woff2) format("woff2"); }
+  :root { --serif: "Cormorant Garamond", "Liberation Serif", "Times New Roman", serif; --sans: "Helvetica Neue", Arial, "Liberation Sans", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-variant-numeric: lining-nums tabular-nums; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+  #sceneWrap { position: absolute; inset: 0; }
+  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
+  canvas#acc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #dip { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.5) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; opacity: .06; mix-blend-mode: overlay; }
+  .txt { position: absolute; color: #f4efe6; font-family: var(--serif); text-shadow: 0 1px 14px rgba(0,0,0,.6); }
+  #title { left: 8vw; right: 8vw; top: 13vh; text-align: center; font-size: 5.2vh; line-height: 1.12; font-weight: 500; opacity: 0; }
+  #hud { left: 5.5vw; top: 46vh; opacity: 0; }
+  #hud .label { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .9; }
+  #hud .value { font-size: 5.6vh; line-height: 1.02; font-weight: 500; margin-top: .3vh; }
+  #hud .sub { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .2em; text-transform: uppercase; opacity: .8; margin-top: .5vh; font-weight: 600; }
+  #caption { left: 4vw; right: 4vw; top: 61vh; text-align: center; font-style: italic; font-weight: 500; font-size: 3.3vh; line-height: 1.15; opacity: 0; }
+  #tag { left: 0; right: 0; bottom: 5vh; text-align: center; font-family: var(--sans); font-size: 1.05vh; letter-spacing: .26em; text-transform: uppercase; font-weight: 700; opacity: 0; }
+  #facts { position: absolute; left: 8vw; right: 8vw; top: 12vh; display: flex; flex-direction: column; gap: 2.2vh; color: #f4efe6; font-family: var(--serif); }
+  #facts .fl { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .85; }
+  #facts .fv { font-size: 4.6vh; line-height: 1.05; margin-top: .3vh; }
+  #facts .fs { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .12em; opacity: .65; margin-top: .4vh; line-height: 1.4; }
+  #end { position: absolute; inset: 0; background: #07070a; opacity: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 12vw; }
+  #end .a { font-family: var(--serif); color: #f4efe6; font-size: 4.8vh; line-height: 1.15; }
+  #end .b { font-family: var(--serif); color: #f4efe6; font-size: 4.4vh; line-height: 1.15; font-style: italic; margin-top: 1.2vh; }
+  #end .c { font-family: var(--sans); color: #8d8a84; font-size: 1.15vh; letter-spacing: .22em; text-transform: uppercase; margin-top: 6vh; font-weight: 600; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="sceneWrap"><canvas id="gl"></canvas><canvas id="acc"></canvas></div>
+  <div id="flash"></div>
+  <div id="dip"></div>
+  <div id="vignette"></div>
+  <canvas id="grain" width="256" height="256"></canvas>
+  <div class="txt" id="title">What if you opened a plane door mid-flight?</div>
+  <div class="txt" id="hud"><div class="label"></div><div class="value"></div><div class="sub"></div></div>
+  <div class="txt" id="caption"></div>
+  <div class="txt" id="tag">Illustrative &nbsp;·&nbsp; not a real incident</div>
+  <div id="facts"></div>
+  <div id="end">
+    <div class="a">You can't open it.</div>
+    <div class="b">The air inside holds it shut.</div>
+    <div class="c">A cruising airliner's door is pressed closed by about 15,000 lb<br>Sources in the caption</div>
+  </div>
+</div>
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
