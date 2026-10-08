@@ -23,6 +23,7 @@ const audio = opt('audio', null);
 const blur = +opt('blur', 2);
 const from = +opt('from', 0);
 const toOpt = opt('to', null);
+const blurWin = opt('blurwin', null); // e.g. "8-52" or "10-30,40-52": motion-blur time windows (default = the New York clip's)
 
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2' };
 const server = http.createServer((req, res) => {
@@ -71,7 +72,7 @@ if (stills) {
   const t0 = Date.now();
   for (let i = i0; i < n; i++) {
     const tc = i / fps;
-    const sub = (tc > 11.3 && tc < 16) || (tc > 27 && tc < 36) ? blur : 1;
+    const sub = (blurWin ? blurWin.split(',').some((w) => { const [a, b] = w.split('-').map(Number); return tc > a && tc < b; }) : (tc > 11.3 && tc < 16) || (tc > 27 && tc < 36)) ? blur : 1;
     const buf = await shot(tc, sub, 0.5 / fps);
     if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once('drain', r));
     if ((i - i0) % 60 === 0) {
