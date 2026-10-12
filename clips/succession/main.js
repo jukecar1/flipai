@@ -289,9 +289,7 @@ const CAPS = [
   [50.6, 54.0, 'The new president then names a Vice President. Congress confirms.'],
 ];
 const FACTS = [
-  ['Who is in charge', 'the Vice President', 'The 25th Amendment, Section 1: the Vice President becomes President on a president\'s death. The oath is customary and usually within hours'],
-  ['If the VP office is empty', 'Speaker, then Senate', 'Presidential Succession Act: Vice President, Speaker of the House, President pro tempore of the Senate, then the Cabinet in order'],
-  ['Replacing the Vice President', 'both houses vote', '25th Amendment, Section 2: nominee confirmed by a majority of both houses, as with Ford (1973) and Rockefeller (1974)'],
+  ['Replacing the Vice President', 'both houses vote', '25th Amendment, Section 2: the new president nominates, and a majority of both houses must confirm. Used for Ford (1973) and Rockefeller (1974)'],
   ['History', '4 assassinated', 'Eight presidents have died in office. Lincoln, Garfield, McKinley and Kennedy were assassinated'],
 ];
 facts.innerHTML = FACTS.map((f) => `<div class="fr"><div class="fl">${f[0]}</div><div class="fv">${f[1]}</div><div class="fs">${f[2]}</div></div>`).join('');
@@ -309,6 +307,86 @@ function drawChart(T) {
     c.font = '700 30px "Helvetica Neue", Arial, sans-serif'; c.fillStyle = 'rgba(244,239,230,.95)'; if (v !== 0) c.fillText((v > 0 ? '+' : '−') + Math.abs(v * p).toFixed(1) + '%', x, v > 0 ? base - h - 14 : base + Math.abs(h) + 34); c.font = '600 22px "Helvetica Neue", Arial, sans-serif';
   });
 }
+
+/* ---------- motion graphics layer: timeline scrubber with a tapping cursor, clock, quoted text, ladder of succession, poll ---------- */
+const gfx = document.getElementById('gfx'); gfx.width = 540 * Math.min(DPR, 2); gfx.height = 960 * Math.min(DPR, 2); const gc = gfx.getContext('2d');
+const SANS = '"Helvetica Neue", Arial, "Liberation Sans", sans-serif', SERIF = '"Cormorant Garamond", "Liberation Serif", serif';
+const INK = '244,239,230', GOLD = '232,205,140';
+function rr(x, y, w, h, r) { gc.beginPath(); gc.moveTo(x + r, y); gc.arcTo(x + w, y, x + w, y + h, r); gc.arcTo(x + w, y + h, x, y + h, r); gc.arcTo(x, y + h, x, y, r); gc.arcTo(x, y, x + w, y, r); gc.closePath(); }
+function cursor(x, y, press) { gc.save(); gc.translate(x, y); gc.scale(1.35 * (1 - 0.12 * press), 1.35 * (1 - 0.12 * press)); gc.shadowColor = 'rgba(0,0,0,.55)'; gc.shadowBlur = 8; gc.fillStyle = '#fff'; gc.strokeStyle = '#111'; gc.lineWidth = 1.6; gc.beginPath(); gc.moveTo(0, 0); gc.lineTo(0, 22); gc.lineTo(5.6, 17); gc.lineTo(9.6, 26); gc.lineTo(13.4, 24.4); gc.lineTo(9.4, 15.6); gc.lineTo(16.6, 15.4); gc.closePath(); gc.fill(); gc.stroke(); gc.restore(); }
+function ripple(x, y, u) { if (u <= 0 || u >= 1) return; gc.save(); gc.strokeStyle = `rgba(${GOLD},${0.85 * (1 - u)})`; gc.lineWidth = 2.4; gc.beginPath(); gc.arc(x, y, 6 + 26 * u, 0, 6.283); gc.stroke(); gc.restore(); }
+function label(txt, x, y, size, alpha, align = 'left', weight = 700, space = 2.4) { gc.save(); gc.font = `${weight} ${size}px ${SANS}`; gc.fillStyle = `rgba(${INK},${alpha})`; gc.textAlign = align; gc.textBaseline = 'alphabetic'; if ('letterSpacing' in gc) gc.letterSpacing = space + 'px'; gc.fillText(txt, x, y); gc.restore(); }
+const MS = [{ t: 4.6, l: 'MINUTE 0' }, { t: 14.0, l: '15 MIN' }, { t: 25.2, l: '2 HOURS' }, { t: 34.4, l: '1 DAY' }, { t: 45.2, l: '30 DAYS' }];
+function drawTimeline(T, k) {
+  const a = sm(4.4, 5.2, T) * (1 - sm(53.6, 54.3, T)); if (a <= 0.01) return;
+  const x0 = 56, x1 = 484, y = 846, xs = MS.map((m, i) => x0 + (x1 - x0) * i / (MS.length - 1));
+  let px = xs[0]; for (let i = 0; i < MS.length - 1; i++) if (T >= MS[i].t) px = lerp(xs[i], xs[i + 1], smooth((T - MS[i].t) / ((MS[i + 1].t) - MS[i].t)));
+  if (T >= MS[MS.length - 1].t) px = xs[MS.length - 1];
+  gc.save(); gc.globalAlpha = a; gc.lineCap = 'round'; gc.strokeStyle = `rgba(${INK},.22)`; gc.lineWidth = 3 * k; gc.beginPath(); gc.moveTo(x0 * k, y * k); gc.lineTo(x1 * k, y * k); gc.stroke();
+  gc.strokeStyle = `rgba(${GOLD},.95)`; gc.beginPath(); gc.moveTo(x0 * k, y * k); gc.lineTo(px * k, y * k); gc.stroke();
+  MS.forEach((m, i) => { const on = T >= m.t - 0.01, cur = on && (i === MS.length - 1 || T < MS[i + 1].t); gc.fillStyle = on ? `rgba(${GOLD},1)` : `rgba(${INK},.45)`; gc.beginPath(); gc.arc(xs[i] * k, y * k, (cur ? 6.4 : 4.4) * k, 0, 6.283); gc.fill(); gc.restore(); label(m.l, xs[i] * k, (y + 26) * k, 9.6 * k, on ? (cur ? 1 : 0.75) : 0.4, 'center', 700, 2 * k); gc.save(); gc.globalAlpha = a; });
+  gc.restore(); gc.save(); gc.globalAlpha = a;
+  // the cursor follows the playhead and taps each milestone as it is reached
+  let press = 0, rp = -1, rx = 0; MS.forEach((m, i) => { const d = T - m.t; if (d > 0 && d < 0.5) { press = Math.sin(d / 0.5 * Math.PI); } if (d > 0.1 && d < 0.9) { rp = (d - 0.1) / 0.8; rx = xs[i]; } });
+  cursor((px + 6) * k - 0, (y + 8) * k, press);
+  gc.restore(); if (rp > 0) { gc.save(); gc.globalAlpha = a; ripple(rx * k, y * k, rp); gc.restore(); }
+}
+function drawClock(T, k) {
+  const a = sm(25.5, 26.2, T) * (1 - sm(32.7, 33.3, T)); if (a <= 0.01) return;
+  const cx = 270 * k, cy = 170 * k, R = 76 * k; gc.save(); gc.globalAlpha = a;
+  gc.fillStyle = 'rgba(8,10,16,.62)'; gc.beginPath(); gc.arc(cx, cy, R + 14 * k, 0, 6.283); gc.fill(); gc.strokeStyle = `rgba(${INK},.5)`; gc.lineWidth = 2 * k; gc.beginPath(); gc.arc(cx, cy, R + 14 * k, 0, 6.283); gc.stroke();
+  const mins = lerp(0, 98, smooth((T - 26.4) / 4.6)), hAng = ((1 + mins / 60) / 12) * 6.283 - 1.5708, mAng = ((mins % 60) / 60) * 6.283 - 1.5708, a0 = (1 / 12) * 6.283 - 1.5708;
+  gc.strokeStyle = `rgba(${GOLD},.95)`; gc.lineWidth = 7 * k; gc.lineCap = 'butt'; gc.beginPath(); gc.arc(cx, cy, R + 4 * k, a0, hAng); gc.stroke();
+  for (let i = 0; i < 60; i++) { const an = (i / 60) * 6.283 - 1.5708, big = i % 5 === 0; gc.strokeStyle = `rgba(${INK},${big ? 0.85 : 0.3})`; gc.lineWidth = (big ? 2.2 : 1) * k; gc.beginPath(); gc.moveTo(cx + Math.cos(an) * (R - (big ? 12 : 6) * k), cy + Math.sin(an) * (R - (big ? 12 : 6) * k)); gc.lineTo(cx + Math.cos(an) * (R - 1 * k), cy + Math.sin(an) * (R - 1 * k)); gc.stroke(); }
+  gc.lineCap = 'round'; gc.strokeStyle = `rgba(${INK},.95)`; gc.lineWidth = 4.6 * k; gc.beginPath(); gc.moveTo(cx, cy); gc.lineTo(cx + Math.cos(hAng) * R * 0.5, cy + Math.sin(hAng) * R * 0.5); gc.stroke(); gc.lineWidth = 3 * k; gc.beginPath(); gc.moveTo(cx, cy); gc.lineTo(cx + Math.cos(mAng) * R * 0.78, cy + Math.sin(mAng) * R * 0.78); gc.stroke(); gc.fillStyle = `rgba(${GOLD},1)`; gc.beginPath(); gc.arc(cx, cy, 4 * k, 0, 6.283); gc.fill(); gc.restore();
+  const t1 = T < 28.2; label(t1 ? '1:00 PM  ·  PRESIDENT PRONOUNCED DEAD' : T < 30.6 ? 'OATH ON AIR FORCE ONE  ·  DALLAS' : '2:38 PM  ·  SWORN IN', cx, (170 + 76 + 36) * k, 10.4 * k, a * 0.9, 'center', 700, 1.6 * k);
+}
+function wrapText(txt, maxW) { const words = txt.split(' '), lines = []; let cur = ''; for (const w of words) { const t = cur ? cur + ' ' + w : w; if (gc.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; } lines.push(cur); return lines; }
+const QUOTE = 'In case of the removal of the President from office or of his death or resignation, the Vice President shall become President.', QKEY = 'the Vice President shall become President.';
+function drawQuote(T, k) {
+  const a = sm(5.0, 5.6, T) * (1 - sm(12.4, 13.0, T)); if (a <= 0.01) return;
+  const x = 36 * k, y = 96 * k, w = 468 * k, h = 188 * k; gc.save(); gc.globalAlpha = a; gc.fillStyle = 'rgba(8,10,16,.66)'; rr(x, y, w, h, 14 * k); gc.fill(); gc.strokeStyle = `rgba(${INK},.28)`; gc.lineWidth = 1.4 * k; rr(x, y, w, h, 14 * k); gc.stroke(); gc.fillStyle = `rgba(${GOLD},.9)`; gc.fillRect(x, y + 18 * k, 3.5 * k, 22 * k);
+  label('25TH AMENDMENT  ·  SECTION 1', x + 22 * k, y + 34 * k, 10.4 * k, 0.9, 'left', 700, 2 * k);
+  const n = Math.min(QUOTE.length, Math.floor(Math.max(0, T - 5.7) * 30)), shown = QUOTE.slice(0, n); gc.font = `italic 500 ${22 * k}px ${SERIF}`; gc.textBaseline = 'alphabetic';
+  const full = wrapText(QUOTE, w - 44 * k), ki = QUOTE.indexOf(QKEY); let used = 0, cursorX = 0, cursorY = 0;
+  full.forEach((ln, li) => { const ly = y + (74 + li * 28) * k, start = used, end = used + ln.length; used = end + 1; const part = shown.slice(start, Math.max(start, Math.min(end, n)));
+    // highlight bar under the key phrase once it has been typed
+    const hs = Math.max(ki, start), he = Math.min(ki + QKEY.length, end), hp = sm(8.9, 9.6, T);
+    if (he > hs && hp > 0) { const px0 = gc.measureText(ln.slice(0, hs - start)).width, pw = gc.measureText(ln.slice(hs - start, he - start)).width; gc.fillStyle = `rgba(${GOLD},${0.32 * hp})`; gc.fillRect(x + 22 * k + px0, ly - 19 * k, pw * hp, 26 * k); }
+    gc.fillStyle = `rgba(${INK},.97)`; gc.fillText(part, x + 22 * k, ly); if (n >= start && n <= end) { cursorX = x + 22 * k + gc.measureText(part).width; cursorY = ly; } });
+  if (n < QUOTE.length) { gc.fillStyle = `rgba(${GOLD},${0.5 + 0.5 * Math.sin(T * 14)})`; gc.fillRect(cursorX + 2 * k, cursorY - 18 * k, 2 * k, 22 * k); }
+  gc.restore();
+}
+const LADDER = ['Vice President', 'Speaker of the House', 'President pro tempore of the Senate', 'Secretary of State', 'Secretary of the Treasury'];
+function drawLadder(T, k) {
+  const a = sm(T_SCENE - 0.1, T_SCENE + 0.5, T) * (1 - sm(59.0, 59.6, T)); if (a <= 0.01) return;
+  gc.save(); gc.globalAlpha = a; label('LINE OF SUCCESSION', 48 * k, 72 * k, 11 * k, 0.9, 'left', 700, 2.6 * k);
+  const x = 48 * k, w = 444 * k, h = 44 * k, gap = 9 * k, y0 = 88 * k, t0 = T_SCENE + 0.3; let curX = 0, curY = 0, press = 0, rp = -1, rx = 0, ry = 0;
+  const taps = [T_SCENE + 2.4, T_SCENE + 3.3, T_SCENE + 4.1];
+  LADDER.forEach((nm, i) => {
+    const en = sm(t0 + i * 0.28, t0 + 0.55 + i * 0.28, T), yy = y0 + i * (h + gap), sx = (1 - en) * -60 * k; if (en <= 0) return;
+    const active = taps.map((tt, j) => (T >= tt && T < tt + 0.7 && j === i ? 1 : 0)).reduce((p, q) => p + q, 0); const first = i === 0 ? 0.35 : 0;
+    gc.save(); gc.globalAlpha = a * en; gc.fillStyle = `rgba(${active || first ? '232,205,140' : '20,24,32'},${active ? 0.4 : first ? 0.22 : 0.62})`; rr(x + sx, yy, w, h, 10 * k); gc.fill(); gc.strokeStyle = `rgba(${INK},${active ? 0.7 : 0.22})`; gc.lineWidth = 1.2 * k; rr(x + sx, yy, w, h, 10 * k); gc.stroke();
+    gc.fillStyle = `rgba(${GOLD},.95)`; gc.beginPath(); gc.arc(x + sx + 24 * k, yy + h / 2, 12 * k, 0, 6.283); gc.fill(); gc.fillStyle = '#16181e'; gc.font = `700 ${13 * k}px ${SANS}`; gc.textAlign = 'center'; gc.textBaseline = 'middle'; gc.fillText(String(i + 1), x + sx + 24 * k, yy + h / 2 + 0.5 * k);
+    gc.textAlign = 'left'; gc.fillStyle = `rgba(${INK},.97)`; gc.font = `500 ${21 * k}px ${SERIF}`; gc.fillText(nm, x + sx + 48 * k, yy + h / 2 + 1 * k);
+    if (i === 0) { gc.font = `700 ${9 * k}px ${SANS}`; gc.textAlign = 'right'; gc.fillStyle = `rgba(${GOLD},1)`; if ('letterSpacing' in gc) gc.letterSpacing = 1.6 * k + 'px'; gc.fillText('BECOMES PRESIDENT', x + sx + w - 14 * k, yy + h / 2 + 1 * k); }
+    gc.restore();
+  });
+  // cursor hops from card to card ("if that office is empty, the next one steps in")
+  taps.forEach((tt, j) => { const d = T - tt; if (d > -0.8 && d < 0.8) { const prevY = j === 0 ? y0 + 190 * k : y0 + (j - 1) * (h + gap) + h / 2, ty = y0 + j * (h + gap) + h / 2, u = smooth((d + 0.8) / 0.8); curY = lerp(prevY, ty, d < 0 ? u : 1); curX = x + 340 * k; press = d > 0 && d < 0.35 ? Math.sin(d / 0.35 * Math.PI) : 0; if (d > 0.05 && d < 0.65) { rp = (d - 0.05) / 0.6; rx = x + 330 * k; ry = ty; } } });
+  if (curY > 0) cursor(x + 340 * k, curY + 6 * k, press); if (rp > 0) ripple(rx, ry, rp);
+  gc.restore();
+}
+function drawPoll(T, k) {
+  const a = sm(61.0, 61.5, T); if (a <= 0.01) return;
+  gc.save(); gc.globalAlpha = a; label('DID YOU KNOW ALL OF THIS?', 270 * k, 640 * k, 11 * k, 0.9, 'center', 700, 2.4 * k);
+  const btn = (cx, txt, picked) => { const w = 150 * k, h = 50 * k, x = cx * k - w / 2, y = 662 * k; gc.fillStyle = picked ? `rgba(${GOLD},.85)` : 'rgba(20,24,32,.7)'; rr(x, y, w, h, 25 * k); gc.fill(); gc.strokeStyle = `rgba(${INK},${picked ? 0.9 : 0.3})`; gc.lineWidth = 1.4 * k; rr(x, y, w, h, 25 * k); gc.stroke(); gc.fillStyle = picked ? '#16181e' : `rgba(${INK},.95)`; gc.font = `700 ${15 * k}px ${SANS}`; gc.textAlign = 'center'; gc.textBaseline = 'middle'; if ('letterSpacing' in gc) gc.letterSpacing = 2 * k + 'px'; gc.fillText(txt, cx * k, y + h / 2 + 1 * k); };
+  const tap = 61.9; btn(190, 'YES', T >= tap + 0.12); btn(350, 'NO', false);
+  const d = T - tap, u = smooth((T - 61.55) / 0.35); const cx0 = 270, cy0 = 735; const curx = lerp(cx0, 196, u) * k, cury = lerp(cy0, 690, u) * k; cursor(curx, cury, d > 0 && d < 0.3 ? Math.sin(d / 0.3 * Math.PI) : 0); if (d > 0.1 && d < 0.8) ripple(190 * k, 687 * k, (d - 0.1) / 0.7);
+  gc.restore();
+}
+function drawGfx(T) { const k = gfx.width / 540; gc.clearRect(0, 0, gfx.width, gfx.height); drawQuote(T, k); drawClock(T, k); drawLadder(T, k); drawPoll(T, k); drawTimeline(T, k); }
+
 function updateOverlay(T) {
   elTitle.style.opacity = sm(0, 0.8, T) * (1 - sm(4.0, 4.7, T));
   const beat = BEATS.find((b) => T >= b.a && T < b.b);
@@ -318,11 +396,11 @@ function updateOverlay(T) {
   tag.style.opacity = T > 4.8 && T < 54.2 ? 0.7 * sm(4.8, 5.6, T) * (1 - sm(53.6, 54.2, T)) : 0;
   flash.style.opacity = 0;
   const fo = sm(T_SCENE - 0.2, T_SCENE + 0.6, T) * (1 - sm(59.0, 59.6, T)); facts.style.opacity = fo;
-  factEls.forEach((el, i) => { el.style.opacity = sm(T_SCENE + 0.3 + i * 0.75, T_SCENE + 0.9 + i * 0.75, T); });
+  factEls.forEach((el, i) => { el.style.opacity = sm(T_SCENE + 3.2 + i * 0.8, T_SCENE + 3.8 + i * 0.8, T); });
   end.style.opacity = T >= 59 ? sm(59.0, 59.7, T) : 0;
   end.querySelector('.a').style.opacity = sm(59.6, 60.2, T); end.querySelector('.b').style.opacity = sm(60.4, 61.0, T); end.querySelector('.c').style.opacity = sm(61.2, 61.8, T) * 0.9;
   document.getElementById('stage').style.background = T >= T_SCENE ? '#07070a' : '#000';
-  drawChart(T);
+  drawChart(T); drawGfx(T);
 }
 function renderAt(T, sub = 1, dt = 1 / 60) {
   T = clamp(T, 0, T_END);

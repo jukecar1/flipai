@@ -15,6 +15,7 @@
   #sceneWrap { position: absolute; inset: 0; }
   canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
   canvas#acc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  canvas#gfx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   canvas#chart { position: absolute; left: 8vw; right: 8vw; top: 11vh; width: 84vw; height: 24vh; opacity: 0; pointer-events: none; }
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
   #dip { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
@@ -28,7 +29,7 @@
   #hud .sub { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .2em; text-transform: uppercase; opacity: .8; margin-top: .5vh; font-weight: 600; }
   #caption { left: 4vw; right: 4vw; top: 61vh; text-align: center; font-style: italic; font-weight: 500; font-size: 3.3vh; line-height: 1.15; opacity: 0; }
   #tag { left: 0; right: 0; bottom: 5vh; text-align: center; font-family: var(--sans); font-size: 1.05vh; letter-spacing: .26em; text-transform: uppercase; font-weight: 700; opacity: 0; }
-  #facts { position: absolute; left: 8vw; right: 8vw; top: 12vh; display: flex; flex-direction: column; gap: 2.2vh; color: #f4efe6; font-family: var(--serif); }
+  #facts { position: absolute; left: 8vw; right: 8vw; top: 55vh; display: flex; flex-direction: column; gap: 2.2vh; color: #f4efe6; font-family: var(--serif); }
   #facts .fl { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .85; }
   #facts .fv { font-size: 4.6vh; line-height: 1.05; margin-top: .3vh; }
   #facts .fs { font-family: var(--sans); font-size: 1.1vh; letter-spacing: .12em; opacity: .65; margin-top: .4vh; line-height: 1.4; }
@@ -56,6 +57,7 @@
     <div class="b">The office passes in an instant.</div>
     <div class="c">Four presidents have been assassinated in office<br>Sources in the caption</div>
   </div>
+  <canvas id="gfx"></canvas>
 </div>
 <script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
 <script type="module" src="./main.js"></script>

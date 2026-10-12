@@ -14,6 +14,6 @@ What the video covers:
 • If more than one office were empty, the Presidential Succession Act orders the line: Speaker of the House, then the Senate's President pro tempore, then the Cabinet.
 • History: eight presidents have died in office, and four were assassinated: Lincoln, Garfield, McKinley and Kennedy.
 
-What would you want to see explained next? 👇
+Did you know all of this? Comment YES or NO 👇
 
 #history #politics #usa #civics #whatif #constitution #explained #fyp #shorts

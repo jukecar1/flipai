@@ -8,6 +8,9 @@ def bell(t0,amp=0.5):
 bells="+".join(bell(t) for t in [4.4,13.8,24.8,34.2,44.8])
 sirenenv="min(max((t-13.6)/3,0),1)*(1-min(max((t-26.5)/3,0),1))"
 siren=f"{sirenenv}*(0.5*sin(2*PI*880*t+70*sin(2*PI*1.7*t))+0.4*sin(2*PI*1180*t+60*sin(2*PI*2.6*t)))"
+taps=[4.6,14.0,25.2,34.4,45.2,57.0,57.9,58.7,61.9]
+clicks="+".join(f"gt(t,{c:.3f})*lt(t,{c+0.05:.3f})*0.9*exp(-{M(c)}*90)*{N(60+i)}" for i,c in enumerate(taps))
+type_="gt(t,5.7)*lt(t,9.0)*lt(mod(t,0.0333),0.004)*0.45*"+N(31)
 ticks=f"gt(t,35.4)*lt(t,43.4)*gt(random(11),0.985)*exp(-mod(t,0.0125)*400)*{N(12)}"
 inputs=[
  f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=3",
@@ -15,6 +18,7 @@ inputs=[
  f"aevalsrc='{bells}':s=44100:d={D}",
  f"aevalsrc='{siren}':s=44100:d={D}",
  f"aevalsrc='{ticks}':s=44100:d={D}",
+ f"aevalsrc='{clicks}+{type_}':s=44100:d={D}",
  f"anoisesrc=d={D}:c=brown:r=44100:a=1:seed=9",
 ]
 fc=("[0]lowpass=f=260,volume=0.35[bed];"
@@ -22,8 +26,9 @@ fc=("[0]lowpass=f=260,volume=0.35[bed];"
     "[2]lowpass=f=1800,volume=0.55[bl];"
     "[3]highpass=f=500,lowpass=f=2600,volume=0.12[sir];"
     "[4]highpass=f=1500,volume=0.5[tk];"
-    "[5]lowpass=f=120,volume='0.35*min(max((t-14)/2,0),1)*(1-min(max((t-27)/3,0),1))':eval=frame[eng];"
-    "[bed][wind][bl][sir][tk][eng]amix=inputs=6:normalize=0,highpass=f=25[o]")
+    "[5]highpass=f=1200,lowpass=f=5500,volume=0.7[ui];"
+    "[6]lowpass=f=120,volume='0.35*min(max((t-14)/2,0),1)*(1-min(max((t-27)/3,0),1))':eval=frame[eng];"
+    "[bed][wind][bl][sir][tk][eng][ui]amix=inputs=7:normalize=0,highpass=f=25[o]")
 cmd=["ffmpeg","-v","error","-y"]
 for i in inputs: cmd+=["-f","lavfi","-i",i]
 cmd+=["-filter_complex",fc,"-map","[o]","-ar","44100","-c:a","pcm_f32le","raw.wav"]
