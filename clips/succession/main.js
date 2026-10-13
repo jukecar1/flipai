@@ -379,10 +379,10 @@ function drawLadder(T, k) {
 }
 function drawPoll(T, k) {
   const a = sm(61.0, 61.5, T); if (a <= 0.01) return;
-  gc.save(); gc.globalAlpha = a; label('DID YOU KNOW ALL OF THIS?', 270 * k, 640 * k, 11 * k, 0.9, 'center', 700, 2.4 * k);
-  const btn = (cx, txt, picked) => { const w = 150 * k, h = 50 * k, x = cx * k - w / 2, y = 662 * k; gc.fillStyle = picked ? `rgba(${GOLD},.85)` : 'rgba(20,24,32,.7)'; rr(x, y, w, h, 25 * k); gc.fill(); gc.strokeStyle = `rgba(${INK},${picked ? 0.9 : 0.3})`; gc.lineWidth = 1.4 * k; rr(x, y, w, h, 25 * k); gc.stroke(); gc.fillStyle = picked ? '#16181e' : `rgba(${INK},.95)`; gc.font = `700 ${15 * k}px ${SANS}`; gc.textAlign = 'center'; gc.textBaseline = 'middle'; if ('letterSpacing' in gc) gc.letterSpacing = 2 * k + 'px'; gc.fillText(txt, cx * k, y + h / 2 + 1 * k); };
+  gc.save(); gc.globalAlpha = a; label('DID YOU KNOW ALL OF THIS?', 270 * k, 712 * k, 11 * k, 0.9, 'center', 700, 2.4 * k);
+  const btn = (cx, txt, picked) => { const w = 150 * k, h = 50 * k, x = cx * k - w / 2, y = 732 * k; gc.fillStyle = picked ? `rgba(${GOLD},.85)` : 'rgba(20,24,32,.7)'; rr(x, y, w, h, 25 * k); gc.fill(); gc.strokeStyle = `rgba(${INK},${picked ? 0.9 : 0.3})`; gc.lineWidth = 1.4 * k; rr(x, y, w, h, 25 * k); gc.stroke(); gc.fillStyle = picked ? '#16181e' : `rgba(${INK},.95)`; gc.font = `700 ${15 * k}px ${SANS}`; gc.textAlign = 'center'; gc.textBaseline = 'middle'; if ('letterSpacing' in gc) gc.letterSpacing = 2 * k + 'px'; gc.fillText(txt, cx * k, y + h / 2 + 1 * k); };
   const tap = 61.9; btn(190, 'YES', T >= tap + 0.12); btn(350, 'NO', false);
-  const d = T - tap, u = smooth((T - 61.55) / 0.35); const cx0 = 270, cy0 = 735; const curx = lerp(cx0, 196, u) * k, cury = lerp(cy0, 690, u) * k; cursor(curx, cury, d > 0 && d < 0.3 ? Math.sin(d / 0.3 * Math.PI) : 0); if (d > 0.1 && d < 0.8) ripple(190 * k, 687 * k, (d - 0.1) / 0.7);
+  const d = T - tap, u = smooth((T - 61.55) / 0.35); const cx0 = 270, cy0 = 840; const curx = lerp(cx0, 196, u) * k, cury = lerp(cy0, 760, u) * k; cursor(curx, cury, d > 0 && d < 0.3 ? Math.sin(d / 0.3 * Math.PI) : 0); if (d > 0.1 && d < 0.8) ripple(190 * k, 757 * k, (d - 0.1) / 0.7);
   gc.restore();
 }
 function drawGfx(T) { const k = gfx.width / 540; gc.clearRect(0, 0, gfx.width, gfx.height); drawQuote(T, k); drawClock(T, k); drawLadder(T, k); drawPoll(T, k); drawTimeline(T, k); }
