@@ -142,4 +142,13 @@ h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.01em; }
 .assistant form { display: flex; gap: 6px; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
 .assistant form input { flex: 1; min-width: 0; padding: .6rem .8rem; border: 2px solid var(--line); border-radius: 999px; font: 500 1rem var(--body); }
 
+/* Scroll effects */
+.progress { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 3px; z-index: 60; pointer-events: none; }
+.progress i { display: block; height: 100%; background: var(--brass); transform: scaleX(0); transform-origin: 0 50%; }
+.rv-on .reveal-t { opacity: 0; transform: translateY(30px); transition: opacity .7s cubic-bezier(.2,.7,.2,1) var(--d, 0ms), transform .7s cubic-bezier(.2,.7,.2,1) var(--d, 0ms); }
+.rv-on .reveal-t.in { opacity: 1; transform: none; }
+.hero-art .a1 { translate: 0 calc(var(--sy, 0) * -0.05px); } .hero-art .a2 { translate: 0 calc(var(--sy, 0) * -0.11px); } .hero-art .a3 { translate: 0 calc(var(--sy, 0) * -0.17px); }
+.hero-copy { translate: 0 calc(var(--sy, 0) * 0.08px); }
+.marquee-track { animation-duration: 38s; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

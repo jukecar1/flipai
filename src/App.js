@@ -1,11 +1,13 @@
 import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
+import ScrollFX from './ScrollFX';
 import { Home, Showroom, Financing, Faq, Contact } from './pages';
 
 export default function App() {
   return (
     <>
+      <ScrollFX />
       <Header />
       <main>
         <Routes>
