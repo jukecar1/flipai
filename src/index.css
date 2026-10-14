@@ -1,10 +1,11 @@
 :root {
-  --red: #b80f1d; --red-dk: #8f0b16; --ink: #1d1a18; --muted: #5f5750;
-  --bg: #fbf8f3; --alt: #f4efe7; --card: #fff; --line: #e6dfd4; --blue: #1f5f7a; --gold: #f2c230;
+  --ink: #0f1b2d; --ink2: #18283f; --paper: #eef0ed; --card: #fff; --line: #d5d9d3;
+  --red: #c8102e; --red-dk: #9c0b22; --brass: #d9a441; --blue: #1f5f7a; --muted: #566170; --on-dark: #c9d1dc;
+  --display: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+  --body: Figtree, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-img { max-width: 100%; }
+body { margin: 0; font-family: var(--body); background: var(--paper); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
 a { color: var(--red); text-decoration: none; }
 a:hover { text-decoration: underline; }

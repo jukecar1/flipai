@@ -16,22 +16,22 @@ export const STORE = {
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
 
-// `tone` drives the placeholder artwork until real product photos are supplied.
+// tint/ink/accent color the placeholder illustrations until real product photos are supplied.
 export const CATEGORIES = [
-  { id: 'living', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.', tone: '#8a6f55' },
-  { id: 'bedroom', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.', tone: '#3f6670' },
-  { id: 'dining', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.', tone: '#4a3b34' },
-  { id: 'office', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.', tone: '#6b7f8c' },
-  { id: 'accent', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.', tone: '#a58f78' },
-  { id: 'entry', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.', tone: '#5d7a86' },
-  { id: 'kids', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.', tone: '#2f4f86' },
-  { id: 'outdoor', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.', tone: '#58704a' },
-  { id: 'mattress', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.', tone: '#9aa3ad' },
-  { id: 'decor', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.', tone: '#b49a6c' },
-  { id: 'rugs', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.', tone: '#7d8794' },
-  { id: 'lighting', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.', tone: '#c2a45a' },
-  { id: 'storage', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.', tone: '#9a6a3a' },
-  { id: 'appliances', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.', tone: '#7c8790' },
+  { id: 'living', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.', tint: '#e8dccb', ink: '#4a3a2c', accent: '#c8102e' },
+  { id: 'bedroom', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.', tint: '#d6e4e8', ink: '#1f4c5a', accent: '#c8102e' },
+  { id: 'dining', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.', tint: '#e6d9d2', ink: '#3b2c26', accent: '#d9a441' },
+  { id: 'office', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.', tint: '#dfe5ea', ink: '#2a3a4a', accent: '#d9a441' },
+  { id: 'accent', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.', tint: '#efe4d3', ink: '#5b4a36', accent: '#1f5f7a' },
+  { id: 'entry', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.', tint: '#dce6ea', ink: '#27475a', accent: '#c8102e' },
+  { id: 'kids', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.', tint: '#dbe4f4', ink: '#22407a', accent: '#d9a441' },
+  { id: 'outdoor', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.', tint: '#dde8d6', ink: '#33502a', accent: '#c8102e' },
+  { id: 'mattress', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.', tint: '#e4e7ec', ink: '#2c3646', accent: '#1f5f7a' },
+  { id: 'decor', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.', tint: '#efe6d2', ink: '#5a4620', accent: '#1f5f7a' },
+  { id: 'rugs', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.', tint: '#e2e5ea', ink: '#34404f', accent: '#c8102e' },
+  { id: 'lighting', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.', tint: '#f3e8c8', ink: '#4d3d14', accent: '#c8102e' },
+  { id: 'storage', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.', tint: '#ecdcc7', ink: '#5a3a18', accent: '#1f5f7a' },
+  { id: 'appliances', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.', tint: '#e1e6ea', ink: '#243240', accent: '#c8102e' },
 ];
 
 // Starter catalog. Replace names, photos and notes with real inventory;
@@ -53,7 +53,7 @@ export const PRODUCTS = [
   { id: 'p14', cat: 'rugs', name: '5x7 Area Rug', note: 'Multiple patterns and sizes.' },
   { id: 'p15', cat: 'lighting', name: 'Floor Lamp', note: 'Modern and traditional looks.' },
   { id: 'p16', cat: 'appliances', name: 'French Door Refrigerator', note: 'Stainless finishes, ask about models.' },
-  { id: 'p17', cat: 'appliances', name: 'Washer & Dryer Pair', note: 'Front-load and top-load options.' },
+  { id: 'p17', cat: 'appliances', shape: 'washer', name: 'Washer & Dryer Pair', note: 'Front-load and top-load options.' },
   { id: 'p18', cat: 'appliances', name: 'Range & Cooktop', note: 'Gas and electric on the floor.' },
 ];
 
@@ -71,3 +71,16 @@ export const FAQS = [
   ['Can I see items in person before I buy?', 'Absolutely. Come see the floor and our team will help you compare sizes, features and fit.'],
   ['What is the price?', 'Pricing and purchase options change with inventory. Call or visit to confirm current pricing.'],
 ];
+
+const HOURS = { 0: [10, 18], 1: [10, 19], 2: [10, 19], 3: [10, 19], 4: [10, 19], 5: [10, 19], 6: [10, 19] };
+
+// Pensacola is on Central time, so compute open/closed there regardless of the visitor's zone.
+export function openStatus(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'));
+  const t = (Number(get('hour')) % 24) + Number(get('minute')) / 60;
+  const [o, c] = HOURS[day];
+  if (t >= o && t < c) return { open: true, text: `Open now · until ${c > 12 ? c - 12 : c} PM` };
+  return { open: false, text: t < o ? `Closed · opens ${o} AM today` : 'Closed · opens 10 AM' };
+}

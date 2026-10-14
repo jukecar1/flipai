@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { STORE, MAPS_URL, FAQS } from './data';
+import { Icon } from './ui';
 
 const NAV = [
   ['/', 'Home'],
@@ -13,7 +14,7 @@ const NAV = [
 export function Logo({ light }) {
   return (
     <Link to="/" className={'logo' + (light ? ' logo-light' : '')} aria-label="Royal Appliance Outlet home">
-      <span className="logo-crown" aria-hidden="true">♛</span>
+      <svg className="logo-crown" width="26" height="20" viewBox="0 0 26 20" aria-hidden="true"><path d="M2 17 0 5l7 5 6-9 6 9 7-5-2 12z" fill="currentColor" /></svg>
       <span className="logo-text">
         <strong>Royal</strong>
         <small>Appliance Outlet &amp; Furniture</small>
@@ -41,9 +42,9 @@ export function Header() {
         </nav>
         <div className="header-actions">
           <a className="btn btn-primary btn-sm" href={`tel:${STORE.tel}`}>
-            <span aria-hidden="true">📞</span>
+            <Icon name="phone" />
             <span className="hide-sm">{STORE.phone}</span>
-            <span className="show-sm-only sr-only">Call</span>
+            <span className="sr-only">Call</span>
           </a>
           <button
             className="btn btn-ghost btn-sm menu-btn"
@@ -51,7 +52,7 @@ export function Header() {
             aria-label="Menu"
             onClick={() => setOpen(!open)}
           >
-            {open ? '✕' : '☰'}
+            <span className={'burger' + (open ? ' x' : '')} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -64,7 +65,7 @@ export function Footer() {
     <footer className="footer">
       <div className="container footer-grid">
         <div>
-          <Logo />
+          <Logo light />
           <p className="muted">A local furniture and appliance showroom with expert help in store on N Pace Boulevard.</p>
         </div>
         <div>
@@ -147,7 +148,7 @@ export function Assistant() {
         </div>
       )}
       <button className="btn btn-primary assistant-fab" onClick={() => setOpen(!open)}>
-        💬 Royal Assistant
+        <Icon name="chat" /> Royal Assistant
       </button>
     </div>
   );
