@@ -336,3 +336,10 @@ p a:not(.btn):not(.link):not(.a-link) { text-decoration: underline; text-underli
 .consent-open .totop { bottom: 124px; } .compare-open .totop { bottom: 98px; } @media (min-width: 700px) { .consent-open .totop { bottom: 84px; } }
 
 .btn-block { width: 100%; }
+
+/* rail cards snap with a left gutter instead of flush against the edge */
+.rail { scroll-padding-left: max(20px, calc((100vw - 1180px) / 2 + 20px)); scroll-padding-right: 20px; }
+/* back to top sits above the assistant on the right, so it never covers content buttons */
+.totop { left: auto; right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(78px + env(safe-area-inset-bottom, 0px)); width: 44px; height: 44px; }
+.consent-open .totop { bottom: calc(176px + env(safe-area-inset-bottom, 0px)); } .compare-open .totop { bottom: calc(156px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 700px) { .consent-open .totop { bottom: calc(136px + env(safe-area-inset-bottom, 0px)); } }
