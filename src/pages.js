@@ -10,6 +10,21 @@ PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+function FinCards() {
+  return (
+    <div className="fin-grid">
+      {FINANCING.map((f) => (
+        <div className="fin-card" key={f.name}>
+          <div className={'fin-logo' + (f.logo ? '' : ' pending')}>
+            {f.logo ? <img src={f.logo} alt={f.name} /> : <span><b>{f.name}</b><small>logo to add</small></span>}
+          </div>
+          <p>{f.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ReviewCard({ r }) {
   return (
     <figure className="rcard">
@@ -125,40 +140,16 @@ export function Home() {
       </section>
 
       <section className="dark-band">
-        <div className="container split">
-          <div>
-            <p className="eyebrow">Flexible ways to shop</p>
-            <h2>Financing and lease-to-own</h2>
-            <p className="lead">Learn about Synchrony, Snap Leasing and Acima Leasing. Approval, eligibility and terms vary.</p>
+        <div className="container">
+          <div className="fin-head">
+            <div>
+              <p className="eyebrow">Flexible ways to shop</p>
+              <h2>Financing and lease-to-own</h2>
+              <p className="lead">Approval, eligibility and terms vary by provider.</p>
+            </div>
             <Link className="btn btn-gold" to="/financing">View financing options</Link>
           </div>
-          <ul className="providers">
-            {FINANCING.map((f) => <li key={f.name}><b>{f.name}</b><span>{f.text}</span></li>)}
-          </ul>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="container split reviews">
-          <div>
-            <p className="eyebrow dark">Reviews</p>
-            <div className="score">{STORE.rating}</div>
-            <Stars />
-            <p className="muted">{STORE.reviews} reviews on Google</p>
-            <Link className="link" to="/reviews">Read reviews <Icon name="arrow" size={16} /></Link>
-          </div>
-          <div className="themes">
-            {[
-              ['Competitive prices', 'Shoppers often mention finding what they needed for less.'],
-              ['Friendly service', 'Reviewers regularly highlight helpful, no-pressure staff.'],
-              ['Wide selection', 'A rotating floor of appliances and furniture for every room.'],
-            ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
-            <p className="small muted">Summarized review themes, not individual customer quotes.</p>
-          </div>
-        </div>
-        <div className="container">
-          <div className="review-grid">{reviews.slice(0, 3).map((r, i) => <ReviewCard r={r} key={i} />)}</div>
-          <SampleNote />
+          <FinCards />
         </div>
       </section>
 
@@ -234,7 +225,7 @@ export function Collection() {
         <div className="container">
           <BackLink to="/showroom" label="showroom" />
           <p className="crumb"><Link to="/showroom">Showroom</Link> / {dept.name}</p>
-          <h1 className="h1-sm">{dept.name}</h1>
+          <h1 className="h1-sm caps">{dept.name}</h1>
           <p className="lead">{dept.blurb}</p>
         </div>
       </section>
@@ -435,10 +426,8 @@ export function Financing() {
       </section>
       <section className="section">
         <div className="container narrow">
-          <div className="three">
-            {FINANCING.map((f) => <div className="theme" key={f.name}><h3>{f.name}</h3><p>{f.text}</p></div>)}
-          </div>
-          <p>Ask our team in store which option fits your situation and we'll walk you through the next steps.</p>
+          <FinCards />
+          <p style={{ marginTop: '1.5rem' }}>Ask our team in store which option fits your situation and we'll walk you through the next steps.</p>
           <CallButtons />
         </div>
       </section>
