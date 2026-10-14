@@ -8,11 +8,12 @@ import reviews from './reviews.json';
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
-// Main departments first, then everything else by how many items it holds.
-const PINNED = ['appliances', 'living', 'bedroom', 'dining'];
+// Appliances and furniture come first; decor, lighting and rugs follow. Each group runs from most to fewest items.
+const ACCESSORIES = ['decor', 'lighting', 'rugs'];
+const byCount = (a, b) => COUNTS[b.id] - COUNTS[a.id] || a.name.localeCompare(b.name);
 const SORTED = [
-  ...PINNED.map((id) => CATEGORIES.find((c) => c.id === id)),
-  ...CATEGORIES.filter((c) => !PINNED.includes(c.id)).sort((a, b) => COUNTS[b.id] - COUNTS[a.id] || a.name.localeCompare(b.name)),
+  ...CATEGORIES.filter((c) => !ACCESSORIES.includes(c.id)).sort(byCount),
+  ...CATEGORIES.filter((c) => ACCESSORIES.includes(c.id)).sort(byCount),
 ];
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -67,7 +68,7 @@ function ProductCard({ p }) {
 }
 
 function Mosaic() {
-  const big = new Set(['appliances', 'living']);
+  const big = new Set(['appliances', 'bedroom']);
   return (
     <div className="mosaic">
       {SORTED.map((c) => (
