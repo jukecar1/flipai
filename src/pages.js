@@ -228,7 +228,7 @@ export function Collection() {
     return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
   }, [all]);
   const items = useMemo(() => {
-    const list = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
+    const list = all.filter((x) => (!type || x.type === type) && `${x.name} ${x.type}`.toLowerCase().includes(q.trim().toLowerCase()));
     if (sort === 'featured') return list;
     if (sort === 'popular') return [...list].sort((a, b) => (popularRank(a) === popularRank(b) ? tier(a) - tier(b) : popularRank(a) - popularRank(b)));
     if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
