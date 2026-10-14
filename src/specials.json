@@ -1,12 +1,12 @@
 [
  {
   "text": "New sectionals on the floor",
-  "to": "/showroom/living",
+  "to": "/showroom/living?type=Sectionals",
   "sample": true
  },
  {
   "text": "Washer and dryer pairs",
-  "to": "/showroom/appliances",
+  "to": "/showroom/appliances?type=Washers",
   "sample": true
  },
  {
@@ -16,7 +16,7 @@
  },
  {
   "text": "Outdoor sets for the season",
-  "to": "/showroom/outdoor",
+  "to": "/showroom/outdoor?type=Outdoor%20Seating",
   "sample": true
  }
 ]

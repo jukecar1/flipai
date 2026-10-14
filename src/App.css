@@ -334,3 +334,5 @@ p a:not(.btn):not(.link):not(.a-link) { text-decoration: underline; text-underli
 .prod-type { font-size: .76rem; color: var(--muted); font-weight: 500; }
 .totop { position: fixed; left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 47; width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; color: var(--ink); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(var(--ink-rgb), .2); cursor: pointer; } .totop svg { transform: rotate(-90deg); }
 .consent-open .totop { bottom: 124px; } .compare-open .totop { bottom: 98px; } @media (min-width: 700px) { .consent-open .totop { bottom: 84px; } }
+
+.btn-block { width: 100%; }

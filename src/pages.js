@@ -144,13 +144,10 @@ export function Home() {
   usePageMeta('', 'Furniture and appliances for every room at Royal Appliance Outlet on N Pace Blvd in Pensacola, FL. Browse the showroom, ask about financing, and visit us seven days a week.');
   const status = openStatus();
   const featured = useMemo(() => {
-    const seen = {};
-    const out = [];
-    BEST_SELLERS.forEach((x) => {
-      seen[x.cat] = seen[x.cat] || 0;
-      if (seen[x.cat] < 1) { seen[x.cat] += 1; out.push(x); }
-    });
-    return out;
+    const byCat = {};
+    BEST_SELLERS.forEach((x) => { (byCat[x.cat] = byCat[x.cat] || []).push(x); });
+    const out = Object.values(byCat).map((list) => list.find((x) => x.price != null) || list[0]);
+    return out.sort((a, b) => (a.price == null) - (b.price == null));
   }, []);
   return (
     <>
@@ -275,7 +272,7 @@ export function Showroom() {
 }
 
 const PAGE = 24;
-const SORTS = [...(HAS_POPULAR ? [['popular', 'Most popular']] : []), ['featured', 'Featured'], ['az', 'Name A to Z'], ['low', 'Price: Low to High'], ['high', 'Price: High to Low']];
+const SORTS = [['popular', HAS_POPULAR ? 'Most popular' : 'Recommended'], ['low', 'Price: Low to High'], ['high', 'Price: High to Low'], ['az', 'Name A to Z'], ['za', 'Name Z to A']];
 
 export function Collection() {
   const { cat } = useParams();
@@ -283,10 +280,9 @@ export function Collection() {
   usePageMeta(dept?.name, dept ? `${dept.name} at Royal Appliance Outlet in Pensacola, FL: ${COUNTS[dept.id]} items. ${dept.blurb} Call (850) 741-4143 to confirm availability.` : '');
   const [params, setParams] = useSearchParams();
   const loc = useLocation();
-  const DEFAULT_SORT = HAS_POPULAR ? 'popular' : 'featured';
+  const DEFAULT_SORT = 'popular';
   const q = params.get('q') || '';
   const type = params.get('type') || '';
-  const sort = params.get('sort') || DEFAULT_SORT;
   const [note, setNote] = useState(true);
   const [shown, setShown] = useState(PAGE);
 
@@ -311,13 +307,20 @@ export function Collection() {
     all.forEach((x) => { m[x.type] = (m[x.type] || 0) + 1; });
     return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
   }, [all]);
+  const pricedCount = useMemo(() => all.filter((x) => x.price != null).length, [all]);
+  // Price sorting only makes sense where several items list a price; otherwise the buttons are hidden.
+  const sorts = SORTS.filter(([v]) => (v !== 'low' && v !== 'high') || pricedCount >= 2);
+  const sort = sorts.some(([v]) => v === params.get('sort')) ? params.get('sort') : DEFAULT_SORT;
   const items = useMemo(() => {
     const list = all.filter((x) => (!type || x.type === type) && `${x.name} ${x.type}`.toLowerCase().includes(q.trim().toLowerCase()));
-    if (sort === 'featured') return list;
-    if (sort === 'popular') return [...list].sort((a, b) => (popularRank(a) === popularRank(b) ? tier(a) - tier(b) : popularRank(a) - popularRank(b)));
-    if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
-    const v = (x) => (x.price == null ? (sort === 'low' ? Infinity : -Infinity) : x.price);
-    return [...list].sort((a, b) => (sort === 'low' ? v(a) - v(b) : v(b) - v(a)));
+    const unpriced = (x) => (x.price == null ? 1 : 0);
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    if (sort === 'az') return [...list].sort(byName);
+    if (sort === 'za') return [...list].sort((a, b) => byName(b, a));
+    if (sort === 'low') return [...list].sort((a, b) => unpriced(a) - unpriced(b) || (a.price ?? 0) - (b.price ?? 0) || popularRank(a) - popularRank(b) || byName(a, b));
+    if (sort === 'high') return [...list].sort((a, b) => unpriced(a) - unpriced(b) || (b.price ?? 0) - (a.price ?? 0) || popularRank(a) - popularRank(b) || byName(a, b));
+    // Most popular: items with a listed price come first, then best sellers, then the rest.
+    return [...list].sort((a, b) => unpriced(a) - unpriced(b) || popularRank(a) - popularRank(b) || tier(a) - tier(b) || byName(a, b));
   }, [all, type, q, sort]);
 
   if (!dept) return <Showroom />;
@@ -370,7 +373,7 @@ export function Collection() {
             </div>
             <div className="sortbar" role="group" aria-label="Sort by">
               <span>Sort by</span>
-              {SORTS.map(([v, l]) => (
+              {sorts.map(([v, l]) => (
                 <button key={v} type="button" className={sort === v ? 'on' : ''} aria-pressed={sort === v} onClick={() => setSort(v)}>{l}</button>
               ))}
             </div>
@@ -481,7 +484,7 @@ export function ProductPage() {
   const viewed = recent.filter((id) => id !== p.id).map((id) => PRODUCTS[id]).filter(Boolean).slice(0, 4);
   const dept = CATEGORIES.find((c) => c.id === p.cat);
   const seen = new Set([p.name]);
-  const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
+  const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && x.id !== p.id).sort((a, b) => (a.price == null) - (b.price == null)).filter((x) => !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
   return (
     <>
       <section className="pp-bar">
@@ -500,10 +503,7 @@ export function ProductPage() {
             <p className="muted pp-note">Call or visit to confirm what is on the floor today.</p>
             <div className="pp-actions">
               <CallLink className="btn btn-primary btn-block"><Icon name="phone" /> Call {STORE.phone}</CallLink>
-              <div className="pp-two">
-                <TextLink className="btn btn-ghost" body={`Hi! I'm interested in ${p.name}. ${shareUrl(p)}`}><Icon name="chat" /> Text us</TextLink>
-                <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}${p.price == null ? '&ask=price' : ''}`}>{p.price == null ? 'Ask for price' : 'Ask a question'}</Link>
-              </div>
+              <TextLink className="btn btn-ghost btn-block" body={p.price == null ? `Hi! What is the price of ${p.name}? ${shareUrl(p)}` : `Hi! I'm interested in ${p.name}. ${shareUrl(p)}`}><Icon name="chat" /> {p.price == null ? 'Text us for the price' : 'Text us about this item'}</TextLink>
             </div>
             <div className="pp-tools" role="group" aria-label="More options">
               <button type="button" className={saved ? 'on' : ''} aria-pressed={saved} onClick={() => list.toggle(p.id)}><Icon name="heart" size={16} fill={saved} /> {saved ? 'Saved' : 'Save'}</button>
