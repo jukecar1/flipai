@@ -8,6 +8,13 @@ import reviews from './reviews.json';
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
+// Main departments first, then everything else by how many items it holds.
+const PINNED = ['appliances', 'living', 'bedroom', 'dining'];
+const SORTED = [
+  ...PINNED.map((id) => CATEGORIES.find((c) => c.id === id)),
+  ...CATEGORIES.filter((c) => !PINNED.includes(c.id)).sort((a, b) => COUNTS[b.id] - COUNTS[a.id] || a.name.localeCompare(b.name)),
+];
+
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function FinCards() {
@@ -17,6 +24,7 @@ function FinCards() {
         <div className="fin-card" key={f.name}>
           <div className={'fin-logo' + (f.logo ? '' : ' pending')}>
             {f.logo ? <img src={f.logo} alt={f.name} /> : <span><b>{f.name}</b><small>logo to add</small></span>}
+            {f.logoText && <b className="fin-name">{f.name}</b>}
           </div>
           <p>{f.text}</p>
         </div>
@@ -62,7 +70,7 @@ function Mosaic() {
   const big = new Set(['appliances', 'living']);
   return (
     <div className="mosaic">
-      {CATEGORIES.map((c) => (
+      {SORTED.map((c) => (
         <Link key={c.id} to={`/showroom/${c.id}`} className={'tile' + (big.has(c.id) ? ' big' : '') + (c.cutout ? ' cut' : '')}>
           <img src={imgUrl(c.img, 800)} alt="" loading="lazy" />
           <span className="tile-label"><b>{c.name}</b><small>{COUNTS[c.id]} items</small></span>
@@ -233,7 +241,7 @@ export function Collection() {
       </section>
       <div className="dept-bar">
         <div className="container pills" role="navigation" aria-label="Departments">
-          {CATEGORIES.map((c) => <NavLink key={c.id} to={`/showroom/${c.id}`}>{c.name}</NavLink>)}
+          {SORTED.map((c) => <NavLink key={c.id} to={`/showroom/${c.id}`}>{c.name}</NavLink>)}
         </div>
       </div>
       <section className="section tight">
@@ -241,7 +249,7 @@ export function Collection() {
           <aside className="side" aria-label="Filters">
             <h4>Departments</h4>
             <ul className="side-list">
-              {CATEGORIES.map((c) => (
+              {SORTED.map((c) => (
                 <li key={c.id}><NavLink to={`/showroom/${c.id}`}>{c.name}<small>{COUNTS[c.id]}</small></NavLink></li>
               ))}
             </ul>

@@ -48,7 +48,7 @@ export const CATEGORIES = [
 export const FINANCING = [
   { name: 'Synchrony', logo: '/img/fin-synchrony.png', text: 'Credit-based financing options for furniture and appliances.' },
   { name: 'Snap Leasing', logo: '/img/fin-snap.svg', text: 'Lease-to-own purchase option with flexible terms.' },
-  { name: 'Acima Leasing', text: 'Lease-to-own option that may suit different credit situations.' },
+  { name: 'Acima Leasing', logo: '/img/fin-acima.png', logoText: true, text: 'Lease-to-own option that may suit different credit situations.' },
 ];
 
 export const FAQS = [
