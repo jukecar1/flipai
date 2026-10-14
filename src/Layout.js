@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { STORE, MAPS_URL, FAQS, LOGO } from './data';
+import { STORE, MAPS_URL, FAQS } from './data';
+import { LOGO_SVG } from './logoSvg';
 import { Icon } from './ui';
 
 const NAV = [
@@ -13,8 +14,8 @@ const NAV = [
 
 export function Logo() {
   return (
-    <Link to="/" className="logo" aria-label="Royal Appliance Outlet home">
-      <img src={LOGO} alt="Royal Appliance Outlet &amp; Furniture" width="219" height="54" />
+    <Link to="/" className="logo" aria-label="Royal Appliance Outlet and Furniture, home">
+      <span className="logo-art" dangerouslySetInnerHTML={{ __html: LOGO_SVG }} />
     </Link>
   );
 }

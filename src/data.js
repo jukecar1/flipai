@@ -16,6 +16,8 @@ export const STORE = {
 export const STORE_PHOTO = '/img/store.jpg';
 export const LOGO = '/img/logo-white.svg';
 
+export const REVIEWS_URL = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('Royal Appliance Outlet, Pensacola, FL');
+
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
 
@@ -68,5 +70,5 @@ export function openStatus(now = new Date()) {
   const t = (Number(get('hour')) % 24) + Number(get('minute')) / 60;
   const [o, c] = HOURS[day];
   if (t >= o && t < c) return { open: true, text: `Open now · until ${c > 12 ? c - 12 : c} PM` };
-  return { open: false, text: t < o ? `Closed · opens ${o} AM today` : 'Closed · opens 10 AM' };
+  return { open: false, text: t < o ? `Closed · opens ${o} AM today` : 'Closed · opens 10 AM tomorrow' };
 }

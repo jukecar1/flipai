@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
 import ScrollFX from './ScrollFX';
+import PalettePicker from './PalettePicker';
 import { Home, Showroom, Collection, Financing, Faq, Contact } from './pages';
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
       </main>
       <Footer />
       <Assistant />
+      {typeof window !== 'undefined' && window.__PREVIEW && <PalettePicker />}
     </>
   );
 }

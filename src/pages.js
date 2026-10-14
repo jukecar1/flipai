@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
-import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, openStatus } from './data';
-import { PRODUCTS, money } from './products';
+import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
+import { PRODUCTS, money, HAS_POPULAR, popularRank } from './products';
 import { CallButtons, Icon, Stars, Modal } from './ui';
 
 const catName = (id) => CATEGORIES.find((c) => c.id === id)?.name;
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
+
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
@@ -88,10 +90,21 @@ export function Home() {
 
       <div className="container">
         <div className="glance">
-          <div><span className="k">Today</span><b className={status.open ? 'is-open' : ''}>{status.text}</b><small>Mon to Sat 10 to 7 · Sun 10 to 6</small></div>
-          <div><span className="k">Visit</span><b>1612 N Pace Blvd Suite 4</b><small>Pensacola, FL 32505</small></div>
-          <div><span className="k">Call</span><b><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></b><small>Expert help in store</small></div>
-          <div><span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews</small></div>
+          <Link to="/contact" className="gcard">
+            <span className="k">Today</span>
+            <b className={status.open ? 'is-open' : 'is-closed'}><i aria-hidden="true" />{status.open ? 'Open now' : 'Closed'}</b>
+            <small>{cap(status.text.split(' · ')[1])}</small>
+            <small>Mon to Sat 10 to 7 · Sun 10 to 6</small>
+          </Link>
+          <a className="gcard" href={MAPS_URL} target="_blank" rel="noreferrer">
+            <span className="k">Visit</span><b>1612 N Pace Blvd Suite 4</b><small>Pensacola, FL 32505 · Get directions</small>
+          </a>
+          <a className="gcard" href={`tel:${STORE.tel}`}>
+            <span className="k">Call</span><b>{STORE.phone}</b><small>Tap to call · Expert help in store</small>
+          </a>
+          <a className="gcard" href={REVIEWS_URL} target="_blank" rel="noreferrer">
+            <span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews</small>
+          </a>
         </div>
       </div>
 
@@ -185,19 +198,19 @@ export function Showroom() {
 }
 
 const PAGE = 24;
-const SORTS = [['featured', 'Featured'], ['az', 'Name A to Z'], ['low', 'Price: Low to High'], ['high', 'Price: High to Low']];
+const SORTS = [...(HAS_POPULAR ? [['popular', 'Most popular']] : []), ['featured', 'Featured'], ['az', 'Name A to Z'], ['low', 'Price: Low to High'], ['high', 'Price: High to Low']];
 
 export function Collection() {
   const { cat } = useParams();
   const dept = CATEGORIES.find((c) => c.id === cat);
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
-  const [sort, setSort] = useState('featured');
+  const [sort, setSort] = useState(HAS_POPULAR ? 'popular' : 'featured');
   const [note, setNote] = useState(true);
   const [shown, setShown] = useState(PAGE);
   const [open, setOpen] = useState(null);
 
-  useEffect(() => { setQ(''); setType(''); setSort('featured'); setShown(PAGE); }, [cat]);
+  useEffect(() => { setQ(''); setType(''); setSort(HAS_POPULAR ? 'popular' : 'featured'); setShown(PAGE); }, [cat]);
 
   const all = useMemo(() => PRODUCTS.filter((x) => x.cat === cat), [cat]);
   const types = useMemo(() => {
@@ -208,6 +221,7 @@ export function Collection() {
   const items = useMemo(() => {
     const list = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
     if (sort === 'featured') return list;
+    if (sort === 'popular') return [...list].sort((a, b) => popularRank(a) - popularRank(b));
     if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
     const v = (x) => (x.price == null ? (sort === 'low' ? Infinity : -Infinity) : x.price);
     return [...list].sort((a, b) => (sort === 'low' ? v(a) - v(b) : v(b) - v(a)));
