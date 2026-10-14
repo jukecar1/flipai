@@ -79,3 +79,6 @@ export const OTHER_STORES = [
   { k: 'Vape shop', title: 'Royal Vape Mart', text: 'Pensacola vape and smoke shop. Open daily 6 AM to 1 AM. Adults 21 and older only.', url: 'https://royalvapemart.com', phone: '', address: '8701 Gulf Beach Hwy, Pensacola' },
   { k: 'Car auction', title: 'Car auction', text: 'Vehicles bought and sold at auction.', url: '', phone: '', address: '' },
 ];
+
+// Texts go to the store's main number unless a separate texting number is set here. Confirm the line can receive texts.
+STORE.sms = STORE.tel;

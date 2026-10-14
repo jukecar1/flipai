@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, openStatus } from './data';
 import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
-import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
+import { CallButtons, CallLink, TextLink, BackLink, Icon, Stars, openSheet } from './ui';
+import { useCompare } from './compareStore';
+import { ABOUT } from './about';
+import { DELIVERY_DETAILS } from './delivery';
 import reviews from './reviews.json';
 import { FORM_ENDPOINT } from './config';
 import { usePageMeta } from './meta';
@@ -60,13 +63,15 @@ function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
 }
 
-function Price({ p }) {
+export function Price({ p }) {
   return p.price != null ? <span className="price">{money(p.price)}</span> : <span className="price call">Call for price</span>;
 }
 
 function ProductCard({ p }) {
   const list = useList();
+  const cmp = useCompare();
   const saved = list.has(p.id);
+  const comparing = cmp.has(p.id);
   return (
     <div className="prod">
       <Link to={productPath(p)} className="prod-link" aria-label={`View ${p.name}`}>
@@ -76,7 +81,12 @@ function ProductCard({ p }) {
       <button type="button" className={'heart' + (saved ? ' on' : '')} aria-pressed={saved} aria-label={saved ? `Remove ${p.name} from my list` : `Save ${p.name} to my list`} onClick={() => list.toggle(p.id)}>
         <Icon name="heart" size={18} fill={saved} />
       </button>
-      {p.price != null ? <span className="price">{money(p.price)}</span> : <Link className="ask" to={`/contact?item=${encodeURIComponent(p.name)}&ask=price`}>Ask for price</Link>}
+      <div className="prod-foot">
+        {p.price != null ? <span className="price">{money(p.price)}</span> : <Link className="ask" to={`/contact?item=${encodeURIComponent(p.name)}&ask=price`}>Ask for price</Link>}
+        <button type="button" className={'cmp' + (comparing ? ' on' : '')} aria-pressed={comparing} aria-label={comparing ? `Remove ${p.name} from compare` : `Compare ${p.name}`} onClick={() => cmp.toggle(p.id)}>
+          <Icon name={comparing ? 'check' : 'plus'} size={14} /> Compare
+        </button>
+      </div>
     </div>
   );
 }
@@ -91,6 +101,39 @@ function Mosaic() {
           <span className="tile-label"><b>{c.name}</b><small>{COUNTS[c.id]} items</small></span>
         </Link>
       ))}
+    </div>
+  );
+}
+
+function MapCard() {
+  const [live, setLive] = useState(false);
+  const preview = typeof window !== 'undefined' && window.__PREVIEW;
+  const src = `https://maps.google.com/maps?q=${encodeURIComponent(STORE.address)}&z=15&output=embed`;
+  return (
+    <div className="mapcard">
+      {live ? (
+        <iframe title="Map to Royal Appliance Outlet" src={src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+      ) : (
+        <div className="map-art">
+          <svg viewBox="0 0 600 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+            <g stroke="currentColor" fill="none" strokeLinecap="round">
+              <path d="M0 60H600M0 130H600M0 200H600M90 0V260M210 0V260M390 0V260M510 0V260" strokeWidth="1.5" opacity=".25" />
+              <path d="M-20 235L620 25" strokeWidth="9" opacity=".35" />
+              <path d="M300 -10V270" strokeWidth="6" opacity=".25" />
+            </g>
+          </svg>
+          <span className="map-pin" aria-hidden="true"><Icon name="pin" size={26} /></span>
+          <div className="map-cap">
+            <b>{STORE.name}</b>
+            <span>{STORE.address}</span>
+            <div className="btn-row tight">
+              <a className="btn btn-primary btn-sm" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" size={16} /> Get Directions</a>
+              {!preview && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLive(true)}>Show interactive map</button>}
+            </div>
+            {preview && <small className="muted">The interactive map appears on the live site.</small>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -149,6 +192,7 @@ export function Home() {
               <span className="k">This week</span>
               <ul>{specials.map((s) => <li key={s.text}>{s.to ? <Link to={s.to}>{s.text}</Link> : <span>{s.text}</span>}</li>)}</ul>
             </div>
+            <button type="button" className="btn btn-ghost btn-sm specials-join" onClick={() => openSheet('specials')}>Get weekly specials by text or email</button>
             {specials.some((s) => s.sample) && <p className="sample-note">Sample specials to show the layout. Replace them with this week's real specials.</p>}
           </div>
         </section>
@@ -204,6 +248,7 @@ export function Home() {
               <dt>Phone</dt><dd><CallLink>{STORE.phone}</CallLink></dd>
             </dl>
           </div>
+          <MapCard />
         </div>
       </section>
     </>
@@ -403,6 +448,7 @@ function ShareBox({ p }) {
 export function ProductPage() {
   const { slug } = useParams();
   const list = useList();
+  const cmp = useCompare();
   const p = PRODUCTS[parseInt(slug, 10)];
   usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
   if (!p) return <Showroom />;
@@ -430,7 +476,9 @@ export function ProductPage() {
               <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
               <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
               <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}${p.price == null ? '&ask=price' : ''}`}>{p.price == null ? 'Ask for price' : 'Ask about this item'}</Link>
+              <TextLink className="btn btn-ghost" body={`Hi! I'm interested in ${p.name}. ${shareUrl(p)}`}><Icon name="chat" /> Text about this item</TextLink>
               <button type="button" className={'btn btn-ghost' + (saved ? ' is-saved' : '')} aria-pressed={saved} onClick={() => list.toggle(p.id)}><Icon name="heart" size={18} fill={saved} /> {saved ? 'Saved to my list' : 'Save to my list'}</button>
+              <button type="button" className={'btn btn-ghost' + (cmp.has(p.id) ? ' is-on' : '')} aria-pressed={cmp.has(p.id)} onClick={() => cmp.toggle(p.id)}><Icon name={cmp.has(p.id) ? 'check' : 'plus'} size={18} /> {cmp.has(p.id) ? 'Added to compare' : 'Compare'}</button>
             </div>
             <dl className="info pp-facts">
               <dt>Collection</dt><dd>{dept?.name}</dd>
@@ -577,6 +625,97 @@ export function MyList() {
   );
 }
 
+export function About() {
+  usePageMeta('About us', 'Royal Appliance Outlet is a locally run furniture and appliance outlet on N Pace Blvd in Pensacola, FL, open seven days a week with expert help in store.');
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/" label="home" />
+          <p className="eyebrow">About us</p>
+          <h1 className="h1-sm">A local outlet for furniture and appliances</h1>
+          <p className="lead">Royal Appliance Outlet is a locally run showroom on N Pace Blvd in Pensacola. Come see the floor in person and our team will help you find the right fit.</p>
+        </div>
+      </section>
+      <section className="section">
+        <div className="container split">
+          <div>
+            <h2 className="h3 big">What you will find</h2>
+            <p>Furniture for every room, mattresses, rugs, lighting and decor, plus home appliances. Our floor changes weekly, so call or stop in and we will tell you what is on it today.</p>
+            <h2 className="h3 big">How we help</h2>
+            <p>Our team helps you compare sizes, features and fit, and talks through financing and lease-to-own options with Synchrony, Snap Finance and Acima Leasing.</p>
+            <h2 className="h3 big">Part of a local family of businesses</h2>
+            <p>The same owner also runs Royal Vape Mart and a car auction business. <Link to="/other-stores">See our other stores</Link>.</p>
+            {ABOUT.story.length > 0 && <><h2 className="h3 big">Our story</h2>{ABOUT.story.map((t) => <p key={t}>{t}</p>)}</>}
+          </div>
+          <div>
+            <img className="visit-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" width="1100" height="703" loading="lazy" />
+            <div className="visit-card" style={{ marginTop: 18 }}>
+              <dl className="info">
+                <dt>Address</dt><dd>{STORE.address}</dd>
+                <dt>Hours</dt><dd><Hours /></dd>
+                <dt>Rated</dt><dd>{STORE.rating} out of 5 from {STORE.reviews} Google reviews</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </section>
+      {ABOUT.team.length > 0 && (
+        <section className="section sand">
+          <div className="container">
+            <h2>Meet the team</h2>
+            <div className="three">{ABOUT.team.map((m) => <div className="theme" key={m.name}><h3>{m.name}</h3><p className="muted">{m.role}</p><p>{m.text}</p></div>)}</div>
+          </div>
+        </section>
+      )}
+      <section className="section tight"><div className="container"><CallButtons /></div></section>
+    </>
+  );
+}
+
+export function Delivery() {
+  usePageMeta('Delivery and pickup', 'Delivery and pickup at Royal Appliance Outlet in Pensacola, FL: what to measure before you buy and what to ask the store. Call to arrange delivery.');
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/" label="home" />
+          <p className="eyebrow">Getting it home</p>
+          <h1 className="h1-sm">Delivery and pickup</h1>
+          <p className="lead">Delivery and pickup are arranged with the store for the items you choose. Call or send us a message and we will confirm what is possible for you.</p>
+        </div>
+      </section>
+      <section className="section">
+        <div className="container narrow">
+          {DELIVERY_DETAILS.length > 0 && (
+            <div className="boxgrid two" style={{ marginBottom: '2.5rem' }}>
+              {DELIVERY_DETAILS.map((d) => <div className="gcard box static" key={d.k}><span className="k">{d.k}</span><b>{d.text}</b></div>)}
+            </div>
+          )}
+          <h2 className="h3 big">Before you buy, measure</h2>
+          <ul className="ticks">
+            <li>The space where the piece will go, including height for tall items.</li>
+            <li>Doorways, hallways, stair turns and elevators on the way in.</li>
+            <li>For appliances: width, height and depth of the opening, plus the power, gas or water hookups you have.</li>
+          </ul>
+          <h2 className="h3 big">What to ask us</h2>
+          <ul className="ticks">
+            <li>Whether we can deliver to your address, and when.</li>
+            <li>What delivery costs and whether set-up or installation is included.</li>
+            <li>Whether we can haul away an old appliance or piece of furniture.</li>
+            <li>How and when to pick up an item yourself.</li>
+          </ul>
+          <div className="btn-row">
+            <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
+            <TextLink className="btn btn-ghost" body="Hi! I have a question about delivery and pickup."><Icon name="chat" /> Text us</TextLink>
+            <Link className="btn btn-ghost" to="/contact?topic=delivery">Send a message</Link>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
 export function Financing() {
   usePageMeta('Financing', 'Ask about Synchrony, Snap Finance and Acima Leasing financing and lease-to-own options at Royal Appliance Outlet in Pensacola, FL. Approval and terms vary.');
   return (
@@ -622,9 +761,11 @@ export function Contact() {
   const [params] = useSearchParams();
   const item = params.get('item');
   const wantsPrice = params.get('ask') === 'price';
+  const topic = params.get('topic');
   const listNames = params.get('list') ? readList().map((id) => PRODUCTS[id] && PRODUCTS[id].name).filter(Boolean) : [];
   const start = listNames.length
     ? `I would like to ask about these items from my list:\n${listNames.map((n) => `- ${n}`).join('\n')}\n\n`
+    : topic === 'delivery' ? 'I have a question about delivery and pickup.\n\n'
     : item ? (wantsPrice ? `Could you tell me the price of: ${item}\n\n` : `I'm interested in: ${item}\n\n`) : '';
   const [f, setF] = useState({ name: '', phone: '', email: '', msg: start, _gotcha: '' });
   const [state, setState] = useState('idle'); // idle | sending | sent | error

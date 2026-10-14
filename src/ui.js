@@ -10,6 +10,8 @@ const PATHS = {
   chat: 'M4 5h16v11H9l-5 4z',
   mail: 'M3 6h18v12H3zM3 7l9 7 9-7',
   hand: 'M7 12V6a1.5 1.5 0 0 1 3 0v4m0 0V4.5a1.5 1.5 0 0 1 3 0V10m0 0V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5z',
+  plus: 'M12 5v14M5 12h14',
+  check: 'M5 12.5l4.5 4.5L19 7',
   heart: 'M12 20.5S3.5 15.2 3.5 9.1A4.6 4.6 0 0 1 12 6.7a4.6 4.6 0 0 1 8.5 2.4c0 6.1-8.5 11.4-8.5 11.4z',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
 };
@@ -23,7 +25,7 @@ export function Icon({ name, size = 18, fill }) {
 }
 
 // Opens the call / hours sheets (see Sheets.js) from anywhere on the page.
-export const openSheet = (kind) => window.dispatchEvent(new CustomEvent('royal-sheet', { detail: kind }));
+export const openSheet = (kind, data = {}) => window.dispatchEvent(new CustomEvent('royal-sheet', { detail: { kind, ...data } }));
 
 // A normal tel: link. In the shared preview, where phone links are unreliable, it opens the call sheet instead.
 export function CallLink({ children, ...rest }) {
@@ -32,6 +34,19 @@ export function CallLink({ children, ...rest }) {
       {...rest}
       href={`tel:${STORE.tel}`}
       onClick={(e) => { if (typeof window !== 'undefined' && window.__PREVIEW) { e.preventDefault(); openSheet('call'); } }}
+    >
+      {children}
+    </a>
+  );
+}
+
+// A normal sms: link. In the shared preview, where text links are unreliable, it opens the text sheet instead.
+export function TextLink({ body = 'Hi! I have a question for Royal Appliance Outlet.', children, ...rest }) {
+  return (
+    <a
+      {...rest}
+      href={`sms:${STORE.sms}?&body=${encodeURIComponent(body)}`}
+      onClick={(e) => { if (typeof window !== 'undefined' && window.__PREVIEW) { e.preventDefault(); openSheet('text', { body }); } }}
     >
       {children}
     </a>
@@ -53,6 +68,7 @@ export function CallButtons() {
     <div className="btn-row">
       <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
       <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
+      <TextLink className="btn btn-ghost"><Icon name="chat" /> Text us</TextLink>
     </div>
   );
 }

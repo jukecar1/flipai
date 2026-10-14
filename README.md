@@ -8,6 +8,11 @@ React site (Create React App). Run `npm start` for development and `npm run buil
   `REACT_APP_FORM_ENDPOINT=https://formspree.io/f/your-id npm run build`. Without it the form opens the visitor's email app.
 - **Visit counts (optional):** make a free site at goatcounter.com and build with `REACT_APP_ANALYTICS_URL=https://yourname.goatcounter.com/count`. It counts page and product views with no cookies, and the privacy text updates itself. The most viewed products are the real best sellers: put their names in `src/popular.json`.
 - **Weekly specials:** edit `src/specials.json` (text and an optional link). Remove the `sample` flags.
+- **Delivery details:** add the store's real delivery area, fees, timing and haul-away info to `src/delivery.js` (each entry becomes a box on the Delivery page).
+- **About page:** add the owner's story and team to `src/about.js`.
+- **Text number:** texts go to the main store number (`STORE.sms` in `src/data.js`). Confirm that line can receive texts, or set a separate number.
+- **Weekly specials signup:** the form sends through the same form service as the contact form. Sending the actual emails or texts needs a mailing or texting service the store chooses, and the store must keep the opt-in records.
+- **Map:** the live site shows a Google map when a visitor taps "Show interactive map", so no map cookies load until then.
 - **Best sellers:** `src/popular.json` is a demo list. Replace it with the store's real best-sellers (exact product names).
 - **Reviews:** `src/reviews.json` holds sample reviews. Replace them with real Google reviews and delete the `sample` flags.
 - **Catalog:** `src/products.json` was copied from the previous site (n name, c collection, t type, i image, p price).

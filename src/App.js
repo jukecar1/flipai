@@ -6,8 +6,9 @@ import { Icon } from './ui';
 import ScrollFX from './ScrollFX';
 import { Sheets } from './Sheets';
 import CookieNotice from './Consent';
+import { CompareBar, ComparePage } from './Compare';
 import { track } from './analytics';
-import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, MyList, LegalPage, Financing, Faq, Contact } from './pages';
+import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, MyList, About, Delivery, LegalPage, Financing, Faq, Contact } from './pages';
 
 // A closing call to action shown above the footer on every page except the one it points to.
 function StoresBand() {
@@ -60,6 +61,9 @@ export default function App() {
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/socials" element={<Socials />} />
           <Route path="/list" element={<MyList />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/delivery" element={<Delivery />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/other-stores" element={<OtherStores />} />
           <Route path="/privacy" element={<LegalPage kind="privacy" />} />
           <Route path="/cookies" element={<LegalPage kind="cookies" />} />
@@ -70,6 +74,7 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
+      <CompareBar />
       <StoresBand />
       <Footer />
       <Assistant />

@@ -39,3 +39,19 @@ export function shareUrl(p) {
   // The shared preview only passes simple anchors through, so it uses a short form; the real site uses the full route.
   return window.__PREVIEW ? `${base}#p-${p.id}` : `${base}#${productPath(p)}`;
 }
+
+// Key details read from a product's name (capacity, size, a few common features). Used on the compare page.
+const FEATURES = ['ENERGY STAR', 'Smart', 'Stainless', 'Fingerprint Resistant', 'Front Load', 'Top Load', 'Steam', 'Electric', 'Gas', 'Convection', 'Induction', 'Built-In', 'Slide-In', 'Freestanding', 'Wall Mount', 'Portable', 'Outdoor', 'Reclining', 'Power'];
+const SIZES = ['California King', 'Queen', 'King', 'Full', 'Twin'];
+export function keyDetails(p) {
+  const n = p.name;
+  const out = [];
+  let m = /(\d+(?:\.\d+)?)\s*cu\.?\s*ft/i.exec(n); if (m) out.push(`${m[1]} cu. ft.`);
+  m = /([\d,]{4,6})\s*BTU/i.exec(n); if (m) out.push(`${m[1]} BTU`);
+  m = /(\d+)\s*pint/i.exec(n); if (m) out.push(`${m[1]} pint`);
+  m = /(\d{2})\s*(?:"|”|in\b)/.exec(n); if (m) out.push(`${m[1]} in.`);
+  SIZES.forEach((s) => { if (new RegExp(`\\b${s}\\b`, 'i').test(n) && !out.some((x) => x.includes(s))) out.push(s); });
+  m = /set of (\d+)/i.exec(n); if (m) out.push(`Set of ${m[1]}`);
+  FEATURES.forEach((f) => { if (n.toLowerCase().includes(f.toLowerCase())) out.push(f); });
+  return out.slice(0, 7);
+}

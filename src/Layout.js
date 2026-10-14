@@ -13,6 +13,7 @@ const NAV = [
   ['/showroom', 'Showroom'],
   ['/financing', 'Financing'],
   ['/reviews', 'Reviews'],
+  ['/about', 'About'],
   ['/faq', 'FAQ'],
   ['/socials', 'Socials'],
   ['/contact', 'Contact'],
@@ -97,6 +98,7 @@ export function Footer() {
             {NAV.map(([to, label]) => (
               <li key={to}><Link to={to}>{label}</Link></li>
             ))}
+            <li><Link to="/delivery">Delivery and pickup</Link></li>
             <li><Link to="/other-stores">Our other stores</Link></li>
           </ul>
         </div>

@@ -86,7 +86,7 @@ export function reply(input) {
     return { text: `Customers rate us ${STORE.rating} out of 5 from ${STORE.reviews} Google reviews.`, link: { to: '/reviews', label: 'Read reviews' } };
   }
   if (has(q, /\b(deliver|delivery|pickup|pick up|ship|shipping|haul|install)/)) {
-    return { text: `Delivery and pickup options are best confirmed with the store. ${call}` };
+    return { text: `Delivery and pickup are arranged with the store for the items you choose. ${call}`, link: { to: '/delivery', label: 'Delivery and pickup' } };
   }
   if (has(q, /\b(return|warranty|exchange|refund)\b/)) {
     return { text: `Warranty and return details depend on the item. ${call}` };
