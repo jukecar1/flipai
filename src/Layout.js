@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { STORE, MAPS_URL, FAQS } from './data';
+import { STORE, MAPS_URL } from './data';
+import { reply } from './assistant';
+import { productPath, money } from './products';
 import { LOGO_SVG } from './logoSvg';
 import { Icon, CallLink } from './ui';
 import { openConsent } from './Consent';
@@ -69,7 +71,7 @@ export function Footer() {
           <p className="muted">A local furniture and appliance showroom with expert help in store on N Pace Boulevard.</p>
         </div>
         <div>
-          <h4>Visit and call</h4>
+          <h2 className="fh">Visit and call</h2>
           <ul className="plain">
             <li><CallLink>{STORE.phone}</CallLink></li>
             <li><a href={`mailto:${STORE.email}`}>{STORE.email}</a></li>
@@ -78,7 +80,7 @@ export function Footer() {
           </ul>
         </div>
         <div>
-          <h4>Hours</h4>
+          <h2 className="fh">Hours</h2>
           <ul className="plain">
             {STORE.hours.map(([d, h]) => (
               <li key={d}><strong>{d}:</strong> {h}</li>
@@ -87,7 +89,7 @@ export function Footer() {
           <p className="small muted">Hours may vary on holidays. Call ahead to confirm.</p>
         </div>
         <div>
-          <h4>Explore</h4>
+          <h2 className="fh">Explore</h2>
           <ul className="plain">
             {NAV.map(([to, label]) => (
               <li key={to}><Link to={to}>{label}</Link></li>
@@ -109,52 +111,74 @@ export function Footer() {
   );
 }
 
-// Lightweight FAQ assistant: matches keywords against the FAQ list. No backend needed.
+// Royal Assistant: answers store questions and searches the catalog (see assistant.js). It runs in the browser only.
+const CHIPS = ['Are you open now?', 'Find a washer', 'Sofas under $800', 'Financing', 'Directions'];
+
 export function Assistant() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([
-    { from: 'bot', text: 'Hi! I can answer quick questions about hours, location, financing and stock.' },
+    { from: 'bot', text: 'Hi! Ask me if we are open, how to find us, about financing, or for an item like a sofa, a washer or a mattress.' },
   ]);
   const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const bodyRef = useRef(null);
 
-  const answer = (q) => {
-    const words = q.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
-    let best = null;
-    let score = 0;
-    FAQS.forEach(([fq, fa]) => {
-      const hay = (fq + ' ' + fa).toLowerCase();
-      const s = words.filter((w) => hay.includes(w)).length;
-      if (s > score) { score = s; best = fa; }
-    });
-    return best || `I'm not sure about that one. Call us at ${STORE.phone} and our team will help.`;
-  };
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [msgs, busy, open]);
 
   const send = (q) => {
-    if (!q.trim()) return;
-    setMsgs((m) => [...m, { from: 'me', text: q }, { from: 'bot', text: answer(q) }]);
+    if (!q.trim() || busy) return;
+    setMsgs((m) => [...m, { from: 'me', text: q }]);
     setText('');
+    setBusy(true);
+    setTimeout(() => {
+      setMsgs((m) => [...m, { from: 'bot', ...reply(q) }]);
+      setBusy(false);
+    }, 450);
   };
+
+  const close = () => setOpen(false);
+  const linkEl = (k) => (k.to
+    ? <Link className="a-link" to={k.to} onClick={close}>{k.label} <Icon name="arrow" size={14} /></Link>
+    : <a className="a-link" href={k.href} {...(k.ext ? { target: '_blank', rel: 'noreferrer' } : {})}>{k.label} <Icon name="arrow" size={14} /></a>);
 
   return (
     <div className="assistant">
       {open && (
         <div className="assistant-panel" role="dialog" aria-label="Royal Assistant">
-          <div className="assistant-head">Royal Assistant</div>
-          <div className="assistant-body">
-            {msgs.map((m, i) => <p key={i} className={'bubble ' + m.from}>{m.text}</p>)}
+          <div className="assistant-head"><span>Royal Assistant</span><button type="button" aria-label="Close assistant" onClick={close}>×</button></div>
+          <div className="assistant-body" ref={bodyRef} aria-live="polite">
+            {msgs.map((m, i) => (
+              <div key={i} className={'bubble ' + m.from}>
+                <p>{m.text}</p>
+                {m.products && (
+                  <ul className="a-prods">
+                    {m.products.map((p) => (
+                      <li key={p.id}>
+                        <Link to={productPath(p)} onClick={close}>
+                          <span className="a-name">{p.name}</span>
+                          <span className="a-price">{p.price != null ? money(p.price) : 'Call for price'}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {m.link && linkEl(m.link)}
+              </div>
+            ))}
+            {busy && <div className="bubble bot typing" aria-label="Typing"><i /><i /><i /></div>}
           </div>
           <div className="chips">
-            {['Hours', 'Financing', 'Location'].map((c) => (
-              <button key={c} onClick={() => send(c)}>{c}</button>
-            ))}
+            {CHIPS.map((c) => <button key={c} type="button" onClick={() => send(c)}>{c}</button>)}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); send(text); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask a question…" aria-label="Your question" />
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask a question" aria-label="Your question" />
             <button className="btn btn-primary btn-sm" type="submit">Send</button>
           </form>
         </div>
       )}
-      <button className="btn btn-primary assistant-fab" onClick={() => setOpen(!open)}>
+      <button className="btn btn-primary assistant-fab" aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon name="chat" /> Royal Assistant
       </button>
     </div>

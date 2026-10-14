@@ -13,7 +13,7 @@ function StoresBand() {
   const { pathname } = useLocation();
   if (pathname === '/other-stores') return null;
   return (
-    <section className="stores-band">
+    <section className="stores-band" aria-label="Our other stores">
       <div className="container">
         <Link to="/other-stores" className="bigbox">
           <span className="k">Same owner</span>

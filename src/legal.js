@@ -49,7 +49,7 @@ export const LEGAL = {
       ] },
       { h: 'What is stored today' },
       { ul: ['royal_cookie_consent: local storage, first party. Stores your cookie choice so the notice is not shown again. Kept until you change your choice or clear browser data.'] },
-      { p: 'Your browser, our hosting provider and the outside servers that deliver product photos and fonts may also handle standard technical data, such as an IP address, needed to deliver pages.' },
+      { p: 'Your browser, our hosting provider and the outside servers that deliver product photos and fonts may also handle standard technical data, such as an IP address, needed to deliver pages. The image servers of the manufacturers and their retail platforms can set their own cookies when a photo loads. We do not control those servers and we do not use them for tracking.' },
       { h: 'Changing your mind' },
       { p: 'You can update your choice any time with the "Cookie preferences" link in the footer, and you can clear cookies and local storage in your browser settings.' },
       { h: 'Questions' },

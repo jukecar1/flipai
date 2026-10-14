@@ -65,7 +65,7 @@ function Price({ p }) {
 function ProductCard({ p }) {
   return (
     <Link to={productPath(p)} className="prod" aria-label={`View ${p.name}`}>
-      <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} alt="" loading="lazy" decoding="async" /></span>
+      <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
       <span className="prod-name">{p.name}</span>
       <Price p={p} />
     </Link>
@@ -78,7 +78,7 @@ function Mosaic() {
     <div className="mosaic">
       {SORTED.map((c) => (
         <Link key={c.id} to={`/showroom/${c.id}`} className={'tile' + (big.has(c.id) ? ' big' : '') + (c.cutout ? ' cut' : '')}>
-          <img src={imgUrl(c.img, 800)} alt="" loading="lazy" />
+          <img src={imgUrl(c.img, 800)} srcSet={`${imgUrl(c.img, 480)} 480w, ${imgUrl(c.img, 800)} 800w`} sizes="(min-width: 900px) 30vw, 100vw" alt="" loading="lazy" width="800" height="800" />
           <span className="tile-label"><b>{c.name}</b><small>{COUNTS[c.id]} items</small></span>
         </Link>
       ))}
@@ -101,7 +101,7 @@ export function Home() {
   return (
     <>
       <section className="hero">
-        <img className="hero-bg" src={STORE_PHOTO} alt="" />
+        <img className="hero-bg" src={STORE_PHOTO} alt="" width="1000" height="611" fetchPriority="high" decoding="async" />
         <div className="container hero-copy">
           <p className="eyebrow">Pensacola, Florida</p>
           <h1>Furniture and appliances for every room</h1>
@@ -113,7 +113,7 @@ export function Home() {
         </div>
       </section>
 
-      <div className="container">
+      <section className="container" aria-label="Store at a glance">
         <div className="glance">
           <button type="button" className="gcard" onClick={() => openSheet('hours')}>
             <span className="k">Today</span>
@@ -131,7 +131,7 @@ export function Home() {
             <span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews · Read them</small>
           </Link>
         </div>
-      </div>
+      </section>
 
       <section className="section">
         <div className="container">
@@ -340,7 +340,7 @@ export function Reviews() {
               ['Competitive prices', 'Shoppers often mention finding what they needed for less.'],
               ['Friendly service', 'Reviewers regularly highlight helpful, no-pressure staff.'],
               ['Wide selection', 'A rotating floor of appliances and furniture for every room.'],
-            ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
+            ].map(([t, d]) => <div className="theme" key={t}><h2 className="h3">{t}</h2><p>{d}</p></div>)}
           </div>
           {reviews.length > 0 ? (
             <>
@@ -615,7 +615,7 @@ export function Contact() {
             </form>
           )}
           <div>
-            <h3>Store details</h3>
+            <h2 className="h3">Store details</h2>
             <dl className="info">
               <dt>Address</dt><dd>{STORE.address}</dd>
               <dt>Phone</dt><dd><CallLink>{STORE.phone}</CallLink></dd>
@@ -641,7 +641,7 @@ export function LegalPage({ kind }) {
       <section className="section">
         <div className="container narrow legal">
           {doc.blocks.map((b, i) => {
-            if (b.h) return <h3 key={i}>{b.h}</h3>;
+            if (b.h) return <h2 key={i} className="h3">{b.h}</h2>;
             if (b.ul) return <ul key={i}>{b.ul.map((t) => <li key={t}>{t}</li>)}</ul>;
             return <p key={i}>{b.p}</p>;
           })}
