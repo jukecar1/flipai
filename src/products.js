@@ -25,3 +25,6 @@ popular.forEach((n) => {
 });
 export const isBest = (p) => BEST.has(p.id);
 export const BEST_SELLERS = PRODUCTS.filter((p) => BEST.has(p.id));
+
+// Unranked small appliances and parts (blender lids, cleaning kits) sort after the main appliances.
+export const tier = (p) => (p.type === 'Small Appliances' ? 1 : 0);

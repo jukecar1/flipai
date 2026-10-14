@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
-import { PRODUCTS, money, HAS_POPULAR, popularRank, isBest, BEST_SELLERS } from './products';
+import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS } from './products';
 import { CallButtons, CallLink, BackLink, Icon, Stars, Modal, openSheet } from './ui';
 import reviews from './reviews.json';
 
@@ -243,7 +243,7 @@ export function Collection() {
   const items = useMemo(() => {
     const list = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
     if (sort === 'featured') return list;
-    if (sort === 'popular') return [...list].sort((a, b) => popularRank(a) - popularRank(b));
+    if (sort === 'popular') return [...list].sort((a, b) => (popularRank(a) === popularRank(b) ? tier(a) - tier(b) : popularRank(a) - popularRank(b)));
     if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
     const v = (x) => (x.price == null ? (sort === 'low' ? Infinity : -Infinity) : x.price);
     return [...list].sort((a, b) => (sort === 'low' ? v(a) - v(b) : v(b) - v(a)));
