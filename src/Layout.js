@@ -14,7 +14,7 @@ const NAV = [
 export function Logo() {
   return (
     <Link to="/" className="logo" aria-label="Royal Appliance Outlet home">
-      <img src={LOGO} alt="Royal Appliance Outlet &amp; Furniture" width="48" height="52" />
+      <img src={LOGO} alt="Royal Appliance Outlet &amp; Furniture" width="219" height="54" />
     </Link>
   );
 }

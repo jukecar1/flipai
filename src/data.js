@@ -14,7 +14,7 @@ export const STORE = {
 };
 
 export const STORE_PHOTO = '/img/store.jpg';
-export const LOGO = '/img/logo.png';
+export const LOGO = '/img/logo.svg';
 
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
