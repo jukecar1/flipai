@@ -117,10 +117,13 @@ p { margin: 0 0 1rem; }
 .side-list small { color: var(--muted); }
 .notice { display: flex; gap: .75rem; align-items: flex-start; justify-content: space-between; background: var(--sand); border-radius: 6px; padding: .8rem 1rem; font-size: .88rem; color: var(--muted); margin-bottom: 1rem; } .notice p { margin: 0; } .notice b { color: var(--ink); }
 .notice button { background: none; border: 0; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 .2rem; }
-.filters { display: grid; grid-template-columns: 1fr 200px; gap: 10px; } .filters .mobile-only { grid-column: 1 / -1; order: 3; }
-@media (max-width: 560px) { .filters { grid-template-columns: 1fr; } }
+.filters { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.sortbar { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; } .sortbar::-webkit-scrollbar { display: none; }
+.sortbar span { flex: none; font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-right: .25rem; }
+.sortbar button { flex: none; background: #fff; color: var(--ink); border: 1.5px solid #c5beb0; border-radius: 999px; padding: .5rem 1rem; font: 600 .9rem var(--font); cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.sortbar button:hover { border-color: var(--ink); } .sortbar button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
 .filters input, .filters select, .form input, .form textarea { width: 100%; padding: .8rem .95rem; border: 1.5px solid #c5beb0; border-radius: 4px; font: 400 1rem var(--font); background: #fff; color: var(--text); }
-.count { margin: 1rem 0 1.2rem; font-size: .9rem; }
+.count { margin: .9rem 0 1.2rem; font-size: .9rem; }
 .more { text-align: center; margin-top: 2.5rem; } .empty { padding: 24px 0; max-width: 520px; }
 
 .modal-back { position: fixed; inset: 0; z-index: 100; background: rgba(8,26,34,.7); display: grid; place-items: center; padding: 16px; overflow-y: auto; animation: fade .18s ease; }

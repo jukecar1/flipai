@@ -185,7 +185,7 @@ export function Showroom() {
 }
 
 const PAGE = 24;
-const SORTS = [['featured', 'Featured'], ['low', 'Price: low to high'], ['high', 'Price: high to low']];
+const SORTS = [['featured', 'Featured'], ['az', 'Name A to Z'], ['low', 'Price: Low to High'], ['high', 'Price: High to Low']];
 
 export function Collection() {
   const { cat } = useParams();
@@ -208,6 +208,7 @@ export function Collection() {
   const items = useMemo(() => {
     const list = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
     if (sort === 'featured') return list;
+    if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
     const v = (x) => (x.price == null ? (sort === 'low' ? Infinity : -Infinity) : x.price);
     return [...list].sort((a, b) => (sort === 'low' ? v(a) - v(b) : v(b) - v(a)));
   }, [all, type, q, sort]);
@@ -258,9 +259,12 @@ export function Collection() {
                 <option value="">All product types</option>
                 {types.map(([t]) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select id="sort" value={sort} onChange={reset(setSort)} aria-label="Sort">
-                {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+            </div>
+            <div className="sortbar" role="group" aria-label="Sort by">
+              <span>Sort by</span>
+              {SORTS.map(([v, l]) => (
+                <button key={v} type="button" className={sort === v ? 'on' : ''} aria-pressed={sort === v} onClick={() => { setSort(v); setShown(PAGE); }}>{l}</button>
+              ))}
             </div>
             <p className="count muted">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
             {items.length ? (
