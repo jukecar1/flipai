@@ -19,11 +19,11 @@ export function Icon({ name, size = 18 }) {
   );
 }
 
-export function CallButtons({ dark }) {
+export function CallButtons() {
   return (
     <div className="btn-row">
       <a className="btn btn-primary" href={`tel:${STORE.tel}`}><Icon name="phone" /> Call {STORE.phone}</a>
-      <a className={'btn ' + (dark ? 'btn-outline' : 'btn-ghost')} href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
+      <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
     </div>
   );
 }

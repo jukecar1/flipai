@@ -14,7 +14,7 @@ const NAV = [
 export function Logo({ light }) {
   return (
     <Link to="/" className={'logo' + (light ? ' logo-light' : '')} aria-label="Royal Appliance Outlet home">
-      <svg className="logo-crown" width="26" height="20" viewBox="0 0 26 20" aria-hidden="true"><path d="M2 17 0 5l7 5 6-9 6 9 7-5-2 12z" fill="currentColor" /></svg>
+      <svg className="logo-crown" width="24" height="18" viewBox="0 0 26 20" aria-hidden="true"><path d="M2 17 0 5l7 5 6-9 6 9 7-5-2 12z" fill="currentColor" /></svg>
       <span className="logo-text">
         <strong>Royal</strong>
         <small>Appliance Outlet &amp; Furniture</small>
@@ -65,11 +65,11 @@ export function Footer() {
     <footer className="footer">
       <div className="container footer-grid">
         <div>
-          <Logo light />
+          <Logo />
           <p className="muted">A local furniture and appliance showroom with expert help in store on N Pace Boulevard.</p>
         </div>
         <div>
-          <h4>Visit &amp; call</h4>
+          <h4>Visit and call</h4>
           <ul className="plain">
             <li><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></li>
             <li><a href={`mailto:${STORE.email}`}>{STORE.email}</a></li>

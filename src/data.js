@@ -13,48 +13,27 @@ export const STORE = {
   ],
 };
 
+export const STORE_PHOTO = '/img/store.jpg';
+
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
 
-// tint/ink/accent color the placeholder illustrations until real product photos are supplied.
+// Category photos are cropped from the current site; swap in originals when supplied.
 export const CATEGORIES = [
-  { id: 'living', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.', tint: '#e8dccb', ink: '#4a3a2c', accent: '#c8102e' },
-  { id: 'bedroom', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.', tint: '#d6e4e8', ink: '#1f4c5a', accent: '#c8102e' },
-  { id: 'dining', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.', tint: '#e6d9d2', ink: '#3b2c26', accent: '#d9a441' },
-  { id: 'office', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.', tint: '#dfe5ea', ink: '#2a3a4a', accent: '#d9a441' },
-  { id: 'accent', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.', tint: '#efe4d3', ink: '#5b4a36', accent: '#1f5f7a' },
-  { id: 'entry', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.', tint: '#dce6ea', ink: '#27475a', accent: '#c8102e' },
-  { id: 'kids', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.', tint: '#dbe4f4', ink: '#22407a', accent: '#d9a441' },
-  { id: 'outdoor', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.', tint: '#dde8d6', ink: '#33502a', accent: '#c8102e' },
-  { id: 'mattress', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.', tint: '#e4e7ec', ink: '#2c3646', accent: '#1f5f7a' },
-  { id: 'decor', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.', tint: '#efe6d2', ink: '#5a4620', accent: '#1f5f7a' },
-  { id: 'rugs', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.', tint: '#e2e5ea', ink: '#34404f', accent: '#c8102e' },
-  { id: 'lighting', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.', tint: '#f3e8c8', ink: '#4d3d14', accent: '#c8102e' },
-  { id: 'storage', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.', tint: '#ecdcc7', ink: '#5a3a18', accent: '#1f5f7a' },
-  { id: 'appliances', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.', tint: '#e1e6ea', ink: '#243240', accent: '#c8102e' },
-];
-
-// Starter catalog. Replace names, photos and notes with real inventory;
-// pricing is intentionally omitted because the floor changes weekly.
-export const PRODUCTS = [
-  { id: 'p1', cat: 'living', name: 'Reclining Sectional', note: 'Roomy seating for the whole family.' },
-  { id: 'p2', cat: 'living', name: 'Leather Recliner', note: 'Power and manual styles on the floor.' },
-  { id: 'p3', cat: 'living', name: 'Entertainment Console', note: 'Media storage with cable management.' },
-  { id: 'p4', cat: 'bedroom', name: 'Upholstered Queen Bed', note: 'Matching dressers and nightstands.' },
-  { id: 'p5', cat: 'bedroom', name: 'Six-Drawer Dresser', note: 'Solid construction, generous storage.' },
-  { id: 'p6', cat: 'dining', name: 'Farmhouse Dining Set', note: 'Table with bench and chairs.' },
-  { id: 'p7', cat: 'dining', name: 'Counter-Height Pub Set', note: 'Great for smaller kitchens.' },
-  { id: 'p8', cat: 'office', name: 'Writing Desk', note: 'Compact footprint, real drawers.' },
-  { id: 'p9', cat: 'accent', name: 'Tufted Accent Chair', note: 'A statement piece for any corner.' },
-  { id: 'p10', cat: 'mattress', name: 'Hybrid Mattress', note: 'Twin through king. Ask what is in stock.' },
-  { id: 'p11', cat: 'mattress', name: 'Memory Foam Mattress', note: 'Medium and firm feels.' },
-  { id: 'p12', cat: 'outdoor', name: 'Patio Conversation Set', note: 'Weather-ready seating and table.' },
-  { id: 'p13', cat: 'kids', name: 'Twin Loft Bed', note: 'Room to play, sleep and store.' },
-  { id: 'p14', cat: 'rugs', name: '5x7 Area Rug', note: 'Multiple patterns and sizes.' },
-  { id: 'p15', cat: 'lighting', name: 'Floor Lamp', note: 'Modern and traditional looks.' },
-  { id: 'p16', cat: 'appliances', name: 'French Door Refrigerator', note: 'Stainless finishes, ask about models.' },
-  { id: 'p17', cat: 'appliances', shape: 'washer', name: 'Washer & Dryer Pair', note: 'Front-load and top-load options.' },
-  { id: 'p18', cat: 'appliances', name: 'Range & Cooktop', note: 'Gas and electric on the floor.' },
+  { id: 'living', img: '/img/living.jpg', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.' },
+  { id: 'bedroom', img: '/img/bedroom.jpg', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.' },
+  { id: 'dining', img: '/img/dining.jpg', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.' },
+  { id: 'office', img: '/img/office.jpg', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.' },
+  { id: 'accent', img: '/img/accent.jpg', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.' },
+  { id: 'entry', img: '/img/entry.jpg', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.' },
+  { id: 'kids', img: '/img/kids.jpg', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.' },
+  { id: 'outdoor', img: '/img/outdoor.jpg', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.' },
+  { id: 'mattress', img: '/img/mattress.jpg', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.' },
+  { id: 'decor', img: '/img/decor.jpg', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.' },
+  { id: 'rugs', img: '/img/rugs.jpg', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.' },
+  { id: 'lighting', img: '/img/lighting.jpg', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.' },
+  { id: 'storage', img: '/img/storage.jpg', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.' },
+  { id: 'appliances', img: '/img/appliances.jpg', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
 ];
 
 export const FINANCING = [
