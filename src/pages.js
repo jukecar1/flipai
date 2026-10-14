@@ -1,106 +1,170 @@
-import { Link, NavLink, useParams } from 'react-router-dom';
-import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, openStatus } from './data';
-import { CallButtons, Icon, Stars } from './ui';
-import { PRODUCTS } from './products';
 import { useEffect, useMemo, useState } from 'react';
+import { Link, NavLink, useParams } from 'react-router-dom';
+import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, openStatus } from './data';
+import { PRODUCTS, money } from './products';
+import { CallButtons, Icon, Stars, Modal } from './ui';
+
+const catName = (id) => CATEGORIES.find((c) => c.id === id)?.name;
+const COUNTS = {};
+PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
 }
 
+function Price({ p }) {
+  return p.price != null ? <span className="price">{money(p.price)}</span> : <span className="price call">Call for price</span>;
+}
+
+function ProductModal({ p, onClose }) {
+  return (
+    <Modal onClose={onClose} label={p.name}>
+      <div className="pm-img"><img src={imgUrl(p.img, 900)} alt={p.name} /></div>
+      <div className="pm-body">
+        <p className="crumb">{catName(p.cat)} · {p.type}</p>
+        <h2>{p.name}</h2>
+        <p className="muted">Visit the showroom or call to learn more about this item and current availability.</p>
+        <div className="pm-price"><Price p={p} /></div>
+        <p className="small muted">Call {STORE.phone} or visit the store to confirm current availability.</p>
+        <div className="btn-row">
+          <a className="btn btn-primary" href={`tel:${STORE.tel}`}><Icon name="phone" /> Call {STORE.phone}</a>
+          <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ProductCard({ p, onOpen }) {
+  return (
+    <button type="button" className="prod" onClick={() => onOpen(p)} aria-label={`View ${p.name}`}>
+      <span className="prod-img"><img src={imgUrl(p.img)} alt="" loading="lazy" decoding="async" /></span>
+      <span className="prod-name">{p.name}</span>
+      <Price p={p} />
+    </button>
+  );
+}
+
+function Mosaic() {
+  const big = new Set(['living', 'bedroom']);
+  return (
+    <div className="mosaic">
+      {CATEGORIES.map((c) => (
+        <Link key={c.id} to={`/showroom/${c.id}`} className={'tile' + (big.has(c.id) ? ' big' : '')}>
+          <img src={imgUrl(c.img, 800)} alt="" loading="lazy" />
+          <span className="tile-label"><b>{c.name}</b><small>{COUNTS[c.id]} items</small></span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export function Home() {
   const status = openStatus();
+  const [open, setOpen] = useState(null);
+  const featured = useMemo(() => {
+    const out = [];
+    ['bedroom', 'dining', 'living', 'office', 'accent', 'decor', 'lighting', 'rugs', 'entry', 'outdoor'].forEach((c) => {
+      const list = PRODUCTS.filter((p) => p.cat === c && p.price != null);
+      const pick = list[Math.min(2, list.length - 1)];
+      if (pick) out.push(pick);
+    });
+    return out;
+  }, []);
   return (
     <>
       <section className="hero">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <h1>Furniture and appliances in Pensacola</h1>
-            <p className="lead">
-              Shop every room in one showroom on N Pace Blvd. Our floor changes weekly, so call or stop in and we'll tell you exactly what is in stock today.
-            </p>
-            <div className="btn-row">
-              <Link className="btn btn-primary" to="/showroom">Browse the showroom</Link>
-              <a className="btn btn-ghost" href={`tel:${STORE.tel}`}>Call {STORE.phone}</a>
-            </div>
-            <p className={'open-line ' + (status.open ? 'is-open' : '')}>{status.text}</p>
+        <img className="hero-bg" src={STORE_PHOTO} alt="" />
+        <div className="container hero-copy">
+          <p className="eyebrow">Pensacola, Florida</p>
+          <h1>Furniture and appliances for every room</h1>
+          <p className="lead">One showroom on N Pace Blvd. Browse the collections here, then come see the floor and our team will tell you exactly what is in stock today.</p>
+          <div className="btn-row">
+            <Link className="btn btn-gold" to="/showroom">Browse the showroom</Link>
+            <a className="btn btn-outline" href={`tel:${STORE.tel}`}><Icon name="phone" /> {STORE.phone}</a>
           </div>
-          <img className="hero-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" width="1200" height="733" />
         </div>
       </section>
 
-      <section className="facts">
-        <div className="container facts-grid">
-          <div className="fact"><b>{STORE.rating} <Stars /></b><span>{STORE.reviews} Google reviews</span></div>
-          <div className="fact"><b>Expert help in store</b><span>Compare sizes, features and fit with our team</span></div>
-          <div className="fact"><b>Financing available</b><span>Synchrony, Snap and Acima Leasing</span></div>
-          <div className="fact"><b>Open 7 days</b><span>Mon to Sat 10 to 7, Sun 10 to 6</span></div>
+      <div className="container">
+        <div className="glance">
+          <div><span className="k">Today</span><b className={status.open ? 'is-open' : ''}>{status.text}</b><small>Mon to Sat 10 to 7 · Sun 10 to 6</small></div>
+          <div><span className="k">Visit</span><b>1612 N Pace Blvd Suite 4</b><small>Pensacola, FL 32505</small></div>
+          <div><span className="k">Call</span><b><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></b><small>Expert help in store</small></div>
+          <div><span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews</small></div>
         </div>
-      </section>
+      </div>
 
       <section className="section">
         <div className="container">
           <div className="section-head">
-            <h2>Shop by room</h2>
-            <Link className="link" to="/showroom">View showroom <Icon name="arrow" size={16} /></Link>
+            <div><p className="eyebrow dark">Shop</p><h2>Every room, one showroom</h2></div>
+            <Link className="link" to="/showroom">View all <Icon name="arrow" size={16} /></Link>
           </div>
-          <div className="cat-grid">
-            {CATEGORIES.map((c) => (
-              <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
-                <div className="cat-img"><img src={imgUrl(c.img, 800)} alt="" loading="lazy" /></div>
-                <h3>{c.name}</h3>
-                <p>{c.blurb}</p>
-              </Link>
-            ))}
-          </div>
+          <Mosaic />
         </div>
       </section>
 
-      <section className="finance">
-        <div className="container finance-row">
-          <div>
-            <h2>Ask about financing and lease-to-own</h2>
-            <p>Learn about Synchrony, Snap Leasing and Acima Leasing. Approval, eligibility and terms vary.</p>
+      <section className="section sand">
+        <div className="container">
+          <div className="section-head">
+            <div><p className="eyebrow dark">From the floor</p><h2>Pieces we have right now</h2><p className="sub">Stock changes weekly. Call to confirm availability.</p></div>
           </div>
-          <Link className="btn btn-primary" to="/financing">View financing options</Link>
+        </div>
+        <div className="rail" role="list">
+          {featured.map((p) => <div role="listitem" key={p.id}><ProductCard p={p} onOpen={setOpen} /></div>)}
+        </div>
+      </section>
+
+      <section className="dark-band">
+        <div className="container split">
+          <div>
+            <p className="eyebrow">Flexible ways to shop</p>
+            <h2>Financing and lease-to-own</h2>
+            <p className="lead">Learn about Synchrony, Snap Leasing and Acima Leasing. Approval, eligibility and terms vary.</p>
+            <Link className="btn btn-gold" to="/financing">View financing options</Link>
+          </div>
+          <ul className="providers">
+            {FINANCING.map((f) => <li key={f.name}><b>{f.name}</b><span>{f.text}</span></li>)}
+          </ul>
         </div>
       </section>
 
       <section className="section">
-        <div className="container">
-          <h2>Customers rate us {STORE.rating} on Google</h2>
-          <p className="rating-line"><Stars /> <span>{STORE.rating} stars from {STORE.reviews} reviews</span></p>
-          <div className="three">
+        <div className="container split reviews">
+          <div>
+            <p className="eyebrow dark">Reviews</p>
+            <div className="score">{STORE.rating}</div>
+            <Stars />
+            <p className="muted">{STORE.reviews} reviews on Google</p>
+          </div>
+          <div className="themes">
             {[
               ['Competitive prices', 'Shoppers often mention finding what they needed for less.'],
               ['Friendly service', 'Reviewers regularly highlight helpful, no-pressure staff.'],
               ['Wide selection', 'A rotating floor of appliances and furniture for every room.'],
-            ].map(([t, d]) => (
-              <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>
-            ))}
+            ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
+            <p className="small muted">Summarized review themes, not individual customer quotes.</p>
           </div>
-          <p className="small muted">Summarized review themes, not individual customer quotes.</p>
         </div>
       </section>
 
-      <section className="section visit-band">
-        <div className="container visit">
+      <section className="section sand">
+        <div className="container split visit">
           <div>
-            <h2>Visit the store</h2>
+            <p className="eyebrow dark">Visit</p>
+            <h2>Come see it in person</h2>
+            <p>Royal Appliance Outlet is a locally run outlet on N Pace Blvd. Walk the floor, compare sizes and features, and our team will help you find the right fit.</p>
             <dl className="info">
               <dt>Address</dt><dd>{STORE.address}</dd>
               <dt>Hours</dt><dd><Hours /><small className="muted">Hours may vary on holidays. Call ahead to confirm.</small></dd>
-              <dt>Phone</dt><dd><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></dd>
             </dl>
             <CallButtons />
           </div>
-          <div>
-            <h3>Expert help in store</h3>
-            <p>Royal Appliance Outlet is a locally run outlet on N Pace Blvd. Come see the floor in person. Our team will help you compare sizes, features and fit, and tell you exactly what's in stock today.</p>
-            <p className="muted">Call or visit to confirm today's selection, current pricing and purchase options.</p>
-          </div>
+          <img className="visit-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" loading="lazy" />
         </div>
       </section>
+      {open && <ProductModal p={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -110,102 +174,115 @@ export function Showroom() {
     <>
       <section className="page-head">
         <div className="container">
-          <h1 className="h1-sm">Showroom</h1>
-          <p className="lead">Furniture for the whole house, plus home appliances. Pick a department to browse. Stock changes weekly, so call to confirm availability and pricing.</p>
-          <CallButtons />
+          <p className="eyebrow">Showroom</p>
+          <h1 className="h1-sm">Browse by room</h1>
+          <p className="lead">Furniture for the whole house, plus home appliances. Stock changes weekly, so call to confirm availability.</p>
         </div>
       </section>
-      <section className="section tight">
-        <div className="container">
-          <div className="cat-grid">
-            {CATEGORIES.map((c) => (
-              <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
-                <div className="cat-img"><img src={imgUrl(c.img, 800)} alt="" loading="lazy" /></div>
-                <h3>{c.name}</h3>
-                <p>{c.blurb}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section className="section tight"><div className="container"><Mosaic /></div></section>
     </>
   );
 }
 
 const PAGE = 24;
+const SORTS = [['featured', 'Featured'], ['low', 'Price: low to high'], ['high', 'Price: high to low']];
 
 export function Collection() {
   const { cat } = useParams();
   const dept = CATEGORIES.find((c) => c.id === cat);
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
+  const [sort, setSort] = useState('featured');
   const [note, setNote] = useState(true);
   const [shown, setShown] = useState(PAGE);
+  const [open, setOpen] = useState(null);
 
-  useEffect(() => { setQ(''); setType(''); setShown(PAGE); }, [cat]);
+  useEffect(() => { setQ(''); setType(''); setSort('featured'); setShown(PAGE); }, [cat]);
 
   const all = useMemo(() => PRODUCTS.filter((x) => x.cat === cat), [cat]);
-  const types = useMemo(() => [...new Set(all.map((x) => x.type))].sort(), [all]);
-  const items = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const types = useMemo(() => {
+    const m = {};
+    all.forEach((x) => { m[x.type] = (m[x.type] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [all]);
+  const items = useMemo(() => {
+    const list = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
+    if (sort === 'featured') return list;
+    const v = (x) => (x.price == null ? (sort === 'low' ? Infinity : -Infinity) : x.price);
+    return [...list].sort((a, b) => (sort === 'low' ? v(a) - v(b) : v(b) - v(a)));
+  }, [all, type, q, sort]);
 
   if (!dept) return <Showroom />;
+  const reset = (fn) => (e) => { fn(e.target.value); setShown(PAGE); };
   return (
     <>
-      <section className="page-head coll-head">
+      <section className="page-head">
         <div className="container">
           <p className="crumb"><Link to="/showroom">Showroom</Link> / {dept.name}</p>
+          <h1 className="h1-sm">{dept.name}</h1>
           <p className="lead">{dept.blurb}</p>
-          {note && (
-            <div className="notice" role="note">
-              <p>Product photos are manufacturer-hosted catalog images for the model shown. Colors and configurations may vary. Call <b>{STORE.phone}</b> to confirm a specific piece.</p>
-              <button type="button" aria-label="Dismiss notice" onClick={() => setNote(false)}>×</button>
-            </div>
-          )}
         </div>
       </section>
       <div className="dept-bar">
         <div className="container pills" role="navigation" aria-label="Departments">
-          <NavLink to="/showroom" end>All departments</NavLink>
           {CATEGORIES.map((c) => <NavLink key={c.id} to={`/showroom/${c.id}`}>{c.name}</NavLink>)}
         </div>
       </div>
       <section className="section tight">
-        <div className="container">
-          <div className="filters">
-            <input id="search" type="search" value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} placeholder="Search the showroom" aria-label="Search the showroom" />
-            <select id="ptype" value={type} onChange={(e) => { setType(e.target.value); setShown(PAGE); }} aria-label="Product type">
-              <option value="">All product types</option>
-              {types.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="coll-title">
-            <div><p className="crumb">{dept.name}</p><h1 className="h1-sm">Explore the collection</h1></div>
-            <span className="muted">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
-          </div>
-          {items.length ? (
-            <>
-            <div className="prod-grid">
-              {items.slice(0, shown).map((x) => (
-                <article className="prod" key={x.id}>
-                  <div className="prod-img"><img src={imgUrl(x.img)} alt={x.name} loading="lazy" decoding="async" /></div>
-                  <h3>{x.name}</h3>
-                  <a className="price" href={`tel:${STORE.tel}`}>Call for price</a>
-                </article>
+        <div className="container shop">
+          <aside className="side" aria-label="Filters">
+            <h4>Departments</h4>
+            <ul className="side-list">
+              {CATEGORIES.map((c) => (
+                <li key={c.id}><NavLink to={`/showroom/${c.id}`}>{c.name}<small>{COUNTS[c.id]}</small></NavLink></li>
               ))}
+            </ul>
+            <h4>Product type</h4>
+            <ul className="side-list">
+              <li><button type="button" className={!type ? 'on' : ''} onClick={() => { setType(''); setShown(PAGE); }}>All<small>{all.length}</small></button></li>
+              {types.map(([t, n]) => (
+                <li key={t}><button type="button" className={type === t ? 'on' : ''} onClick={() => { setType(t); setShown(PAGE); }}>{t}<small>{n}</small></button></li>
+              ))}
+            </ul>
+          </aside>
+          <div className="results">
+            {note && (
+              <div className="notice" role="note">
+                <p>Product photos are manufacturer-hosted catalog images for the model shown. Colors and configurations may vary. Call <b>{STORE.phone}</b> to confirm a specific piece.</p>
+                <button type="button" aria-label="Dismiss notice" onClick={() => setNote(false)}>×</button>
+              </div>
+            )}
+            <div className="filters">
+              <input id="search" type="search" value={q} onChange={reset(setQ)} placeholder="Search this department" aria-label="Search this department" />
+              <select id="ptype" className="mobile-only" value={type} onChange={reset(setType)} aria-label="Product type">
+                <option value="">All product types</option>
+                {types.map(([t]) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <select id="sort" value={sort} onChange={reset(setSort)} aria-label="Sort">
+                {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
             </div>
-          {items.length > shown && (
-            <div className="more"><button type="button" className="btn btn-ghost" onClick={() => setShown(shown + PAGE)}>Load more ({items.length - shown} left)</button></div>
-          )}
-          </>
-          ) : (
-            <div className="empty">
-              <h3>{all.length ? 'No matches' : `${dept.name} collection coming soon`}</h3>
-              <p className="muted">{all.length ? 'Try a different search or product type.' : 'Our floor changes weekly. Call and we will tell you exactly what we have today.'}</p>
-              <CallButtons />
-            </div>
-          )}
+            <p className="count muted">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
+            {items.length ? (
+              <>
+                <div className="prod-grid">
+                  {items.slice(0, shown).map((x) => <ProductCard key={x.id} p={x} onOpen={setOpen} />)}
+                </div>
+                {items.length > shown && (
+                  <div className="more"><button type="button" className="btn btn-ghost" onClick={() => setShown(shown + PAGE)}>Load more ({items.length - shown} left)</button></div>
+                )}
+              </>
+            ) : (
+              <div className="empty">
+                <h3>No matches</h3>
+                <p className="muted">Try a different search or product type, or call and we'll tell you exactly what we have today.</p>
+                <CallButtons />
+              </div>
+            )}
+          </div>
         </div>
       </section>
+      {open && <ProductModal p={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -215,16 +292,15 @@ export function Financing() {
     <>
       <section className="page-head">
         <div className="container">
+          <p className="eyebrow">Flexible ways to shop</p>
           <h1 className="h1-sm">Financing and lease-to-own</h1>
-          <p className="lead">Flexible ways to bring your furniture and appliances home. Approval, eligibility and terms vary by provider.</p>
+          <p className="lead">Approval, eligibility and terms vary by provider.</p>
         </div>
       </section>
       <section className="section">
         <div className="container narrow">
           <div className="three">
-            {FINANCING.map((f) => (
-              <div className="theme" key={f.name}><h3>{f.name}</h3><p>{f.text}</p></div>
-            ))}
+            {FINANCING.map((f) => <div className="theme" key={f.name}><h3>{f.name}</h3><p>{f.text}</p></div>)}
           </div>
           <p>Ask our team in store which option fits your situation and we'll walk you through the next steps.</p>
           <CallButtons />
@@ -238,13 +314,11 @@ export function Faq() {
   return (
     <>
       <section className="page-head">
-        <div className="container"><h1 className="h1-sm">Frequently asked questions</h1></div>
+        <div className="container"><p className="eyebrow">Answers</p><h1 className="h1-sm">Frequently asked questions</h1></div>
       </section>
       <section className="section">
         <div className="container narrow">
-          {FAQS.map(([q, a]) => (
-            <details className="faq" key={q}><summary>{q}</summary><p>{a}</p></details>
-          ))}
+          {FAQS.map(([q, a]) => <details className="faq" key={q}><summary>{q}</summary><p>{a}</p></details>)}
           <CallButtons />
         </div>
       </section>
@@ -263,13 +337,10 @@ export function Contact() {
   return (
     <>
       <section className="page-head">
-        <div className="container">
-          <h1 className="h1-sm">Contact</h1>
-          <p className="lead">The fastest way to check stock and pricing is a quick call.</p>
-        </div>
+        <div className="container"><p className="eyebrow">Contact</p><h1 className="h1-sm">Talk to the team</h1><p className="lead">The fastest way to check stock and pricing is a quick call.</p></div>
       </section>
       <section className="section">
-        <div className="container visit">
+        <div className="container split">
           <form className="form" onSubmit={submit}>
             <label htmlFor="c-name">Name<input id="c-name" required value={f.name} onChange={set('name')} /></label>
             <label htmlFor="c-phone">Phone<input id="c-phone" type="tel" value={f.phone} onChange={set('phone')} /></label>

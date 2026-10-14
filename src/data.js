@@ -14,7 +14,7 @@ export const STORE = {
 };
 
 export const STORE_PHOTO = '/img/store.jpg';
-export const LOGO = '/img/logo.svg';
+export const LOGO = '/img/logo-white.svg';
 
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
@@ -23,7 +23,7 @@ export const MAPS_URL =
 export const ASHLEY = 'https://cdn.ashley.com/assets/';
 // window.__IMG is an optional offline image map used by static previews.
 export const imgUrl = (a, w = 600) =>
-  (typeof window !== 'undefined' && window.__IMG && window.__IMG[a + '@' + w]) ||
+  (typeof window !== 'undefined' && window.__IMG && (window.__IMG[a + '@' + w] || window.__IMG[a + '@600'] || window.__IMG[a + '@800'])) ||
   (a.startsWith('http') ? a : `${ASHLEY}${a}?fit=bounds&format=auto&height=${w}&quality=80&width=${w}`);
 
 export const CATEGORIES = [

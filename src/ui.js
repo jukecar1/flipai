@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { STORE, MAPS_URL } from './data';
 
 const PATHS = {
@@ -33,5 +34,25 @@ export function Stars() {
     <span className="stars" role="img" aria-label={`${STORE.rating} out of 5 stars`}>
       {[0, 1, 2, 3, 4].map((i) => <Icon key={i} name="star" size={16} />)}
     </span>
+  );
+}
+
+export function Modal({ onClose, children, label }) {
+  const closeRef = useRef(null);
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    closeRef.current?.focus();
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+  return (
+    <div className="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={label}>
+        <button ref={closeRef} type="button" className="modal-x" aria-label="Close" onClick={onClose}>×</button>
+        {children}
+      </div>
+    </div>
   );
 }
