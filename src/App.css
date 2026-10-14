@@ -177,3 +177,11 @@ p { margin: 0 0 1rem; }
 .review-hero { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-bottom: 2rem; }
 .review-hero .score { font-family: var(--display); font-weight: 700; font-size: clamp(4rem, 14vw, 6rem); line-height: 1; color: var(--ink); }
 .quote-list { display: grid; gap: 22px; margin-top: 2rem; } .quote { border-top: 2px solid var(--ink); padding-top: 1rem; } .quote p { margin: .4rem 0; font-size: 1.05rem; } .quote small { color: var(--muted); }
+
+.badge { position: absolute; top: 8px; left: 8px; z-index: 1; background: var(--ink); color: #fff; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: .3rem .55rem; border-radius: 4px; }
+.prod-img, .pm-img { position: relative; }
+.review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 16px; margin-top: 2rem; }
+.rcard { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: .6rem; }
+.rcard p { margin: 0; font-size: 1rem; }
+.rcard figcaption { margin-top: auto; display: flex; justify-content: space-between; gap: 1rem; font-size: .85rem; color: var(--muted); } .rcard figcaption b { color: var(--ink); }
+.sample-note { margin: 1.2rem 0 0; padding: .7rem 1rem; border-radius: 6px; background: var(--sand); color: var(--muted); font-size: .88rem; }

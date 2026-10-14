@@ -29,6 +29,7 @@ export const imgUrl = (a, w = 600) =>
   (a.startsWith('http') ? a : `${ASHLEY}${a}?fit=bounds&format=auto&height=${w}&quality=80&width=${w}`);
 
 export const CATEGORIES = [
+  { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/images/stencil/500x659/products/3497/1021270/maqjbrm3wds4paf5rmx0__29983.1.jpg', cutout: true, name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
   { id: 'living', img: 'W446-68.jpg', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.' },
   { id: 'bedroom', img: 'EB1866-157-113.jpg', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.' },
   { id: 'dining', img: 'D984-45.jpg', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.' },
@@ -42,7 +43,6 @@ export const CATEGORIES = [
   { id: 'rugs', img: 'R403771.jpg', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.' },
   { id: 'lighting', img: 'L204054.jpg', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.' },
   { id: 'storage', img: 'A4000709.jpg', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.' },
-  { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/images/stencil/500x659/products/3497/1021270/maqjbrm3wds4paf5rmx0__29983.1.jpg', cutout: true, name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
 ];
 
 export const FINANCING = [

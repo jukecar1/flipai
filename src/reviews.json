@@ -1,1 +1,38 @@
-[]
+[
+ {
+  "name": "Sample reviewer",
+  "rating": 5,
+  "text": "Found exactly the dresser we wanted for less than the big stores. Nobody hovered over us either, which was nice.",
+  "sample": true
+ },
+ {
+  "name": "Sample reviewer",
+  "rating": 5,
+  "text": "Super friendly staff. They answered every question about sizes and delivery and never pushed us.",
+  "sample": true
+ },
+ {
+  "name": "Sample reviewer",
+  "rating": 5,
+  "text": "Huge selection of appliances. We picked out a washer and dryer pair and had a plan the same day.",
+  "sample": true
+ },
+ {
+  "name": "Sample reviewer",
+  "rating": 4,
+  "text": "Lots to look at and the prices were fair. Call ahead to check stock because the floor changes.",
+  "sample": true
+ },
+ {
+  "name": "Sample reviewer",
+  "rating": 5,
+  "text": "They helped us pick a sectional that fit our living room. An easy, no-pressure visit.",
+  "sample": true
+ },
+ {
+  "name": "Sample reviewer",
+  "rating": 5,
+  "text": "Great local store. The financing options were explained clearly.",
+  "sample": true
+ }
+]

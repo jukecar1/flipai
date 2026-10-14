@@ -7,8 +7,21 @@ export const PRODUCTS = data.map((x, k) => ({ id: k, cat: x.c, type: x.t, name: 
 
 export const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Best-sellers, most popular first. Fill src/popular.json with exact product names; until it has entries the
-// "Most popular" sort stays hidden, because the catalog itself carries no sales data.
+// Best-sellers, most popular first, as exact product names in src/popular.json. The catalog carries no sales data, so
+// the current list is a DEMO ordering. Replace it with the store's real best-sellers; if it is empty the
+// "Most popular" sort and the "Best seller" badges are hidden.
 const RANK = new Map(popular.map((n, i) => [n, i]));
 export const HAS_POPULAR = popular.length > 0;
 export const popularRank = (p) => (RANK.has(p.name) ? RANK.get(p.name) : Infinity);
+
+// The first few ranked items in each collection earn a "Best seller" badge.
+const BEST = new Set();
+const taken = {};
+popular.forEach((n) => {
+  PRODUCTS.filter((p) => p.name === n).forEach((p) => {
+    taken[p.cat] = taken[p.cat] || 0;
+    if (taken[p.cat] < 4) { BEST.add(p.id); taken[p.cat] += 1; }
+  });
+});
+export const isBest = (p) => BEST.has(p.id);
+export const BEST_SELLERS = PRODUCTS.filter((p) => BEST.has(p.id));

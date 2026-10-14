@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
-import { PRODUCTS, money, HAS_POPULAR, popularRank } from './products';
+import { PRODUCTS, money, HAS_POPULAR, popularRank, isBest, BEST_SELLERS } from './products';
 import { CallButtons, CallLink, BackLink, Icon, Stars, Modal, openSheet } from './ui';
 import reviews from './reviews.json';
 
@@ -10,6 +10,21 @@ const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function ReviewCard({ r }) {
+  return (
+    <figure className="rcard">
+      <Stars />
+      <p>{r.text}</p>
+      <figcaption><b>{r.name}</b><span>Google review</span></figcaption>
+    </figure>
+  );
+}
+
+const SAMPLE = reviews.some((r) => r.sample);
+function SampleNote() {
+  return SAMPLE ? <p className="sample-note">Sample reviews to show the layout. Replace them with real Google reviews before launch.</p> : null;
+}
 
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
@@ -22,7 +37,7 @@ function Price({ p }) {
 function ProductModal({ p, onClose }) {
   return (
     <Modal onClose={onClose} label={p.name}>
-      <div className="pm-img"><img src={imgUrl(p.img, 900)} alt={p.name} /></div>
+      <div className="pm-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img, 900)} alt={p.name} /></div>
       <div className="pm-body">
         <p className="crumb">{catName(p.cat)} · {p.type}</p>
         <h2>{p.name}</h2>
@@ -41,7 +56,7 @@ function ProductModal({ p, onClose }) {
 function ProductCard({ p, onOpen }) {
   return (
     <button type="button" className="prod" onClick={() => onOpen(p)} aria-label={`View ${p.name}`}>
-      <span className="prod-img"><img src={imgUrl(p.img)} alt="" loading="lazy" decoding="async" /></span>
+      <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} alt="" loading="lazy" decoding="async" /></span>
       <span className="prod-name">{p.name}</span>
       <Price p={p} />
     </button>
@@ -49,7 +64,7 @@ function ProductCard({ p, onOpen }) {
 }
 
 function Mosaic() {
-  const big = new Set(['living', 'bedroom']);
+  const big = new Set(['appliances', 'living']);
   return (
     <div className="mosaic">
       {CATEGORIES.map((c) => (
@@ -66,11 +81,11 @@ export function Home() {
   const status = openStatus();
   const [open, setOpen] = useState(null);
   const featured = useMemo(() => {
+    const seen = {};
     const out = [];
-    ['bedroom', 'dining', 'living', 'office', 'accent', 'decor', 'lighting', 'rugs', 'entry', 'outdoor'].forEach((c) => {
-      const list = PRODUCTS.filter((p) => p.cat === c && p.price != null);
-      const pick = list[Math.min(2, list.length - 1)];
-      if (pick) out.push(pick);
+    BEST_SELLERS.forEach((x) => {
+      seen[x.cat] = seen[x.cat] || 0;
+      if (seen[x.cat] < 1) { seen[x.cat] += 1; out.push(x); }
     });
     return out;
   }, []);
@@ -122,7 +137,7 @@ export function Home() {
       <section className="section sand">
         <div className="container">
           <div className="section-head">
-            <div><p className="eyebrow dark">From the floor</p><h2>Pieces we have right now</h2><p className="sub">Stock changes weekly. Call to confirm availability.</p></div>
+            <div><p className="eyebrow dark">Best sellers</p><h2>What customers pick most</h2><p className="sub">Stock changes weekly. Call to confirm availability.</p></div>
           </div>
         </div>
         <div className="rail" role="list">
@@ -161,6 +176,10 @@ export function Home() {
             ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
             <p className="small muted">Summarized review themes, not individual customer quotes.</p>
           </div>
+        </div>
+        <div className="container">
+          <div className="review-grid">{reviews.slice(0, 3).map((r, i) => <ReviewCard r={r} key={i} />)}</div>
+          <SampleNote />
         </div>
       </section>
 
@@ -321,7 +340,7 @@ export function Reviews() {
         </div>
       </section>
       <section className="section">
-        <div className="container narrow">
+        <div className="container">
           <div className="review-hero">
             <div className="score">{STORE.rating}</div>
             <div><Stars /><p className="muted" style={{ margin: '.3rem 0 0' }}>{STORE.reviews} reviews on Google</p></div>
@@ -337,15 +356,10 @@ export function Reviews() {
             ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
           </div>
           {reviews.length > 0 ? (
-            <div className="quote-list">
-              {reviews.map((r, i) => (
-                <figure className="quote" key={i} style={{ margin: 0 }}>
-                  <Stars />
-                  <p>{r.text}</p>
-                  <small>{r.name}{r.date ? ` · ${r.date}` : ''}</small>
-                </figure>
-              ))}
-            </div>
+            <>
+              <div className="review-grid">{reviews.map((r, i) => <ReviewCard r={r} key={i} />)}</div>
+              <SampleNote />
+            </>
           ) : (
             <p className="small muted">The themes above summarize public review feedback. Tap the button to read each review on Google.</p>
           )}
