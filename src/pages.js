@@ -50,7 +50,7 @@ function Mosaic() {
   return (
     <div className="mosaic">
       {CATEGORIES.map((c) => (
-        <Link key={c.id} to={`/showroom/${c.id}`} className={'tile' + (big.has(c.id) ? ' big' : '')}>
+        <Link key={c.id} to={`/showroom/${c.id}`} className={'tile' + (big.has(c.id) ? ' big' : '') + (c.cutout ? ' cut' : '')}>
           <img src={imgUrl(c.img, 800)} alt="" loading="lazy" />
           <span className="tile-label"><b>{c.name}</b><small>{COUNTS[c.id]} items</small></span>
         </Link>

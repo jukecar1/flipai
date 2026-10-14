@@ -35,12 +35,12 @@ export const CATEGORIES = [
   { id: 'entry', img: 'EA1864-151.jpg', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.' },
   { id: 'kids', img: 'B600000441.jpg', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.' },
   { id: 'outdoor', img: 'P297-070.jpg', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.' },
-  { id: 'mattress', img: 'M69731-SW.jpg', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.' },
-  { id: 'decor', img: 'A8000277-SW.jpg', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.' },
+  { id: 'mattress', img: 'M69731-SW.jpg', cutout: true, name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.' },
+  { id: 'decor', img: 'A8000277-SW.jpg', cutout: true, name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.' },
   { id: 'rugs', img: 'R403771.jpg', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.' },
   { id: 'lighting', img: 'L204054.jpg', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.' },
   { id: 'storage', img: 'A4000709.jpg', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.' },
-  { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/images/stencil/500x659/products/3497/1021270/maqjbrm3wds4paf5rmx0__29983.1.jpg', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
+  { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/images/stencil/500x659/products/3497/1021270/maqjbrm3wds4paf5rmx0__29983.1.jpg', cutout: true, name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
 ];
 
 export const FINANCING = [

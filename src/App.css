@@ -65,9 +65,14 @@ p { margin: 0 0 1rem; }
 .mosaic { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; grid-auto-flow: dense; }
 .tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: #fff; color: #fff; text-decoration: none !important; }
 .tile.big { grid-column: span 2; aspect-ratio: 16 / 10; }
-.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s; } .tile:hover img { transform: scale(1.05); }
-.tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(13,43,56,.88)); }
-.tile-label { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1; display: flex; flex-direction: column; } .tile-label b { font-size: 1rem; } .tile-label small { opacity: .8; font-size: .8rem; }
+.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s; } .tile:hover img { transform: scale(1.05); } .tile.cut:hover img { transform: scale(1.24); }
+.tile img { filter: saturate(.78) contrast(1.06) brightness(.97); }
+/* One shared grade for every department photo: a teal-to-gold wash, plus a sand backdrop for white-background product shots. */
+.tile::before { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(140deg, rgba(19,67,86,.55), rgba(200,162,77,.4)); mix-blend-mode: soft-light; pointer-events: none; }
+.tile.cut { background: var(--sand); }
+.tile.cut img { object-fit: contain; padding: 6% 8% 20%; transform: scale(1.18); mix-blend-mode: multiply; filter: saturate(.85) contrast(1.05); }
+.tile::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, transparent 50%, rgba(13,43,56,.85)); }
+.tile-label { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 2; display: flex; flex-direction: column; } .tile-label b { font-size: 1rem; } .tile-label small { opacity: .8; font-size: .8rem; }
 @media (min-width: 900px) { .mosaic { grid-template-columns: repeat(4, 1fr); gap: 14px; } .tile.big { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; } .tile-label b { font-size: 1.1rem; } .tile.big .tile-label b { font-size: 1.5rem; } }
 
 .rail { display: flex; gap: 16px; overflow-x: auto; padding: 4px max(20px, calc((100vw - 1180px) / 2 + 20px)) 18px; scroll-snap-type: x proximity; scrollbar-width: thin; }
