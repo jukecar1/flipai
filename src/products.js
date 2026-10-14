@@ -3,7 +3,7 @@
 import data from './products.json';
 import popular from './popular.json';
 
-export const PRODUCTS = data.map((x, k) => ({ id: k, cat: x.c, type: x.t, name: x.n, img: x.i, price: x.p ?? null }));
+export const PRODUCTS = data.map((x, k) => ({ id: k, cat: x.c, type: x.t, name: x.n.replace(/[\s\u00a0]+/g, ' ').trim(), img: x.i, price: x.p ?? null }));
 
 export const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
-import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, openStatus } from './data';
+import { Link, NavLink, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, VCARD_HREF, openStatus } from './data';
 import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
 import { CallButtons, CallLink, TextLink, BackLink, Icon, Stars, openSheet } from './ui';
 import { useCompare } from './compareStore';
 import { ABOUT } from './about';
 import { DELIVERY_DETAILS } from './delivery';
+import { readRecent, pushRecent } from './recent';
 import reviews from './reviews.json';
 import { FORM_ENDPOINT } from './config';
 import { usePageMeta } from './meta';
@@ -77,6 +78,7 @@ function ProductCard({ p }) {
       <Link to={productPath(p)} className="prod-link" aria-label={`View ${p.name}`}>
         <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
         <span className="prod-name">{p.name}</span>
+        <span className="prod-type">{p.type}</span>
       </Link>
       <button type="button" className={'heart' + (saved ? ' on' : '')} aria-pressed={saved} aria-label={saved ? `Remove ${p.name} from my list` : `Save ${p.name} to my list`} onClick={() => list.toggle(p.id)}>
         <Icon name="heart" size={18} fill={saved} />
@@ -279,13 +281,29 @@ export function Collection() {
   const { cat } = useParams();
   const dept = CATEGORIES.find((c) => c.id === cat);
   usePageMeta(dept?.name, dept ? `${dept.name} at Royal Appliance Outlet in Pensacola, FL: ${COUNTS[dept.id]} items. ${dept.blurb} Call (850) 741-4143 to confirm availability.` : '');
-  const [q, setQ] = useState('');
-  const [type, setType] = useState('');
-  const [sort, setSort] = useState(HAS_POPULAR ? 'popular' : 'featured');
+  const [params, setParams] = useSearchParams();
+  const loc = useLocation();
+  const DEFAULT_SORT = HAS_POPULAR ? 'popular' : 'featured';
+  const q = params.get('q') || '';
+  const type = params.get('type') || '';
+  const sort = params.get('sort') || DEFAULT_SORT;
   const [note, setNote] = useState(true);
   const [shown, setShown] = useState(PAGE);
 
-  useEffect(() => { setQ(''); setType(''); setSort(HAS_POPULAR ? 'popular' : 'featured'); setShown(PAGE); }, [cat]);
+  // Search, sort and type live in the address, so refresh, share and Back keep them.
+  const update = (k, v, dflt = '') => {
+    const n = new URLSearchParams(params);
+    if (!v || v === dflt) n.delete(k); else n.set(k, v);
+    setParams(n, { replace: true });
+    setShown(PAGE);
+  };
+  const setQ = (v) => update('q', v);
+  const setType = (v) => update('type', v);
+  const setSort = (v) => update('sort', v, DEFAULT_SORT);
+  useEffect(() => { setShown(PAGE); }, [cat]);
+  useEffect(() => {
+    try { window.sessionStorage.setItem('royal_last_collection', loc.pathname + loc.search); } catch (e) { /* storage unavailable */ }
+  }, [loc.pathname, loc.search]);
 
   const all = useMemo(() => PRODUCTS.filter((x) => x.cat === cat), [cat]);
   const types = useMemo(() => {
@@ -303,7 +321,7 @@ export function Collection() {
   }, [all, type, q, sort]);
 
   if (!dept) return <Showroom />;
-  const reset = (fn) => (e) => { fn(e.target.value); setShown(PAGE); };
+  const reset = (fn) => (e) => fn(e.target.value);
   return (
     <>
       <section className="page-head">
@@ -330,9 +348,9 @@ export function Collection() {
             </ul>
             <h4>Product type</h4>
             <ul className="side-list">
-              <li><button type="button" className={!type ? 'on' : ''} onClick={() => { setType(''); setShown(PAGE); }}>All<small>{all.length}</small></button></li>
+              <li><button type="button" className={!type ? 'on' : ''} onClick={() => setType('')}>All<small>{all.length}</small></button></li>
               {types.map(([t, n]) => (
-                <li key={t}><button type="button" className={type === t ? 'on' : ''} onClick={() => { setType(t); setShown(PAGE); }}>{t}<small>{n}</small></button></li>
+                <li key={t}><button type="button" className={type === t ? 'on' : ''} onClick={() => setType(t)}>{t}<small>{n}</small></button></li>
               ))}
             </ul>
           </aside>
@@ -353,7 +371,7 @@ export function Collection() {
             <div className="sortbar" role="group" aria-label="Sort by">
               <span>Sort by</span>
               {SORTS.map(([v, l]) => (
-                <button key={v} type="button" className={sort === v ? 'on' : ''} aria-pressed={sort === v} onClick={() => { setSort(v); setShown(PAGE); }}>{l}</button>
+                <button key={v} type="button" className={sort === v ? 'on' : ''} aria-pressed={sort === v} onClick={() => setSort(v)}>{l}</button>
               ))}
             </div>
             <p className="count muted">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
@@ -438,6 +456,7 @@ function ShareBox({ p }) {
         <button type="button" className="btn btn-primary btn-sm" onClick={copy}>{done ? 'Link copied' : 'Copy link'}</button>
       </div>
       <div className="share-alt">
+        {typeof navigator !== 'undefined' && navigator.share && <button type="button" className="inline" onClick={() => navigator.share({ title: p.name, text: `${p.name} at Royal Appliance Outlet`, url }).catch(() => {})}>Share…</button>}
         <a href={`sms:?&body=${text}`}>Text it</a>
         <a href={`mailto:?subject=${encodeURIComponent(p.name)}&body=${text}`}>Email it</a>
       </div>
@@ -451,16 +470,22 @@ export function ProductPage() {
   const cmp = useCompare();
   const [shareOpen, setShareOpen] = useState(false);
   const p = PRODUCTS[parseInt(slug, 10)];
+  const [recent] = useState(readRecent);
+  useEffect(() => { if (p) pushRecent(p.id); }, [p]);
   usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
   if (!p) return <Showroom />;
   const saved = list.has(p.id);
+  let last = null;
+  try { last = window.sessionStorage.getItem('royal_last_collection'); } catch (e) { /* storage unavailable */ }
+  const backTo = last && last.startsWith(`/showroom/${p.cat}`) ? last : `/showroom/${p.cat}`;
+  const viewed = recent.filter((id) => id !== p.id).map((id) => PRODUCTS[id]).filter(Boolean).slice(0, 4);
   const dept = CATEGORIES.find((c) => c.id === p.cat);
   const seen = new Set([p.name]);
   const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
   return (
     <>
       <section className="pp-bar">
-        <div className="container"><BackLink to={`/showroom/${p.cat}`} label={dept?.name.toLowerCase()} /></div>
+        <div className="container"><BackLink to={backTo} label={dept?.name.toLowerCase()} /></div>
       </section>
       <section className="section tight">
         <div className="container pp">
@@ -490,6 +515,14 @@ export function ProductPage() {
           </div>
         </div>
       </section>
+      {viewed.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div className="section-head"><h2>Recently viewed</h2></div>
+            <div className="prod-grid">{viewed.map((x) => <ProductCard key={x.id} p={x} />)}</div>
+          </div>
+        </section>
+      )}
       {related.length > 0 && (
         <section className="section sand">
           <div className="container">
@@ -776,6 +809,7 @@ export function Contact() {
     e.preventDefault();
     if (f._gotcha) return; // spam trap: real visitors never see this field
     if (!f.phone.trim() && !f.email.trim()) { setErr('Please add a phone number or an email so we can reach you.'); return; }
+    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setErr('That email address does not look right. Please check it.'); return; }
     setErr('');
     const preview = typeof window !== 'undefined' && window.__PREVIEW;
     if (!FORM_ENDPOINT && !preview) {
@@ -836,9 +870,22 @@ export function Contact() {
               <dt>Hours</dt><dd><Hours /></dd>
             </dl>
             <CallButtons />
+            <p><a className="link" href={VCARD_HREF} download="Royal-Appliance-Outlet.vcf">Save our contact to your phone</a></p>
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+export function NotFound() {
+  usePageMeta('Page not found', 'That page could not be found. Browse the Royal Appliance Outlet showroom or call (850) 741-4143.');
+  return (
+    <>
+      <section className="page-head">
+        <div className="container"><p className="eyebrow">Page not found</p><h1 className="h1-sm">We could not find that page</h1><p className="lead">The link may be old or mistyped. Try the showroom, or call and we will help.</p></div>
+      </section>
+      <section className="section tight"><div className="container"><div className="btn-row"><Link className="btn btn-primary" to="/showroom">Browse the showroom</Link><Link className="btn btn-ghost" to="/">Go home</Link></div><CallButtons /></div></section>
     </>
   );
 }

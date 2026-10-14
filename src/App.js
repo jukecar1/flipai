@@ -3,12 +3,13 @@ import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
 import { Icon } from './ui';
+import { useState } from 'react';
 import ScrollFX from './ScrollFX';
 import { Sheets } from './Sheets';
 import CookieNotice from './Consent';
 import { CompareBar, ComparePage } from './Compare';
 import { track } from './analytics';
-import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, MyList, About, Delivery, LegalPage, Financing, Faq, Contact } from './pages';
+import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, MyList, About, Delivery, NotFound, LegalPage, Financing, Faq, Contact } from './pages';
 
 // A closing call to action shown above the footer on every page except the one it points to.
 function StoresBand() {
@@ -34,6 +35,23 @@ function ScrollTop() {
   useEffect(() => { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; }, []);
   useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
+}
+
+// A round button that scrolls long pages back to the top.
+function ToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const on = () => setShow(window.scrollY > 1400);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
+  if (!show) return null;
+  return (
+    <button type="button" className="totop" aria-label="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}>
+      <Icon name="arrow" size={20} />
+    </button>
+  );
 }
 
 // Counts each page and product view with a cookie-free service, when one is configured (see analytics.js).
@@ -80,9 +98,10 @@ export default function App() {
           <Route path="/financing" element={<Financing />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+      <ToTop />
       <CompareBar />
       <StoresBand />
       <Footer />

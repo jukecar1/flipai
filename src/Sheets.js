@@ -26,6 +26,7 @@ function SpecialsForm({ onDone }) {
     e.preventDefault();
     if (f._gotcha) return;
     if (!f.email.trim() && !f.phone.trim()) { setErr('Add an email or a mobile number.'); return; }
+    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setErr('That email address does not look right. Please check it.'); return; }
     if (!f.agree) { setErr('Please tick the box to agree to receive specials.'); return; }
     setErr(''); setState('sending');
     try {

@@ -82,3 +82,9 @@ export const OTHER_STORES = [
 
 // Texts go to the store's main number unless a separate texting number is set here. Confirm the line can receive texts.
 STORE.sms = STORE.tel;
+
+// "Save our contact": a vCard the visitor can add to their phone's contacts.
+export const VCARD_HREF = 'data:text/vcard;charset=utf-8,' + encodeURIComponent(
+  ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Royal Appliance Outlet', 'ORG:Royal Appliance Outlet',
+    `TEL;TYPE=WORK,VOICE:${STORE.tel}`, `EMAIL;TYPE=WORK:${STORE.email}`,
+    'ADR;TYPE=WORK:;;1612 N Pace Blvd Suite 4;Pensacola;FL;32505;USA', 'END:VCARD'].join('\r\n'));

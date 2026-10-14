@@ -81,17 +81,31 @@ export function Stars() {
 
 export function Modal({ onClose, children, label, className = '' }) {
   const closeRef = useRef(null);
+  const boxRef = useRef(null);
   useEffect(() => {
+    const opener = document.activeElement;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab' || !boxRef.current) return;
+      const f = [...boxRef.current.querySelectorAll('a[href], button:not([disabled]), input, textarea, select, [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener('keydown', onKey);
     closeRef.current?.focus();
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+      if (opener && opener.focus && document.contains(opener)) opener.focus();
+    };
   }, [onClose]);
   return (
     <div className="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={'modal ' + className} role="dialog" aria-modal="true" aria-label={label}>
+      <div ref={boxRef} className={'modal ' + className} role="dialog" aria-modal="true" aria-label={label}>
         <button type="button" className="modal-back-btn" onClick={onClose}><Icon name="arrow" size={16} /> Back</button>
         <button ref={closeRef} type="button" className="modal-x" aria-label="Close" onClick={onClose}>×</button>
         {children}
