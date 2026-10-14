@@ -1,3 +1,15 @@
+# Royal Appliance Outlet website
+
+React site (Create React App). Run `npm start` for development and `npm run build` for production.
+
+## Things to set up before launch
+
+- **Contact form:** create a free form at formspree.io pointed at the store's email, then build with
+  `REACT_APP_FORM_ENDPOINT=https://formspree.io/f/your-id npm run build`. Without it the form opens the visitor's email app.
+- **Best sellers:** `src/popular.json` is a demo list. Replace it with the store's real best-sellers (exact product names).
+- **Reviews:** `src/reviews.json` holds sample reviews. Replace them with real Google reviews and delete the `sample` flags.
+- **Catalog:** `src/products.json` was copied from the previous site (n name, c collection, t type, i image, p price).
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
 import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
 import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import reviews from './reviews.json';
+import { FORM_ENDPOINT } from './config';
 
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
@@ -401,6 +402,7 @@ export function ProductPage() {
             <div className="btn-row">
               <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
               <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
+              <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}`}>Ask about this item</Link>
             </div>
             <dl className="info pp-facts">
               <dt>Collection</dt><dd>{dept?.name}</dd>
@@ -504,13 +506,42 @@ export function Faq() {
 }
 
 export function Contact() {
-  const [f, setF] = useState({ name: '', phone: '', msg: '' });
+  const [params] = useSearchParams();
+  const item = params.get('item');
+  const [f, setF] = useState({ name: '', phone: '', email: '', msg: item ? `I'm interested in: ${item}\n\n` : '', _gotcha: '' });
+  const [state, setState] = useState('idle'); // idle | sending | sent | error
+  const [err, setErr] = useState('');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const submit = (e) => {
+
+  const submit = async (e) => {
     e.preventDefault();
-    const body = encodeURIComponent(`${f.msg}\n\nName: ${f.name}\nPhone: ${f.phone}`);
-    window.location.href = `mailto:${STORE.email}?subject=${encodeURIComponent('Website inquiry')}&body=${body}`;
+    if (f._gotcha) return; // spam trap: real visitors never see this field
+    if (!f.phone.trim() && !f.email.trim()) { setErr('Please add a phone number or an email so we can reach you.'); return; }
+    setErr('');
+    const preview = typeof window !== 'undefined' && window.__PREVIEW;
+    if (!FORM_ENDPOINT && !preview) {
+      const body = encodeURIComponent(`${f.msg}\n\nName: ${f.name}\nPhone: ${f.phone}\nEmail: ${f.email}`);
+      window.location.href = `mailto:${STORE.email}?subject=${encodeURIComponent('Website inquiry')}&body=${body}`;
+      return;
+    }
+    setState('sending');
+    try {
+      if (preview) {
+        await new Promise((r) => setTimeout(r, 700)); // the shared preview cannot reach outside services
+      } else {
+        const res = await fetch(FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, message: f.msg, _subject: 'Website inquiry', _replyto: f.email }),
+        });
+        if (!res.ok) throw new Error('send failed');
+      }
+      setState('sent');
+    } catch (x) {
+      setState('error');
+    }
   };
+
   return (
     <>
       <section className="page-head">
@@ -518,12 +549,25 @@ export function Contact() {
       </section>
       <section className="section">
         <div className="container split">
-          <form className="form" onSubmit={submit}>
-            <label htmlFor="c-name">Name<input id="c-name" required value={f.name} onChange={set('name')} /></label>
-            <label htmlFor="c-phone">Phone<input id="c-phone" type="tel" value={f.phone} onChange={set('phone')} /></label>
-            <label htmlFor="c-msg">What are you looking for?<textarea id="c-msg" required rows="4" value={f.msg} onChange={set('msg')} /></label>
-            <button className="btn btn-primary" type="submit">Send message</button>
-          </form>
+          {state === 'sent' ? (
+            <div className="sent" role="status">
+              <h2>Message sent</h2>
+              <p>Thanks, {f.name.split(' ')[0] || 'friend'}. We will get back to you soon. For a faster answer, call <b>{STORE.phone}</b>.</p>
+              {typeof window !== 'undefined' && window.__PREVIEW && <p className="sample-note">Preview only: nothing was actually sent. The live site delivers this to the store's inbox.</p>}
+              <div className="btn-row"><Link className="btn btn-ghost" to="/showroom">Keep browsing</Link></div>
+            </div>
+          ) : (
+            <form className="form" onSubmit={submit} noValidate>
+              <label htmlFor="c-name">Name<input id="c-name" required autoComplete="name" value={f.name} onChange={set('name')} /></label>
+              <label htmlFor="c-phone">Phone<input id="c-phone" type="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} /></label>
+              <label htmlFor="c-email">Email<input id="c-email" type="email" autoComplete="email" value={f.email} onChange={set('email')} /></label>
+              <label htmlFor="c-msg">What are you looking for?<textarea id="c-msg" required rows="5" value={f.msg} onChange={set('msg')} /></label>
+              <div className="trap" aria-hidden="true"><label htmlFor="c-web">Leave this empty<input id="c-web" tabIndex="-1" autoComplete="off" value={f._gotcha} onChange={set('_gotcha')} /></label></div>
+              {err && <p className="form-err" role="alert">{err}</p>}
+              {state === 'error' && <p className="form-err" role="alert">That did not go through. Please try again, or call {STORE.phone}.</p>}
+              <button className="btn btn-primary" type="submit" disabled={state === 'sending'}>{state === 'sending' ? 'Sending…' : 'Send message'}</button>
+            </form>
+          )}
           <div>
             <h3>Store details</h3>
             <dl className="info">
