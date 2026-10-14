@@ -4,7 +4,7 @@ import './App.css';
 import { Header, Footer, Assistant } from './Layout';
 import ScrollFX from './ScrollFX';
 import { Sheets } from './Sheets';
-import { Home, Showroom, Collection, ProductPage, Reviews, Financing, Faq, Contact } from './pages';
+import { Home, Showroom, Collection, ProductPage, Reviews, Socials, Financing, Faq, Contact } from './pages';
 
 // The shared preview only lets simple anchors like #p-123 through, so open those as product pages.
 function DeepLink() {
@@ -29,6 +29,7 @@ export default function App() {
           <Route path="/showroom/:cat" element={<Collection />} />
           <Route path="/product/:slug" element={<ProductPage />} />
           <Route path="/reviews" element={<Reviews />} />
+          <Route path="/socials" element={<Socials />} />
           <Route path="/financing" element={<Financing />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/contact" element={<Contact />} />

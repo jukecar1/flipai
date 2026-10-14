@@ -10,6 +10,7 @@ const NAV = [
   ['/financing', 'Financing'],
   ['/reviews', 'Reviews'],
   ['/faq', 'FAQ'],
+  ['/socials', 'Socials'],
   ['/contact', 'Contact'],
 ];
 
@@ -72,7 +73,7 @@ export function Footer() {
             <li><CallLink>{STORE.phone}</CallLink></li>
             <li><a href={`mailto:${STORE.email}`}>{STORE.email}</a></li>
             <li><a href={MAPS_URL} target="_blank" rel="noreferrer">{STORE.address}</a></li>
-            <li><a href={STORE.facebook} target="_blank" rel="noreferrer">Royal Appliance Outlet on Facebook</a></li>
+            <li><a href={STORE.facebook} target="_blank" rel="noreferrer">Facebook</a></li>
           </ul>
         </div>
         <div>

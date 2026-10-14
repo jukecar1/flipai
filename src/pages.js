@@ -159,13 +159,15 @@ export function Home() {
             <p className="eyebrow dark">Visit</p>
             <h2>Come see it in person</h2>
             <p>Royal Appliance Outlet is a locally run outlet on N Pace Blvd. Walk the floor, compare sizes and features, and our team will help you find the right fit.</p>
+            <CallButtons />
+          </div>
+          <div className="visit-card">
             <dl className="info">
               <dt>Address</dt><dd>{STORE.address}</dd>
               <dt>Hours</dt><dd><Hours /><small className="muted">Hours may vary on holidays. Call ahead to confirm.</small></dd>
+              <dt>Phone</dt><dd><CallLink>{STORE.phone}</CallLink></dd>
             </dl>
-            <CallButtons />
           </div>
-          <img className="visit-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" loading="lazy" />
         </div>
       </section>
     </>
@@ -409,6 +411,47 @@ export function ProductPage() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+export function Socials() {
+  const boxes = [
+    { k: 'Facebook', t: 'Follow us', s: 'Store updates and what is new on the floor', href: STORE.facebook, ext: true },
+    { k: 'Google', t: 'Read our reviews', s: `${STORE.rating} stars from ${STORE.reviews} reviews`, to: '/reviews' },
+    { k: 'Directions', t: '1612 N Pace Blvd', s: 'Open in Maps', href: MAPS_URL, ext: true },
+    { k: 'Call', t: STORE.phone, s: 'Expert help in store', call: true },
+    { k: 'Email', t: 'Send us a message', s: STORE.email, to: '/contact' },
+    { k: 'Hours', t: 'Open 7 days', s: 'Tap for store hours', sheet: 'hours' },
+  ];
+  const body = (b) => (
+    <>
+      <span className="k">{b.k}</span><b>{b.t}</b><small>{b.s}</small>
+      <span className="go" aria-hidden="true"><Icon name="arrow" size={18} /></span>
+    </>
+  );
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/" label="home" />
+          <p className="eyebrow">Stay connected</p>
+          <h1 className="h1-sm">Find us online</h1>
+          <p className="lead">Follow along, read what customers say, or reach the store directly.</p>
+        </div>
+      </section>
+      <section className="section tight">
+        <div className="container">
+          <div className="boxgrid">
+            {boxes.map((b) => {
+              if (b.call) return <CallLink className="gcard box" key={b.k}>{body(b)}</CallLink>;
+              if (b.sheet) return <button type="button" className="gcard box" key={b.k} onClick={() => openSheet(b.sheet)}>{body(b)}</button>;
+              if (b.to) return <Link className="gcard box" key={b.k} to={b.to}>{body(b)}</Link>;
+              return <a className="gcard box" key={b.k} href={b.href} target="_blank" rel="noreferrer">{body(b)}</a>;
+            })}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
