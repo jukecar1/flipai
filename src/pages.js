@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
-import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS } from './products';
-import { CallButtons, CallLink, BackLink, Icon, Stars, Modal, openSheet } from './ui';
+import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
+import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import reviews from './reviews.json';
 
-const catName = (id) => CATEGORIES.find((c) => c.id === id)?.name;
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
 
@@ -34,32 +33,13 @@ function Price({ p }) {
   return p.price != null ? <span className="price">{money(p.price)}</span> : <span className="price call">Call for price</span>;
 }
 
-function ProductModal({ p, onClose }) {
+function ProductCard({ p }) {
   return (
-    <Modal onClose={onClose} label={p.name}>
-      <div className="pm-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img, 900)} alt={p.name} /></div>
-      <div className="pm-body">
-        <p className="crumb">{catName(p.cat)} · {p.type}</p>
-        <h2>{p.name}</h2>
-        <p className="muted">Visit the showroom or call to learn more about this item and current availability.</p>
-        <div className="pm-price"><Price p={p} /></div>
-        <p className="small muted">Call {STORE.phone} or visit the store to confirm current availability.</p>
-        <div className="btn-row">
-          <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
-          <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function ProductCard({ p, onOpen }) {
-  return (
-    <button type="button" className="prod" onClick={() => onOpen(p)} aria-label={`View ${p.name}`}>
+    <Link to={productPath(p)} className="prod" aria-label={`View ${p.name}`}>
       <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} alt="" loading="lazy" decoding="async" /></span>
       <span className="prod-name">{p.name}</span>
       <Price p={p} />
-    </button>
+    </Link>
   );
 }
 
@@ -79,7 +59,6 @@ function Mosaic() {
 
 export function Home() {
   const status = openStatus();
-  const [open, setOpen] = useState(null);
   const featured = useMemo(() => {
     const seen = {};
     const out = [];
@@ -141,7 +120,7 @@ export function Home() {
           </div>
         </div>
         <div className="rail" role="list">
-          {featured.map((p) => <div role="listitem" key={p.id}><ProductCard p={p} onOpen={setOpen} /></div>)}
+          {featured.map((p) => <div role="listitem" key={p.id}><ProductCard p={p} /></div>)}
         </div>
       </section>
 
@@ -198,7 +177,6 @@ export function Home() {
           <img className="visit-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" loading="lazy" />
         </div>
       </section>
-      {open && <ProductModal p={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -230,7 +208,6 @@ export function Collection() {
   const [sort, setSort] = useState(HAS_POPULAR ? 'popular' : 'featured');
   const [note, setNote] = useState(true);
   const [shown, setShown] = useState(PAGE);
-  const [open, setOpen] = useState(null);
 
   useEffect(() => { setQ(''); setType(''); setSort(HAS_POPULAR ? 'popular' : 'featured'); setShown(PAGE); }, [cat]);
 
@@ -307,7 +284,7 @@ export function Collection() {
             {items.length ? (
               <>
                 <div className="prod-grid">
-                  {items.slice(0, shown).map((x) => <ProductCard key={x.id} p={x} onOpen={setOpen} />)}
+                  {items.slice(0, shown).map((x) => <ProductCard key={x.id} p={x} />)}
                 </div>
                 {items.length > shown && (
                   <div className="more"><button type="button" className="btn btn-ghost" onClick={() => setShown(shown + PAGE)}>Load more ({items.length - shown} left)</button></div>
@@ -323,7 +300,6 @@ export function Collection() {
           </div>
         </div>
       </section>
-      {open && <ProductModal p={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -365,6 +341,83 @@ export function Reviews() {
           )}
         </div>
       </section>
+    </>
+  );
+}
+
+function ShareBox({ p }) {
+  const url = shareUrl(p);
+  const [done, setDone] = useState(false);
+  const copy = async (e) => {
+    const field = e.currentTarget.closest('.share').querySelector('input');
+    try { await navigator.clipboard.writeText(url); setDone(true); setTimeout(() => setDone(false), 2000); } catch (err) { field.select(); }
+  };
+  const text = encodeURIComponent(`${p.name} at Royal Appliance Outlet: ${url}`);
+  return (
+    <div className="share">
+      <label htmlFor="share-url">Share this item</label>
+      <div className="share-row">
+        <input id="share-url" readOnly value={url} onFocus={(e) => e.target.select()} />
+        <button type="button" className="btn btn-primary btn-sm" onClick={copy}>{done ? 'Link copied' : 'Copy link'}</button>
+      </div>
+      <div className="share-alt">
+        <a href={`sms:?&body=${text}`}>Text it</a>
+        <a href={`mailto:?subject=${encodeURIComponent(p.name)}&body=${text}`}>Email it</a>
+      </div>
+    </div>
+  );
+}
+
+export function ProductPage() {
+  const { slug } = useParams();
+  const p = PRODUCTS[parseInt(slug, 10)];
+  useEffect(() => {
+    if (!p) return undefined;
+    document.title = `${p.name} | Royal Appliance Outlet`;
+    return () => { document.title = 'Royal Appliance Outlet'; };
+  }, [p]);
+  if (!p) return <Showroom />;
+  const dept = CATEGORIES.find((c) => c.id === p.cat);
+  const seen = new Set([p.name]);
+  const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
+  return (
+    <>
+      <section className="pp-bar">
+        <div className="container"><BackLink to={`/showroom/${p.cat}`} label={dept?.name.toLowerCase()} /></div>
+      </section>
+      <section className="section tight">
+        <div className="container pp">
+          <div className="pp-img">
+            {isBest(p) && <span className="badge">Best seller</span>}
+            <img src={imgUrl(p.img, 1000)} alt={p.name} />
+          </div>
+          <div className="pp-info">
+            <p className="crumb dark"><Link to="/showroom">Showroom</Link> / <Link to={`/showroom/${p.cat}`}>{dept?.name}</Link> / {p.type}</p>
+            <h1 className="pp-title">{p.name}</h1>
+            <div className="pm-price"><Price p={p} /></div>
+            <p className="muted">Visit the showroom or call to learn more about this item and current availability.</p>
+            <div className="btn-row">
+              <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
+              <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
+            </div>
+            <dl className="info pp-facts">
+              <dt>Collection</dt><dd>{dept?.name}</dd>
+              <dt>Type</dt><dd>{p.type}</dd>
+              <dt>Stock</dt><dd>Call or visit to confirm what is on the floor today.</dd>
+            </dl>
+            <p className="small muted">Product photos are manufacturer-hosted catalog images for the model shown. Colors and configurations may vary.</p>
+            <ShareBox p={p} />
+          </div>
+        </div>
+      </section>
+      {related.length > 0 && (
+        <section className="section sand">
+          <div className="container">
+            <div className="section-head"><h2>More {p.type.toLowerCase()}</h2><Link className="link" to={`/showroom/${p.cat}`}>View all <Icon name="arrow" size={16} /></Link></div>
+            <div className="prod-grid">{related.map((x) => <ProductCard key={x.id} p={x} />)}</div>
+          </div>
+        </section>
+      )}
     </>
   );
 }
