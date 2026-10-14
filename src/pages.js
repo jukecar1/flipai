@@ -81,11 +81,11 @@ function ProductCard({ p }) {
       <button type="button" className={'heart' + (saved ? ' on' : '')} aria-pressed={saved} aria-label={saved ? `Remove ${p.name} from my list` : `Save ${p.name} to my list`} onClick={() => list.toggle(p.id)}>
         <Icon name="heart" size={18} fill={saved} />
       </button>
+      <button type="button" className={'cmp' + (comparing ? ' on' : '')} aria-pressed={comparing} aria-label={comparing ? `Remove ${p.name} from compare` : `Compare ${p.name}`} title={comparing ? 'Added to compare' : 'Compare'} onClick={() => cmp.toggle(p.id)}>
+        <Icon name={comparing ? 'check' : 'plus'} size={16} />
+      </button>
       <div className="prod-foot">
         {p.price != null ? <span className="price">{money(p.price)}</span> : <Link className="ask" to={`/contact?item=${encodeURIComponent(p.name)}&ask=price`}>Ask for price</Link>}
-        <button type="button" className={'cmp' + (comparing ? ' on' : '')} aria-pressed={comparing} aria-label={comparing ? `Remove ${p.name} from compare` : `Compare ${p.name}`} onClick={() => cmp.toggle(p.id)}>
-          <Icon name={comparing ? 'check' : 'plus'} size={14} /> Compare
-        </button>
       </div>
     </div>
   );
@@ -449,6 +449,7 @@ export function ProductPage() {
   const { slug } = useParams();
   const list = useList();
   const cmp = useCompare();
+  const [shareOpen, setShareOpen] = useState(false);
   const p = PRODUCTS[parseInt(slug, 10)];
   usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
   if (!p) return <Showroom />;
@@ -470,23 +471,22 @@ export function ProductPage() {
           <div className="pp-info">
             <p className="crumb dark"><Link to="/showroom">Showroom</Link> / <Link to={`/showroom/${p.cat}`}>{dept?.name}</Link> / {p.type}</p>
             <h1 className="pp-title">{p.name}</h1>
-            <div className="pm-price"><Price p={p} /></div>
-            <p className="muted">Visit the showroom or call to learn more about this item and current availability.</p>
-            <div className="btn-row">
-              <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
-              <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
-              <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}${p.price == null ? '&ask=price' : ''}`}>{p.price == null ? 'Ask for price' : 'Ask about this item'}</Link>
-              <TextLink className="btn btn-ghost" body={`Hi! I'm interested in ${p.name}. ${shareUrl(p)}`}><Icon name="chat" /> Text about this item</TextLink>
-              <button type="button" className={'btn btn-ghost' + (saved ? ' is-saved' : '')} aria-pressed={saved} onClick={() => list.toggle(p.id)}><Icon name="heart" size={18} fill={saved} /> {saved ? 'Saved to my list' : 'Save to my list'}</button>
-              <button type="button" className={'btn btn-ghost' + (cmp.has(p.id) ? ' is-on' : '')} aria-pressed={cmp.has(p.id)} onClick={() => cmp.toggle(p.id)}><Icon name={cmp.has(p.id) ? 'check' : 'plus'} size={18} /> {cmp.has(p.id) ? 'Added to compare' : 'Compare'}</button>
+            {p.price != null ? <div className="pm-price"><Price p={p} /></div> : <p className="price-line">Price on request</p>}
+            <p className="muted pp-note">Call or visit to confirm what is on the floor today.</p>
+            <div className="pp-actions">
+              <CallLink className="btn btn-primary btn-block"><Icon name="phone" /> Call {STORE.phone}</CallLink>
+              <div className="pp-two">
+                <TextLink className="btn btn-ghost" body={`Hi! I'm interested in ${p.name}. ${shareUrl(p)}`}><Icon name="chat" /> Text us</TextLink>
+                <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}${p.price == null ? '&ask=price' : ''}`}>{p.price == null ? 'Ask for price' : 'Ask a question'}</Link>
+              </div>
             </div>
-            <dl className="info pp-facts">
-              <dt>Collection</dt><dd>{dept?.name}</dd>
-              <dt>Type</dt><dd>{p.type}</dd>
-              <dt>Stock</dt><dd>Call or visit to confirm what is on the floor today.</dd>
-            </dl>
-            <p className="small muted">Product photos are manufacturer-hosted catalog images for the model shown. Colors and configurations may vary.</p>
-            <ShareBox p={p} />
+            <div className="pp-tools" role="group" aria-label="More options">
+              <button type="button" className={saved ? 'on' : ''} aria-pressed={saved} onClick={() => list.toggle(p.id)}><Icon name="heart" size={16} fill={saved} /> {saved ? 'Saved' : 'Save'}</button>
+              <button type="button" className={cmp.has(p.id) ? 'on' : ''} aria-pressed={cmp.has(p.id)} onClick={() => cmp.toggle(p.id)}><Icon name={cmp.has(p.id) ? 'check' : 'plus'} size={16} /> {cmp.has(p.id) ? 'Comparing' : 'Compare'}</button>
+              <button type="button" className={shareOpen ? 'on' : ''} aria-expanded={shareOpen} onClick={() => setShareOpen(!shareOpen)}><Icon name="arrow" size={16} /> Share</button>
+            </div>
+            {shareOpen && <ShareBox p={p} />}
+            <p className="small muted pp-fine">Photos are manufacturer catalog images and may vary from the item in store. <a href={MAPS_URL} target="_blank" rel="noreferrer">Get directions</a></p>
           </div>
         </div>
       </section>
@@ -640,13 +640,13 @@ export function About() {
       <section className="section">
         <div className="container split">
           <div>
-            <h2 className="h3 big">What you will find</h2>
+            <h2 className="h3 sub-h">What you will find</h2>
             <p>Furniture for every room, mattresses, rugs, lighting and decor, plus home appliances. Our floor changes weekly, so call or stop in and we will tell you what is on it today.</p>
-            <h2 className="h3 big">How we help</h2>
+            <h2 className="h3 sub-h">How we help</h2>
             <p>Our team helps you compare sizes, features and fit, and talks through financing and lease-to-own options with Synchrony, Snap Finance and Acima Leasing.</p>
-            <h2 className="h3 big">Part of a local family of businesses</h2>
+            <h2 className="h3 sub-h">Part of a local family of businesses</h2>
             <p>The same owner also runs Royal Vape Mart and a car auction business. <Link to="/other-stores">See our other stores</Link>.</p>
-            {ABOUT.story.length > 0 && <><h2 className="h3 big">Our story</h2>{ABOUT.story.map((t) => <p key={t}>{t}</p>)}</>}
+            {ABOUT.story.length > 0 && <><h2 className="h3 sub-h">Our story</h2>{ABOUT.story.map((t) => <p key={t}>{t}</p>)}</>}
           </div>
           <div>
             <img className="visit-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" width="1100" height="703" loading="lazy" />
@@ -692,13 +692,13 @@ export function Delivery() {
               {DELIVERY_DETAILS.map((d) => <div className="gcard box static" key={d.k}><span className="k">{d.k}</span><b>{d.text}</b></div>)}
             </div>
           )}
-          <h2 className="h3 big">Before you buy, measure</h2>
+          <h2 className="h3 sub-h">Before you buy, measure</h2>
           <ul className="ticks">
             <li>The space where the piece will go, including height for tall items.</li>
             <li>Doorways, hallways, stair turns and elevators on the way in.</li>
             <li>For appliances: width, height and depth of the opening, plus the power, gas or water hookups you have.</li>
           </ul>
-          <h2 className="h3 big">What to ask us</h2>
+          <h2 className="h3 sub-h">What to ask us</h2>
           <ul className="ticks">
             <li>Whether we can deliver to your address, and when.</li>
             <li>What delivery costs and whether set-up or installation is included.</li>

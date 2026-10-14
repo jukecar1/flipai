@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { STORE, MAPS_URL } from './data';
 
 const PATHS = {
@@ -53,13 +53,12 @@ export function TextLink({ body = 'Hi! I have a question for Royal Appliance Out
   );
 }
 
+// Goes to the page named on the button (never an unpredictable history entry), and the new page opens at the top.
 export function BackLink({ to, label }) {
-  const nav = useNavigate();
-  const loc = useLocation();
   return (
-    <button type="button" className="back" onClick={() => (loc.key !== 'default' ? nav(-1) : nav(to))}>
+    <Link to={to} className="back">
       <Icon name="arrow" size={16} /> Back{label ? ` to ${label}` : ''}
-    </button>
+    </Link>
   );
 }
 
@@ -68,7 +67,6 @@ export function CallButtons() {
     <div className="btn-row">
       <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
       <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
-      <TextLink className="btn btn-ghost"><Icon name="chat" /> Text us</TextLink>
     </div>
   );
 }

@@ -312,9 +312,20 @@ h2.h3 { font-family: var(--font); font-size: 1.05rem; font-weight: 700; letter-s
 .check { display: grid !important; grid-template-columns: 22px 1fr; gap: .6rem !important; align-items: start; font-weight: 400 !important; font-size: .85rem !important; color: var(--muted); } .check input { width: 18px !important; height: 18px; margin-top: 2px; padding: 0; }
 .textbody { background: var(--sand); border-radius: 6px; padding: .8rem 1rem; font-size: .95rem; margin: 0 0 1rem; overflow-wrap: anywhere; }
 .inline { background: none; border: 0; padding: 0; font: inherit; color: var(--teal2); text-decoration: underline; cursor: pointer; }
-.big { font-size: 1.25rem !important; margin: 1.8rem 0 .5rem; color: var(--ink); } .big:first-child { margin-top: 0; }
+.sub-h { font-size: 1.25rem !important; margin: 1.8rem 0 .5rem; color: var(--ink); } .sub-h:first-child { margin-top: 0; }
 .ticks { margin: 0 0 1rem; padding-left: 1.2rem; display: grid; gap: .5rem; color: var(--muted); } .ticks li::marker { color: var(--ink); }
 .map-art > svg { position: absolute; inset: 0; width: 100%; height: 100%; } .map-art svg:not(:first-child) { position: static; width: auto; height: auto; }
 @media (max-width: 520px) { .compare-thumbs span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 html.compare-open main { padding-bottom: 84px; }
 p a:not(.btn):not(.link):not(.a-link) { text-decoration: underline; text-underline-offset: 3px; }
+
+/* --- calmer product page actions --- */
+.price-line { margin: 0 0 .4rem; color: var(--gold-dk); font-weight: 600; } .pp-note { margin: 0 0 1.1rem; }
+.pp-actions { display: grid; gap: .6rem; } .btn-block { width: 100%; } .pp-two { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.pp-tools { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 .4rem; }
+.pp-tools button { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .9rem; border-radius: 999px; border: 1.5px solid #c5beb0; background: #fff; color: var(--ink); font: 600 .88rem var(--font); cursor: pointer; } .pp-tools button:hover { border-color: var(--ink); } .pp-tools button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.pp-fine { margin-top: 1rem; }
+
+/* --- card: compare is a small round button under the heart --- */
+.cmp { position: absolute; top: 54px; right: 8px; z-index: 2; width: 38px; height: 38px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.18); cursor: pointer; } .cmp:hover { background: #fff; transform: scale(1.06); } .cmp.on { background: var(--ink); color: #fff; }
+.ask { white-space: nowrap; }

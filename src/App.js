@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
@@ -28,6 +28,14 @@ function StoresBand() {
   );
 }
 
+// Every page opens at the top, including when the visitor goes back, so Back never lands mid-page or at the bottom.
+function ScrollTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; }, []);
+  useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 // Counts each page and product view with a cookie-free service, when one is configured (see analytics.js).
 function Pageviews() {
   const { pathname } = useLocation();
@@ -48,6 +56,7 @@ function DeepLink() {
 export default function App() {
   return (
     <>
+      <ScrollTop />
       <DeepLink />
       <Pageviews />
       <ScrollFX />
