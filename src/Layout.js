@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { STORE, MAPS_URL, FAQS } from './data';
 import { LOGO_SVG } from './logoSvg';
-import { Icon } from './ui';
+import { Icon, CallLink } from './ui';
 
 const NAV = [
   ['/', 'Home'],
   ['/showroom', 'Showroom'],
   ['/financing', 'Financing'],
+  ['/reviews', 'Reviews'],
   ['/faq', 'FAQ'],
   ['/contact', 'Contact'],
 ];
@@ -38,11 +39,11 @@ export function Header() {
           ))}
         </nav>
         <div className="header-actions">
-          <a className="btn btn-primary btn-sm" href={`tel:${STORE.tel}`}>
+          <CallLink className="btn btn-primary btn-sm">
             <Icon name="phone" />
             <span className="hide-sm">{STORE.phone}</span>
             <span className="sr-only">Call</span>
-          </a>
+          </CallLink>
           <button
             className="btn btn-ghost btn-sm menu-btn"
             aria-expanded={open}
@@ -68,7 +69,7 @@ export function Footer() {
         <div>
           <h4>Visit and call</h4>
           <ul className="plain">
-            <li><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></li>
+            <li><CallLink>{STORE.phone}</CallLink></li>
             <li><a href={`mailto:${STORE.email}`}>{STORE.email}</a></li>
             <li><a href={MAPS_URL} target="_blank" rel="noreferrer">{STORE.address}</a></li>
             <li><a href={STORE.facebook} target="_blank" rel="noreferrer">Royal Appliance Outlet on Facebook</a></li>

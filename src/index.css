@@ -1,36 +1,12 @@
 /* Palettes: the page is built from these tokens only. "teal" is the primary dark-green/charcoal, "gold" is the accent. */
 :root {
-  --ink: #17302a; --ink-rgb: 23, 48, 42; --ink-line: #2b4a41; --on-ink: #c9d9d1;
-  --teal: #1f4a3d; --teal-rgb: 31, 74, 61; --teal2: #2d6a54;
-  --gold: #b25a3a; --accent-rgb: 178, 90, 58; --gold-lt: #e3a481; --gold-dk: #8f4526; --on-accent: #ffffff; --accent-lt: #e3a481;
-  --bg: #f7f5f0; --sand: #ece8df; --card: #fff; --line: #ddd7ca; --text: #1d2723; --muted: #5c6761;
+  --ink: #111214; --ink-rgb: 17, 18, 20; --ink-line: #2b2d31; --on-ink: #cbcdd0;
+  --teal: #1f2124; --teal-rgb: 31, 33, 36; --teal2: #2e3238;
+  --gold: #d9d4c7; --accent-rgb: 217, 212, 199; --gold-lt: #e9e5da; --gold-dk: #5d584b; --on-accent: #111214; --accent-lt: #e9e5da; --star: #1a1b1d;
+  --bg: #f6f6f4; --sand: #ebebe8; --card: #fff; --line: #dcdcd8; --text: #17181a; --muted: #5f6266;
   --open: #1c7a43; --closed: #b3261e;
   --display: Cinzel, 'Times New Roman', serif;
   --font: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
-:root[data-palette="rose"] {
-  --ink: #231f22; --ink-rgb: 35, 31, 34; --ink-line: #3b3439; --on-ink: #dacfd3;
-  --teal: #38303a; --teal-rgb: 56, 48, 58; --teal2: #7a3d52;
-  --gold: #b5546f; --accent-rgb: 181, 84, 111; --gold-lt: #e8aabb; --gold-dk: #8d3150; --on-accent: #ffffff; --accent-lt: #e8aabb;
-  --bg: #f8f6f5; --sand: #efeaea; --line: #e0d8d9; --text: #221e21; --muted: #675f63;
-}
-:root[data-palette="sage"] {
-  --ink: #232b2a; --ink-rgb: 35, 43, 42; --ink-line: #37433f; --on-ink: #ccd7d2;
-  --teal: #3c4a47; --teal-rgb: 60, 74, 71; --teal2: #4a6a5e;
-  --gold: #86a593; --accent-rgb: 134, 165, 147; --gold-lt: #bcd3c6; --gold-dk: #3f6354; --on-accent: #0f1715; --accent-lt: #bcd3c6;
-  --bg: #f5f6f3; --sand: #e9ece6; --line: #d8ddd5; --text: #1d2523; --muted: #596461;
-}
-:root[data-palette="burgundy"] {
-  --ink: #2b1118; --ink-rgb: 43, 17, 24; --ink-line: #4b2a33; --on-ink: #ddc9cd;
-  --teal: #4a1c28; --teal-rgb: 74, 28, 40; --teal2: #8b2f45;
-  --gold: #c9825a; --accent-rgb: 201, 130, 90; --gold-lt: #ebb48f; --gold-dk: #8a4a22; --on-accent: #2b1118; --accent-lt: #ebb48f;
-  --bg: #f9f5f2; --sand: #f0e7e1; --line: #e3d6cd; --text: #2a1c20; --muted: #6a5a5e;
-}
-:root[data-palette="noir"] {
-  --ink: #111214; --ink-rgb: 17, 18, 20; --ink-line: #2b2d31; --on-ink: #cbcdd0;
-  --teal: #1f2124; --teal-rgb: 31, 33, 36; --teal2: #2e3238;
-  --gold: #d9d4c7; --accent-rgb: 217, 212, 199; --gold-lt: #e9e5da; --gold-dk: #5d584b; --on-accent: #111214; --accent-lt: #e9e5da;
-  --bg: #f6f6f4; --sand: #ebebe8; --line: #dcdcd8; --text: #17181a; --muted: #5f6266;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }

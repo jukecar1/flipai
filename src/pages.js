@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
 import { PRODUCTS, money, HAS_POPULAR, popularRank } from './products';
-import { CallButtons, Icon, Stars, Modal } from './ui';
+import { CallButtons, CallLink, BackLink, Icon, Stars, Modal, openSheet } from './ui';
+import reviews from './reviews.json';
 
 const catName = (id) => CATEGORIES.find((c) => c.id === id)?.name;
 const COUNTS = {};
@@ -29,7 +30,7 @@ function ProductModal({ p, onClose }) {
         <div className="pm-price"><Price p={p} /></div>
         <p className="small muted">Call {STORE.phone} or visit the store to confirm current availability.</p>
         <div className="btn-row">
-          <a className="btn btn-primary" href={`tel:${STORE.tel}`}><Icon name="phone" /> Call {STORE.phone}</a>
+          <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
           <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
         </div>
       </div>
@@ -83,28 +84,28 @@ export function Home() {
           <p className="lead">One showroom on N Pace Blvd. Browse the collections here, then come see the floor and our team will tell you exactly what is in stock today.</p>
           <div className="btn-row">
             <Link className="btn btn-gold" to="/showroom">Browse the showroom</Link>
-            <a className="btn btn-outline" href={`tel:${STORE.tel}`}><Icon name="phone" /> {STORE.phone}</a>
+            <CallLink className="btn btn-outline"><Icon name="phone" /> {STORE.phone}</CallLink>
           </div>
         </div>
       </section>
 
       <div className="container">
         <div className="glance">
-          <Link to="/contact" className="gcard">
+          <button type="button" className="gcard" onClick={() => openSheet('hours')}>
             <span className="k">Today</span>
             <b className={status.open ? 'is-open' : 'is-closed'}><i aria-hidden="true" />{status.open ? 'Open now' : 'Closed'}</b>
             <small>{cap(status.text.split(' · ')[1])}</small>
-            <small>Mon to Sat 10 to 7 · Sun 10 to 6</small>
-          </Link>
+            <small>Tap for store hours</small>
+          </button>
           <a className="gcard" href={MAPS_URL} target="_blank" rel="noreferrer">
             <span className="k">Visit</span><b>1612 N Pace Blvd Suite 4</b><small>Pensacola, FL 32505 · Get directions</small>
           </a>
-          <a className="gcard" href={`tel:${STORE.tel}`}>
+          <CallLink className="gcard">
             <span className="k">Call</span><b>{STORE.phone}</b><small>Tap to call · Expert help in store</small>
-          </a>
-          <a className="gcard" href={REVIEWS_URL} target="_blank" rel="noreferrer">
-            <span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews</small>
-          </a>
+          </CallLink>
+          <Link className="gcard" to="/reviews">
+            <span className="k">Rated</span><b className="rate">{STORE.rating} <Stars /></b><small>{STORE.reviews} Google reviews · Read them</small>
+          </Link>
         </div>
       </div>
 
@@ -150,6 +151,7 @@ export function Home() {
             <div className="score">{STORE.rating}</div>
             <Stars />
             <p className="muted">{STORE.reviews} reviews on Google</p>
+            <Link className="link" to="/reviews">Read reviews <Icon name="arrow" size={16} /></Link>
           </div>
           <div className="themes">
             {[
@@ -187,6 +189,7 @@ export function Showroom() {
     <>
       <section className="page-head">
         <div className="container">
+          <BackLink to="/" label="home" />
           <p className="eyebrow">Showroom</p>
           <h1 className="h1-sm">Browse by room</h1>
           <p className="lead">Furniture for the whole house, plus home appliances. Stock changes weekly, so call to confirm availability.</p>
@@ -233,6 +236,7 @@ export function Collection() {
     <>
       <section className="page-head">
         <div className="container">
+          <BackLink to="/showroom" label="showroom" />
           <p className="crumb"><Link to="/showroom">Showroom</Link> / {dept.name}</p>
           <h1 className="h1-sm">{dept.name}</h1>
           <p className="lead">{dept.blurb}</p>
@@ -305,11 +309,58 @@ export function Collection() {
   );
 }
 
+export function Reviews() {
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/" label="home" />
+          <p className="eyebrow">Reviews</p>
+          <h1 className="h1-sm">What customers say</h1>
+          <p className="lead">Rated {STORE.rating} out of 5 from {STORE.reviews} reviews on Google.</p>
+        </div>
+      </section>
+      <section className="section">
+        <div className="container narrow">
+          <div className="review-hero">
+            <div className="score">{STORE.rating}</div>
+            <div><Stars /><p className="muted" style={{ margin: '.3rem 0 0' }}>{STORE.reviews} reviews on Google</p></div>
+          </div>
+          <div className="btn-row">
+            <a className="btn btn-primary" href={REVIEWS_URL} target="_blank" rel="noreferrer">Read all reviews on Google <Icon name="arrow" size={16} /></a>
+          </div>
+          <div className="three">
+            {[
+              ['Competitive prices', 'Shoppers often mention finding what they needed for less.'],
+              ['Friendly service', 'Reviewers regularly highlight helpful, no-pressure staff.'],
+              ['Wide selection', 'A rotating floor of appliances and furniture for every room.'],
+            ].map(([t, d]) => <div className="theme" key={t}><h3>{t}</h3><p>{d}</p></div>)}
+          </div>
+          {reviews.length > 0 ? (
+            <div className="quote-list">
+              {reviews.map((r, i) => (
+                <figure className="quote" key={i} style={{ margin: 0 }}>
+                  <Stars />
+                  <p>{r.text}</p>
+                  <small>{r.name}{r.date ? ` · ${r.date}` : ''}</small>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <p className="small muted">The themes above summarize public review feedback. Tap the button to read each review on Google.</p>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
 export function Financing() {
   return (
     <>
       <section className="page-head">
         <div className="container">
+          <BackLink to="/" label="home" />
           <p className="eyebrow">Flexible ways to shop</p>
           <h1 className="h1-sm">Financing and lease-to-own</h1>
           <p className="lead">Approval, eligibility and terms vary by provider.</p>
@@ -332,7 +383,7 @@ export function Faq() {
   return (
     <>
       <section className="page-head">
-        <div className="container"><p className="eyebrow">Answers</p><h1 className="h1-sm">Frequently asked questions</h1></div>
+        <div className="container"><BackLink to="/" label="home" /><p className="eyebrow">Answers</p><h1 className="h1-sm">Frequently asked questions</h1></div>
       </section>
       <section className="section">
         <div className="container narrow">
@@ -355,7 +406,7 @@ export function Contact() {
   return (
     <>
       <section className="page-head">
-        <div className="container"><p className="eyebrow">Contact</p><h1 className="h1-sm">Talk to the team</h1><p className="lead">The fastest way to check stock and pricing is a quick call.</p></div>
+        <div className="container"><BackLink to="/" label="home" /><p className="eyebrow">Contact</p><h1 className="h1-sm">Talk to the team</h1><p className="lead">The fastest way to check stock and pricing is a quick call.</p></div>
       </section>
       <section className="section">
         <div className="container split">
@@ -369,7 +420,7 @@ export function Contact() {
             <h3>Store details</h3>
             <dl className="info">
               <dt>Address</dt><dd>{STORE.address}</dd>
-              <dt>Phone</dt><dd><a href={`tel:${STORE.tel}`}>{STORE.phone}</a></dd>
+              <dt>Phone</dt><dd><CallLink>{STORE.phone}</CallLink></dd>
               <dt>Email</dt><dd><a href={`mailto:${STORE.email}`}>{STORE.email}</a></dd>
               <dt>Hours</dt><dd><Hours /></dd>
             </dl>

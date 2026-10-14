@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { STORE, MAPS_URL } from './data';
 
 const PATHS = {
@@ -20,10 +21,36 @@ export function Icon({ name, size = 18 }) {
   );
 }
 
+// Opens the call / hours sheets (see Sheets.js) from anywhere on the page.
+export const openSheet = (kind) => window.dispatchEvent(new CustomEvent('royal-sheet', { detail: kind }));
+
+// A normal tel: link. In the shared preview, where phone links are unreliable, it opens the call sheet instead.
+export function CallLink({ children, ...rest }) {
+  return (
+    <a
+      {...rest}
+      href={`tel:${STORE.tel}`}
+      onClick={(e) => { if (typeof window !== 'undefined' && window.__PREVIEW) { e.preventDefault(); openSheet('call'); } }}
+    >
+      {children}
+    </a>
+  );
+}
+
+export function BackLink({ to, label }) {
+  const nav = useNavigate();
+  const loc = useLocation();
+  return (
+    <button type="button" className="back" onClick={() => (loc.key !== 'default' ? nav(-1) : nav(to))}>
+      <Icon name="arrow" size={16} /> Back{label ? ` to ${label}` : ''}
+    </button>
+  );
+}
+
 export function CallButtons() {
   return (
     <div className="btn-row">
-      <a className="btn btn-primary" href={`tel:${STORE.tel}`}><Icon name="phone" /> Call {STORE.phone}</a>
+      <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
       <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
     </div>
   );
@@ -37,7 +64,7 @@ export function Stars() {
   );
 }
 
-export function Modal({ onClose, children, label }) {
+export function Modal({ onClose, children, label, className = '' }) {
   const closeRef = useRef(null);
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -49,7 +76,8 @@ export function Modal({ onClose, children, label }) {
   }, [onClose]);
   return (
     <div className="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={label}>
+      <div className={'modal ' + className} role="dialog" aria-modal="true" aria-label={label}>
+        <button type="button" className="modal-back-btn" onClick={onClose}><Icon name="arrow" size={16} /> Back</button>
         <button ref={closeRef} type="button" className="modal-x" aria-label="Close" onClick={onClose}>×</button>
         {children}
       </div>

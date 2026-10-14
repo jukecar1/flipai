@@ -2,8 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
 import ScrollFX from './ScrollFX';
-import PalettePicker from './PalettePicker';
-import { Home, Showroom, Collection, Financing, Faq, Contact } from './pages';
+import { Sheets } from './Sheets';
+import { Home, Showroom, Collection, Reviews, Financing, Faq, Contact } from './pages';
 
 export default function App() {
   return (
@@ -15,6 +15,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/showroom" element={<Showroom />} />
           <Route path="/showroom/:cat" element={<Collection />} />
+          <Route path="/reviews" element={<Reviews />} />
           <Route path="/financing" element={<Financing />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/contact" element={<Contact />} />
@@ -23,7 +24,7 @@ export default function App() {
       </main>
       <Footer />
       <Assistant />
-      {typeof window !== 'undefined' && window.__PREVIEW && <PalettePicker />}
+      <Sheets />
     </>
   );
 }
