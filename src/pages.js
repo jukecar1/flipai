@@ -1,7 +1,8 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, useParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, FINANCING, FAQS, openStatus } from './data';
 import { CallButtons, Icon, Stars } from './ui';
-import { useState } from 'react';
+import { PRODUCTS } from './products';
+import { useMemo, useState } from 'react';
 
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
@@ -45,7 +46,7 @@ export function Home() {
           </div>
           <div className="cat-grid">
             {CATEGORIES.map((c) => (
-              <Link key={c.id} to={`/showroom#${c.id}`} className="cat-card">
+              <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
                 <div className="cat-img"><img src={c.img} alt="" loading="lazy" /></div>
                 <h3>{c.name}</h3>
                 <p>{c.blurb}</p>
@@ -105,32 +106,94 @@ export function Home() {
 }
 
 export function Showroom() {
-  const [params] = useSearchParams();
-  const only = params.get('cat');
-  const list = only ? CATEGORIES.filter((c) => c.id === only) : CATEGORIES;
   return (
     <>
       <section className="page-head">
         <div className="container">
           <h1 className="h1-sm">Showroom</h1>
-          <p className="lead">Furniture for the whole house, plus home appliances. Stock changes weekly, so call to confirm availability and pricing.</p>
+          <p className="lead">Furniture for the whole house, plus home appliances. Pick a department to browse. Stock changes weekly, so call to confirm availability and pricing.</p>
           <CallButtons />
         </div>
       </section>
       <section className="section tight">
         <div className="container">
-          <div className="room-list">
-            {list.map((c) => (
-              <article className="room" id={c.id} key={c.id}>
+          <div className="cat-grid">
+            {CATEGORIES.map((c) => (
+              <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
                 <div className="cat-img"><img src={c.img} alt="" loading="lazy" /></div>
-                <div>
-                  <h2>{c.name}</h2>
-                  <p>{c.blurb}</p>
-                  <a className="link" href={`tel:${STORE.tel}`}>Ask about {c.name.toLowerCase()} <Icon name="arrow" size={16} /></a>
-                </div>
-              </article>
+                <h3>{c.name}</h3>
+                <p>{c.blurb}</p>
+              </Link>
             ))}
           </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+export function Collection() {
+  const { cat } = useParams();
+  const dept = CATEGORIES.find((c) => c.id === cat);
+  const [q, setQ] = useState('');
+  const [type, setType] = useState('');
+  const [note, setNote] = useState(true);
+
+  const all = useMemo(() => PRODUCTS.filter((x) => x.cat === cat), [cat]);
+  const types = useMemo(() => [...new Set(all.map((x) => x.type))].sort(), [all]);
+  const items = all.filter((x) => (!type || x.type === type) && x.name.toLowerCase().includes(q.trim().toLowerCase()));
+
+  if (!dept) return <Showroom />;
+  return (
+    <>
+      <section className="page-head coll-head">
+        <div className="container">
+          <p className="crumb"><Link to="/showroom">Showroom</Link> / {dept.name}</p>
+          <p className="lead">{dept.blurb}</p>
+          {note && (
+            <div className="notice" role="note">
+              <p>Product photos are manufacturer-hosted catalog images for the model shown. Colors and configurations may vary. Call <b>{STORE.phone}</b> to confirm a specific piece.</p>
+              <button type="button" aria-label="Dismiss notice" onClick={() => setNote(false)}>×</button>
+            </div>
+          )}
+        </div>
+      </section>
+      <div className="dept-bar">
+        <div className="container pills" role="navigation" aria-label="Departments">
+          <NavLink to="/showroom" end>All departments</NavLink>
+          {CATEGORIES.map((c) => <NavLink key={c.id} to={`/showroom/${c.id}`}>{c.name}</NavLink>)}
+        </div>
+      </div>
+      <section className="section tight">
+        <div className="container">
+          <div className="filters">
+            <input id="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the showroom" aria-label="Search the showroom" />
+            <select id="ptype" value={type} onChange={(e) => setType(e.target.value)} aria-label="Product type">
+              <option value="">All product types</option>
+              {types.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="coll-title">
+            <div><p className="crumb">{dept.name}</p><h1 className="h1-sm">Explore the collection</h1></div>
+            <span className="muted">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+          </div>
+          {items.length ? (
+            <div className="prod-grid">
+              {items.map((x) => (
+                <article className="prod" key={x.id}>
+                  <div className="prod-img"><img src={x.img} alt={x.name} loading="lazy" /></div>
+                  <h3>{x.name}</h3>
+                  <a className="price" href={`tel:${STORE.tel}`}>Call for price</a>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">
+              <h3>{all.length ? 'No matches' : `${dept.name} collection coming soon`}</h3>
+              <p className="muted">{all.length ? 'Try a different search or product type.' : 'Our floor changes weekly. Call and we will tell you exactly what we have today.'}</p>
+              <CallButtons />
+            </div>
+          )}
         </div>
       </section>
     </>

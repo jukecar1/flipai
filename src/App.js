@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
 import ScrollFX from './ScrollFX';
-import { Home, Showroom, Financing, Faq, Contact } from './pages';
+import { Home, Showroom, Collection, Financing, Faq, Contact } from './pages';
 
 export default function App() {
   return (
@@ -13,6 +13,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/showroom" element={<Showroom />} />
+          <Route path="/showroom/:cat" element={<Collection />} />
           <Route path="/financing" element={<Financing />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/contact" element={<Contact />} />

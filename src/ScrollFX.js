@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 // Light fade-up as sections enter the viewport. Classes are added from JS so
 // the page stays fully visible if scripts or IntersectionObserver are missing.
-const TARGETS = '.section-head, .cat-card, .fact, .theme, .finance-row, .faq, .form, .visit > div, .page-head .container > *';
+const TARGETS = '.section-head, .cat-card, .prod, .fact, .theme, .finance-row, .faq, .form, .visit > div, .page-head .container > *';
 
 export default function ScrollFX() {
   useEffect(() => {
