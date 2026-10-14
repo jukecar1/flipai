@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { STORE, MAPS_URL, FAQS } from './data';
+import { STORE, MAPS_URL, FAQS, LOGO } from './data';
 import { Icon } from './ui';
 
 const NAV = [
@@ -11,14 +11,10 @@ const NAV = [
   ['/contact', 'Contact'],
 ];
 
-export function Logo({ light }) {
+export function Logo() {
   return (
-    <Link to="/" className={'logo' + (light ? ' logo-light' : '')} aria-label="Royal Appliance Outlet home">
-      <svg className="logo-crown" width="24" height="18" viewBox="0 0 26 20" aria-hidden="true"><path d="M2 17 0 5l7 5 6-9 6 9 7-5-2 12z" fill="currentColor" /></svg>
-      <span className="logo-text">
-        <strong>Royal</strong>
-        <small>Appliance Outlet &amp; Furniture</small>
-      </span>
+    <Link to="/" className="logo" aria-label="Royal Appliance Outlet home">
+      <img src={LOGO} alt="Royal Appliance Outlet &amp; Furniture" width="48" height="52" />
     </Link>
   );
 }

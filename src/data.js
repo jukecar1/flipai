@@ -4,7 +4,7 @@ export const STORE = {
   tel: '+18507414143',
   email: 'royalapplianceoutlet@yahoo.com',
   address: '1612 N Pace Blvd Suite 4, Pensacola, FL 32505',
-  facebook: 'https://www.facebook.com/',
+  facebook: 'https://www.facebook.com/RoyalApplianceOutlet/',
   rating: 4.9,
   reviews: 185,
   hours: [
@@ -14,26 +14,33 @@ export const STORE = {
 };
 
 export const STORE_PHOTO = '/img/store.jpg';
+export const LOGO = '/img/logo.png';
 
 export const MAPS_URL =
   'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(STORE.address);
 
-// Category photos are cropped from the current site; swap in originals when supplied.
+// Product and category photos are manufacturer-hosted catalog images, loaded the same way the current site loads them.
+export const ASHLEY = 'https://cdn.ashley.com/assets/';
+// window.__IMG is an optional offline image map used by static previews.
+export const imgUrl = (a, w = 600) =>
+  (typeof window !== 'undefined' && window.__IMG && window.__IMG[a + '@' + w]) ||
+  (a.startsWith('http') ? a : `${ASHLEY}${a}?fit=bounds&format=auto&height=${w}&quality=80&width=${w}`);
+
 export const CATEGORIES = [
-  { id: 'living', img: '/img/living.jpg', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.' },
-  { id: 'bedroom', img: '/img/bedroom.jpg', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.' },
-  { id: 'dining', img: '/img/dining.jpg', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.' },
-  { id: 'office', img: '/img/office.jpg', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.' },
-  { id: 'accent', img: '/img/accent.jpg', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.' },
-  { id: 'entry', img: '/img/entry.jpg', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.' },
-  { id: 'kids', img: '/img/kids.jpg', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.' },
-  { id: 'outdoor', img: '/img/outdoor.jpg', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.' },
-  { id: 'mattress', img: '/img/mattress.jpg', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.' },
-  { id: 'decor', img: '/img/decor.jpg', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.' },
-  { id: 'rugs', img: '/img/rugs.jpg', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.' },
-  { id: 'lighting', img: '/img/lighting.jpg', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.' },
-  { id: 'storage', img: '/img/storage.jpg', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.' },
-  { id: 'appliances', img: '/img/appliances.jpg', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
+  { id: 'living', img: 'W446-68.jpg', name: 'Living Room', blurb: 'Sofas, sectionals, recliners, occasional tables and media furniture.' },
+  { id: 'bedroom', img: 'EB1866-157-113.jpg', name: 'Bedroom', blurb: 'Beds and coordinated bedroom furniture.' },
+  { id: 'dining', img: 'D984-45.jpg', name: 'Kitchen & Dining', blurb: 'Dining sets, tables, seating and storage.' },
+  { id: 'office', img: 'H632-44.jpg', name: 'Home Office', blurb: 'Desks, chairs, bookcases and office storage.' },
+  { id: 'accent', img: 'A3000053.jpg', name: 'Accent Furniture', blurb: 'Statement chairs, tables, cabinets and benches.' },
+  { id: 'entry', img: 'EA1864-151.jpg', name: 'Entryway', blurb: 'Hall trees, console tables, benches and entry storage.' },
+  { id: 'kids', img: 'B600000441.jpg', name: 'Kids & Baby', blurb: 'Beds, cribs and furniture for growing rooms.' },
+  { id: 'outdoor', img: 'P297-070.jpg', name: 'Outdoor', blurb: 'Patio seating, dining and outdoor tables.' },
+  { id: 'mattress', img: 'M69731-SW.jpg', name: 'Mattresses', blurb: 'Hybrid and memory foam mattresses.' },
+  { id: 'decor', img: 'A8000277-SW.jpg', name: 'Decor / Home Accents', blurb: 'Wall art, mirrors and decorative accents.' },
+  { id: 'rugs', img: 'R403771.jpg', name: 'Rugs', blurb: 'Area, runner, accent and outdoor rugs.' },
+  { id: 'lighting', img: 'L204054.jpg', name: 'Lighting', blurb: 'Table lamps, floor lamps and wall lighting.' },
+  { id: 'storage', img: 'A4000709.jpg', name: 'Storage / Organization', blurb: 'Bookcases, cabinets, shelves and practical storage.' },
+  { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/images/stencil/500x659/products/3497/1021270/maqjbrm3wds4paf5rmx0__29983.1.jpg', name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },
 ];
 
 export const FINANCING = [

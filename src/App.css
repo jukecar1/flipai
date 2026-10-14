@@ -19,9 +19,10 @@ p { margin: 0 0 1rem; }
 .link { font-weight: 600; display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
 
 .header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-.header-row { display: flex; align-items: center; gap: 1.5rem; min-height: 64px; }
+.header-row { display: flex; align-items: center; gap: 1.5rem; min-height: 72px; padding-block: 6px; }
 .header-actions { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
-.logo { display: flex; align-items: center; gap: .5rem; color: var(--blue); text-decoration: none !important; }
+.logo { display: flex; align-items: center; } .logo img { height: 52px; width: auto; display: block; }
+.more { text-align: center; margin-top: 2.5rem; }
 .logo-text { display: flex; flex-direction: column; line-height: 1; }
 .logo-text strong { font-family: Georgia, 'Times New Roman', serif; font-size: 1.45rem; letter-spacing: .05em; text-transform: uppercase; }
 .logo-text small { font-size: .52rem; letter-spacing: .12em; text-transform: uppercase; margin-top: 3px; font-weight: 600; }
@@ -114,7 +115,7 @@ p { margin: 0 0 1rem; }
 .crumb { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--red); margin: 0 0 .4rem; } .crumb a { color: var(--muted); }
 .notice { display: flex; gap: .75rem; align-items: flex-start; justify-content: space-between; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; font-size: .9rem; color: var(--muted); } .notice p { margin: 0; } .notice b { color: var(--ink); }
 .notice button { background: none; border: 0; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 .2rem; }
-.dept-bar { border-bottom: 1px solid var(--line); background: #fff; position: sticky; top: calc(64px + env(safe-area-inset-top, 0px)); z-index: 30; }
+.dept-bar { border-bottom: 1px solid var(--line); background: #fff; position: sticky; top: calc(72px + env(safe-area-inset-top, 0px)); z-index: 30; }
 .pills { display: flex; gap: .5rem; overflow-x: auto; padding-block: 12px; scrollbar-width: none; } .pills::-webkit-scrollbar { display: none; }
 .pills a { flex: none; border: 1px solid var(--line); border-radius: 6px; padding: .4rem .8rem; font-size: .88rem; font-weight: 500; color: var(--ink); background: #fff; text-decoration: none !important; }
 .pills a:hover { border-color: var(--ink); } .pills a.active { background: var(--red); border-color: var(--red); color: #fff; }

@@ -1,8 +1,8 @@
 import { Link, NavLink, useParams } from 'react-router-dom';
-import { STORE, CATEGORIES, STORE_PHOTO, FINANCING, FAQS, openStatus } from './data';
+import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, openStatus } from './data';
 import { CallButtons, Icon, Stars } from './ui';
 import { PRODUCTS } from './products';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
@@ -25,7 +25,7 @@ export function Home() {
             </div>
             <p className={'open-line ' + (status.open ? 'is-open' : '')}>{status.text}</p>
           </div>
-          <img className="hero-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" width="850" height="580" />
+          <img className="hero-img" src={STORE_PHOTO} alt="Inside the Royal Appliance Outlet showroom" width="1200" height="733" />
         </div>
       </section>
 
@@ -47,7 +47,7 @@ export function Home() {
           <div className="cat-grid">
             {CATEGORIES.map((c) => (
               <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
-                <div className="cat-img"><img src={c.img} alt="" loading="lazy" /></div>
+                <div className="cat-img"><img src={imgUrl(c.img, 800)} alt="" loading="lazy" /></div>
                 <h3>{c.name}</h3>
                 <p>{c.blurb}</p>
               </Link>
@@ -120,7 +120,7 @@ export function Showroom() {
           <div className="cat-grid">
             {CATEGORIES.map((c) => (
               <Link key={c.id} to={`/showroom/${c.id}`} className="cat-card">
-                <div className="cat-img"><img src={c.img} alt="" loading="lazy" /></div>
+                <div className="cat-img"><img src={imgUrl(c.img, 800)} alt="" loading="lazy" /></div>
                 <h3>{c.name}</h3>
                 <p>{c.blurb}</p>
               </Link>
@@ -132,12 +132,17 @@ export function Showroom() {
   );
 }
 
+const PAGE = 24;
+
 export function Collection() {
   const { cat } = useParams();
   const dept = CATEGORIES.find((c) => c.id === cat);
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [note, setNote] = useState(true);
+  const [shown, setShown] = useState(PAGE);
+
+  useEffect(() => { setQ(''); setType(''); setShown(PAGE); }, [cat]);
 
   const all = useMemo(() => PRODUCTS.filter((x) => x.cat === cat), [cat]);
   const types = useMemo(() => [...new Set(all.map((x) => x.type))].sort(), [all]);
@@ -167,8 +172,8 @@ export function Collection() {
       <section className="section tight">
         <div className="container">
           <div className="filters">
-            <input id="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the showroom" aria-label="Search the showroom" />
-            <select id="ptype" value={type} onChange={(e) => setType(e.target.value)} aria-label="Product type">
+            <input id="search" type="search" value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} placeholder="Search the showroom" aria-label="Search the showroom" />
+            <select id="ptype" value={type} onChange={(e) => { setType(e.target.value); setShown(PAGE); }} aria-label="Product type">
               <option value="">All product types</option>
               {types.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -178,15 +183,20 @@ export function Collection() {
             <span className="muted">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
           </div>
           {items.length ? (
+            <>
             <div className="prod-grid">
-              {items.map((x) => (
+              {items.slice(0, shown).map((x) => (
                 <article className="prod" key={x.id}>
-                  <div className="prod-img"><img src={x.img} alt={x.name} loading="lazy" /></div>
+                  <div className="prod-img"><img src={imgUrl(x.img)} alt={x.name} loading="lazy" decoding="async" /></div>
                   <h3>{x.name}</h3>
                   <a className="price" href={`tel:${STORE.tel}`}>Call for price</a>
                 </article>
               ))}
             </div>
+          {items.length > shown && (
+            <div className="more"><button type="button" className="btn btn-ghost" onClick={() => setShown(shown + PAGE)}>Load more ({items.length - shown} left)</button></div>
+          )}
+          </>
           ) : (
             <div className="empty">
               <h3>{all.length ? 'No matches' : `${dept.name} collection coming soon`}</h3>
