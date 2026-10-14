@@ -1,0 +1,80 @@
+// Policy text adapted from the store's current website. Have the store review it before launch.
+const PH = '(850) 741-4143';
+const EM = 'royalapplianceoutlet@yahoo.com';
+const ADDR = '1612 N Pace Blvd Suite 4, Pensacola, FL 32505';
+
+export const LEGAL = {
+  privacy: {
+    title: 'Privacy Policy',
+    description: 'How Royal Appliance Outlet in Pensacola handles your information: only what you send us, no advertising trackers, and no selling of personal data.',
+    blocks: [
+      { h: 'Your privacy at a glance' },
+      { ul: [
+        'What we collect: only what you type into the contact form, your assistant messages (kept in your browser) and your cookie choice.',
+        'Why: to reply to you, respond to your inquiry and remember your privacy preference.',
+        'Who may process it: our website host and the form service that delivers your message to our inbox.',
+        'Your choices: change cookie preferences any time from the footer, clear your browser storage, or contact us to access or delete what we hold.',
+        'Not happening: no advertising trackers, no analytics tool installed today, and no selling of personal information.',
+      ] },
+      { h: 'The short version' },
+      { p: 'Royal Appliance Outlet is a local store, not a data business. We use only the information needed to run the site, remember your preferences, and respond to inquiries.' },
+      { h: 'What we collect' },
+      { ul: ['Contact form details: your name, email, phone and message, so we can reply.', 'Cookie choice: your consent selection, stored in your browser so we do not ask again on every visit.'] },
+      { h: 'Analytics, advertising and the Royal Assistant' },
+      { p: 'This website does not currently load an analytics tool, and there are no advertising or retargeting trackers. The Royal Assistant chat runs in your browser using a fixed set of store answers; what you type is not sent to an outside AI service.' },
+      { p: 'Product photos and fonts load from outside servers (the manufacturers\' image servers and Google Fonts). Like any website you visit, those servers receive standard technical data such as your IP address.' },
+      { h: 'Security and retention' },
+      { p: 'We use reasonable safeguards and keep collection to a minimum. No website can promise perfect security, so please do not send sensitive details such as card numbers through the contact form. We keep inquiry records only as long as needed to serve you and meet normal business record-keeping requirements.' },
+      { h: 'Your choices' },
+      { p: `You can ask what we hold about you, ask us to correct it, or ask us to delete it. Call ${PH} or email ${EM}.` },
+      { h: 'Children' },
+      { p: 'This website is intended for adults and is not directed to children under 13.' },
+      { h: 'Contact' },
+      { p: `Royal Appliance Outlet, ${ADDR}. Phone ${PH}. Email ${EM}.` },
+    ],
+  },
+  cookies: {
+    title: 'Cookie Policy',
+    description: 'What Royal Appliance Outlet stores in your browser: just your cookie choice. No analytics and no advertising trackers.',
+    blocks: [
+      { h: 'Privacy first' },
+      { p: 'We use only the information needed to run the site and remember your preferences. This site loads no analytics tool and no advertising trackers, and we do not sell your personal information.' },
+      { h: 'Cookies vs. browser storage' },
+      { p: 'Most of what this site remembers is not a cookie at all. Your cookie choice is saved in your browser\'s local storage, which stays on your device and is not sent to us automatically.' },
+      { h: 'Categories' },
+      { ul: [
+        'Strictly necessary (always on): required for the site to work, including remembering this choice.',
+        'Analytics (not used): no analytics tool is installed on this site today.',
+        'Marketing and advertising (not used): there are no advertising or retargeting trackers on this site.',
+      ] },
+      { h: 'What is stored today' },
+      { ul: ['royal_cookie_consent: local storage, first party. Stores your cookie choice so the notice is not shown again. Kept until you change your choice or clear browser data.'] },
+      { p: 'Your browser, our hosting provider and the outside servers that deliver product photos and fonts may also handle standard technical data, such as an IP address, needed to deliver pages.' },
+      { h: 'Changing your mind' },
+      { p: 'You can update your choice any time with the "Cookie preferences" link in the footer, and you can clear cookies and local storage in your browser settings.' },
+      { h: 'Questions' },
+      { p: `Call ${PH} or email ${EM} and we will explain anything on this page.` },
+    ],
+  },
+  terms: {
+    title: 'Terms of Use',
+    description: 'Terms for using the Royal Appliance Outlet website: listings and photos are illustrative, there is no online ordering, and financing terms vary.',
+    blocks: [
+      { h: 'About these terms' },
+      { p: `These terms apply to your use of the Royal Appliance Outlet website. Royal Appliance Outlet operates a retail store at ${ADDR}. By browsing the site or contacting us through the site, you agree to what follows.` },
+      { h: 'Showroom listings and photos' },
+      { p: 'Our showroom floor rotates constantly. Listings, photography and descriptions on this website help illustrate the kinds of items we may carry. They are not a guarantee that a specific item, finish, size or model is available today.' },
+      { p: `Product photographs are illustrative catalog images. The item in the store may differ in color, finish, dimensions or configuration. Call ${PH} or visit the store to confirm any specific piece before relying on it.` },
+      { h: 'No online ordering' },
+      { p: 'This website does not provide a cart, checkout or online payment. Purchases are handled directly with the store. Call or visit to confirm availability, pricing and terms.' },
+      { h: 'Financing information' },
+      { p: 'Financing and lease-to-own information is general. Approval, eligibility, promotional periods, costs and other terms vary by provider and applicant. Ask the store and review the provider\'s current agreement before proceeding. Approval is never guaranteed.' },
+      { h: 'Your use of the site' },
+      { p: 'Please do not misuse the site: no attempts to disrupt it, access it by automated means at a scale that degrades it for others, or copy its content for commercial republication. Site text, layout and imagery belong to Royal Appliance Outlet or its licensors.' },
+      { h: 'Limits' },
+      { p: 'The site is provided as-is. We work to keep information accurate, but we cannot guarantee that every listing or detail is current at any given moment. Nothing in these terms limits rights you have under applicable Florida or federal consumer law.' },
+      { h: 'Contact' },
+      { p: `Questions about these terms? Call ${PH}, email ${EM}, or visit us at ${ADDR}.` },
+    ],
+  },
+};

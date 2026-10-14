@@ -5,6 +5,8 @@ import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, 
 import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import reviews from './reviews.json';
 import { FORM_ENDPOINT } from './config';
+import { usePageMeta } from './meta';
+import { LEGAL } from './legal';
 
 const COUNTS = {};
 PRODUCTS.forEach((p) => { COUNTS[p.cat] = (COUNTS[p.cat] || 0) + 1; });
@@ -50,6 +52,8 @@ function SampleNote() {
   return SAMPLE ? <p className="sample-note">Sample reviews to show the layout. Replace them with real Google reviews before launch.</p> : null;
 }
 
+const catLabel = (id) => (CATEGORIES.find((c) => c.id === id)?.name || '').toLowerCase();
+
 function Hours() {
   return STORE.hours.map(([d, h]) => <div key={d}>{d}: {h}</div>);
 }
@@ -83,6 +87,7 @@ function Mosaic() {
 }
 
 export function Home() {
+  usePageMeta('', 'Furniture and appliances for every room at Royal Appliance Outlet on N Pace Blvd in Pensacola, FL. Browse the showroom, ask about financing, and visit us seven days a week.');
   const status = openStatus();
   const featured = useMemo(() => {
     const seen = {};
@@ -185,6 +190,7 @@ export function Home() {
 }
 
 export function Showroom() {
+  usePageMeta('Showroom', `Browse ${PRODUCTS.length.toLocaleString('en-US')} furniture, mattress and appliance listings by room at Royal Appliance Outlet in Pensacola, FL. Call to confirm availability.`);
   return (
     <>
       <section className="page-head">
@@ -206,6 +212,7 @@ const SORTS = [...(HAS_POPULAR ? [['popular', 'Most popular']] : []), ['featured
 export function Collection() {
   const { cat } = useParams();
   const dept = CATEGORIES.find((c) => c.id === cat);
+  usePageMeta(dept?.name, dept ? `${dept.name} at Royal Appliance Outlet in Pensacola, FL: ${COUNTS[dept.id]} items. ${dept.blurb} Call (850) 741-4143 to confirm availability.` : '');
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [sort, setSort] = useState(HAS_POPULAR ? 'popular' : 'featured');
@@ -308,6 +315,7 @@ export function Collection() {
 }
 
 export function Reviews() {
+  usePageMeta('Reviews', `Royal Appliance Outlet is rated ${STORE.rating} out of 5 from ${STORE.reviews} Google reviews. See what customers say about our prices, service and selection.`);
   return (
     <>
       <section className="page-head">
@@ -374,11 +382,7 @@ function ShareBox({ p }) {
 export function ProductPage() {
   const { slug } = useParams();
   const p = PRODUCTS[parseInt(slug, 10)];
-  useEffect(() => {
-    if (!p) return undefined;
-    document.title = `${p.name} | Royal Appliance Outlet`;
-    return () => { document.title = 'Royal Appliance Outlet'; };
-  }, [p]);
+  usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
   if (!p) return <Showroom />;
   const dept = CATEGORIES.find((c) => c.id === p.cat);
   const seen = new Set([p.name]);
@@ -427,6 +431,7 @@ export function ProductPage() {
 }
 
 export function Socials() {
+  usePageMeta('Find us online', 'Follow Royal Appliance Outlet on Facebook, read our reviews, get directions, call or email the store in Pensacola, FL.');
   const boxes = [
     { k: 'Facebook', t: 'Follow us', s: 'Store updates and what is new on the floor', href: STORE.facebook, ext: true },
     { k: 'Google', t: 'Read our reviews', s: `${STORE.rating} stars from ${STORE.reviews} reviews`, to: '/reviews' },
@@ -434,6 +439,9 @@ export function Socials() {
     { k: 'Call', t: STORE.phone, s: 'Expert help in store', call: true },
     { k: 'Email', t: 'Send us a message', s: STORE.email, to: '/contact' },
     { k: 'Hours', t: 'Open 7 days', s: 'Tap for store hours', sheet: 'hours' },
+    { k: 'Same owner', t: 'Our other stores', s: 'Royal Vape Mart and our car auction', to: '/other-stores' },
+    { k: 'Showroom', t: 'Browse the showroom', s: `${PRODUCTS.length.toLocaleString('en-US')} items in 14 departments`, to: '/showroom' },
+    { k: 'Financing', t: 'Ask about financing', s: 'Synchrony, Snap and Acima Leasing', to: '/financing' },
   ];
   const body = (b) => (
     <>
@@ -468,6 +476,7 @@ export function Socials() {
 }
 
 export function OtherStores() {
+  usePageMeta('Our other stores', 'Royal Appliance Outlet is part of a family of local Pensacola businesses, including Royal Vape Mart and a car auction business.');
   return (
     <>
       <section className="page-head">
@@ -502,6 +511,7 @@ export function OtherStores() {
 }
 
 export function Financing() {
+  usePageMeta('Financing', 'Ask about Synchrony, Snap Finance and Acima Leasing financing and lease-to-own options at Royal Appliance Outlet in Pensacola, FL. Approval and terms vary.');
   return (
     <>
       <section className="page-head">
@@ -524,6 +534,7 @@ export function Financing() {
 }
 
 export function Faq() {
+  usePageMeta('FAQ', 'Answers about stock, financing, hours, location and pricing at Royal Appliance Outlet in Pensacola, FL.');
   return (
     <>
       <section className="page-head">
@@ -540,6 +551,7 @@ export function Faq() {
 }
 
 export function Contact() {
+  usePageMeta('Contact', 'Contact Royal Appliance Outlet in Pensacola, FL. Call (850) 741-4143, visit 1612 N Pace Blvd Suite 4, or send us a message.');
   const [params] = useSearchParams();
   const item = params.get('item');
   const [f, setF] = useState({ name: '', phone: '', email: '', msg: item ? `I'm interested in: ${item}\n\n` : '', _gotcha: '' });
@@ -612,6 +624,27 @@ export function Contact() {
             </dl>
             <CallButtons />
           </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+export function LegalPage({ kind }) {
+  const doc = LEGAL[kind];
+  usePageMeta(doc.title, doc.description);
+  return (
+    <>
+      <section className="page-head">
+        <div className="container"><BackLink to="/" label="home" /><p className="eyebrow">Legal</p><h1 className="h1-sm">{doc.title}</h1></div>
+      </section>
+      <section className="section">
+        <div className="container narrow legal">
+          {doc.blocks.map((b, i) => {
+            if (b.h) return <h3 key={i}>{b.h}</h3>;
+            if (b.ul) return <ul key={i}>{b.ul.map((t) => <li key={t}>{t}</li>)}</ul>;
+            return <p key={i}>{b.p}</p>;
+          })}
         </div>
       </section>
     </>

@@ -76,6 +76,6 @@ export function openStatus(now = new Date()) {
 // The owner's other businesses. Add each store's real name, address, phone and website;
 // a store without a url shows as "Details coming soon" and is not tappable.
 export const OTHER_STORES = [
-  { k: 'Vape shop', title: 'Vape shop', text: 'Adults 21 and older only.', url: '', phone: '', address: '' },
+  { k: 'Vape shop', title: 'Royal Vape Mart', text: 'Pensacola vape and smoke shop. Open daily 6 AM to 1 AM. Adults 21 and older only.', url: 'https://royalvapemart.com', phone: '', address: '8701 Gulf Beach Hwy, Pensacola' },
   { k: 'Car auction', title: 'Car auction', text: 'Vehicles bought and sold at auction.', url: '', phone: '', address: '' },
 ];

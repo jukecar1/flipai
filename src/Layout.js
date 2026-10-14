@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { STORE, MAPS_URL, FAQS } from './data';
 import { LOGO_SVG } from './logoSvg';
 import { Icon, CallLink } from './ui';
+import { openConsent } from './Consent';
 
 const NAV = [
   ['/', 'Home'],
@@ -96,7 +97,13 @@ export function Footer() {
         </div>
       </div>
       <div className="container footer-base small muted">
-        © {new Date().getFullYear()} Royal Appliance Outlet. All rights reserved.
+        <div className="legal-links">
+          <Link to="/terms">Terms of Use</Link>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/cookies">Cookie Policy</Link>
+          <button type="button" onClick={openConsent}>Cookie preferences</button>
+        </div>
+        <div>© {new Date().getFullYear()} Royal Appliance Outlet. All rights reserved.</div>
       </div>
     </footer>
   );

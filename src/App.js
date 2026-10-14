@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Header, Footer, Assistant } from './Layout';
+import { Icon } from './ui';
 import ScrollFX from './ScrollFX';
 import { Sheets } from './Sheets';
-import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, Financing, Faq, Contact } from './pages';
+import CookieNotice from './Consent';
+import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, LegalPage, Financing, Faq, Contact } from './pages';
 
 // A closing call to action shown above the footer on every page except the one it points to.
 function StoresBand() {
@@ -12,9 +14,13 @@ function StoresBand() {
   if (pathname === '/other-stores') return null;
   return (
     <section className="stores-band">
-      <div className="container stores-row">
-        <div><h2>Check out our other stores</h2><p>We also run a vape shop and a car auction business.</p></div>
-        <Link className="btn btn-primary" to="/other-stores">See our other stores</Link>
+      <div className="container">
+        <Link to="/other-stores" className="bigbox">
+          <span className="k">Same owner</span>
+          <b>Check out our other stores</b>
+          <small>Royal Vape Mart and our car auction business</small>
+          <span className="go" aria-hidden="true"><Icon name="arrow" size={22} /></span>
+        </Link>
       </div>
     </section>
   );
@@ -45,6 +51,9 @@ export default function App() {
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/socials" element={<Socials />} />
           <Route path="/other-stores" element={<OtherStores />} />
+          <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+          <Route path="/cookies" element={<LegalPage kind="cookies" />} />
+          <Route path="/terms" element={<LegalPage kind="terms" />} />
           <Route path="/financing" element={<Financing />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/contact" element={<Contact />} />
@@ -55,6 +64,7 @@ export default function App() {
       <Footer />
       <Assistant />
       <Sheets />
+      <CookieNotice />
     </>
   );
 }
