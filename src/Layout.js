@@ -91,6 +91,7 @@ export function Footer() {
             {NAV.map(([to, label]) => (
               <li key={to}><Link to={to}>{label}</Link></li>
             ))}
+            <li><Link to="/other-stores">Our other stores</Link></li>
           </ul>
         </div>
       </div>

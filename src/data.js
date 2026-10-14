@@ -72,3 +72,10 @@ export function openStatus(now = new Date()) {
   if (t >= o && t < c) return { open: true, text: `Open now · until ${c > 12 ? c - 12 : c} PM` };
   return { open: false, text: t < o ? `Closed · opens ${o} AM today` : 'Closed · opens 10 AM tomorrow' };
 }
+
+// The owner's other businesses. Add each store's real name, address, phone and website;
+// a store without a url shows as "Details coming soon" and is not tappable.
+export const OTHER_STORES = [
+  { k: 'Vape shop', title: 'Vape shop', text: 'Adults 21 and older only.', url: '', phone: '', address: '' },
+  { k: 'Car auction', title: 'Car auction', text: 'Vehicles bought and sold at auction.', url: '', phone: '', address: '' },
+];

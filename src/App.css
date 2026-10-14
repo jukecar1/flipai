@@ -221,3 +221,7 @@ p { margin: 0 0 1rem; }
 .form-err { margin: 0; color: var(--closed); font-weight: 600; font-size: .92rem; }
 .form .btn:disabled { opacity: .6; cursor: wait; }
 .sent { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 28px; } .sent h2 { margin-bottom: .4em; }
+
+.stores-band { background: var(--sand); border-top: 1px solid var(--line); padding: 44px 0; } .stores-row { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap; } .stores-row h2 { margin-bottom: .2em; font-size: clamp(1.4rem, 3.5vw, 1.9rem); } .stores-row p { margin: 0; color: var(--muted); }
+@media (min-width: 860px) { .boxgrid.two { grid-template-columns: repeat(2, 1fr); } }
+.boxgrid .gcard.static { cursor: default; } .boxgrid .gcard.static:hover { background: #fff; } .boxgrid .soon { position: absolute; left: 24px; bottom: 20px; font-weight: 600; color: var(--gold-dk); }

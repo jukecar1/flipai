@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useParams, useSearchParams } from 'react-router-dom';
-import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, openStatus } from './data';
+import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, openStatus } from './data';
 import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
 import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import reviews from './reviews.json';
@@ -459,6 +459,40 @@ export function Socials() {
               if (b.sheet) return <button type="button" className="gcard box" key={b.k} onClick={() => openSheet(b.sheet)}>{body(b)}</button>;
               if (b.to) return <Link className="gcard box" key={b.k} to={b.to}>{body(b)}</Link>;
               return <a className="gcard box" key={b.k} href={b.href} target="_blank" rel="noreferrer">{body(b)}</a>;
+            })}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+export function OtherStores() {
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/" label="home" />
+          <p className="eyebrow">Same owner</p>
+          <h1 className="h1-sm">Our other stores</h1>
+          <p className="lead">Royal Appliance Outlet is part of a family of local businesses. Here is where else to find us.</p>
+        </div>
+      </section>
+      <section className="section tight">
+        <div className="container">
+          <div className="boxgrid two">
+            {OTHER_STORES.map((s) => {
+              const inner = (
+                <>
+                  <span className="k">Store</span><b>{s.title}</b><small>{s.text}</small>
+                  {s.address && <small>{s.address}</small>}
+                  {s.phone && <small>{s.phone}</small>}
+                  {s.url ? <span className="go" aria-hidden="true"><Icon name="arrow" size={18} /></span> : <small className="soon">Details coming soon</small>}
+                </>
+              );
+              return s.url
+                ? <a className="gcard box" key={s.k} href={s.url} target="_blank" rel="noreferrer">{inner}</a>
+                : <div className="gcard box static" key={s.k}>{inner}</div>;
             })}
           </div>
         </div>
