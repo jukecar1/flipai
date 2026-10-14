@@ -19,7 +19,7 @@ test('finds products by type and respects a price cap', () => {
   // sofas rarely list a price, so a budget search falls back to honest closest matches
   const s = reply('sofas under $800');
   expect(s.products.length).toBeGreaterThan(0);
-  expect(s.text).toMatch(/Call for price/);
+  expect(s.text).toMatch(/closest matches/);
   expect(searchProducts('couch').hits.length).toBeGreaterThan(0);
   expect(searchProducts('fridge').hits[0].type).toMatch(/Refrigerator/);
   expect(searchProducts('washer and dryer').hits.length).toBeGreaterThan(0);

@@ -6,7 +6,8 @@ import { Icon } from './ui';
 import ScrollFX from './ScrollFX';
 import { Sheets } from './Sheets';
 import CookieNotice from './Consent';
-import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, LegalPage, Financing, Faq, Contact } from './pages';
+import { track } from './analytics';
+import { Home, Showroom, Collection, ProductPage, Reviews, Socials, OtherStores, MyList, LegalPage, Financing, Faq, Contact } from './pages';
 
 // A closing call to action shown above the footer on every page except the one it points to.
 function StoresBand() {
@@ -26,6 +27,13 @@ function StoresBand() {
   );
 }
 
+// Counts each page and product view with a cookie-free service, when one is configured (see analytics.js).
+function Pageviews() {
+  const { pathname } = useLocation();
+  useEffect(() => { const id = setTimeout(() => track(pathname, document.title), 120); return () => clearTimeout(id); }, [pathname]);
+  return null;
+}
+
 // The shared preview only lets simple anchors like #p-123 through, so open those as product pages.
 function DeepLink() {
   const nav = useNavigate();
@@ -40,6 +48,7 @@ export default function App() {
   return (
     <>
       <DeepLink />
+      <Pageviews />
       <ScrollFX />
       <Header />
       <main>
@@ -50,6 +59,7 @@ export default function App() {
           <Route path="/product/:slug" element={<ProductPage />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/socials" element={<Socials />} />
+          <Route path="/list" element={<MyList />} />
           <Route path="/other-stores" element={<OtherStores />} />
           <Route path="/privacy" element={<LegalPage kind="privacy" />} />
           <Route path="/cookies" element={<LegalPage kind="cookies" />} />

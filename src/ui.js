@@ -10,12 +10,13 @@ const PATHS = {
   chat: 'M4 5h16v11H9l-5 4z',
   mail: 'M3 6h18v12H3zM3 7l9 7 9-7',
   hand: 'M7 12V6a1.5 1.5 0 0 1 3 0v4m0 0V4.5a1.5 1.5 0 0 1 3 0V10m0 0V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5z',
+  heart: 'M12 20.5S3.5 15.2 3.5 9.1A4.6 4.6 0 0 1 12 6.7a4.6 4.6 0 0 1 8.5 2.4c0 6.1-8.5 11.4-8.5 11.4z',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
 };
 
-export function Icon({ name, size = 18 }) {
+export function Icon({ name, size = 18, fill }) {
   return (
-    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill={name === 'star' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill={name === 'star' || fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={PATHS[name]} />
     </svg>
   );

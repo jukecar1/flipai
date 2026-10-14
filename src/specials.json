@@ -1,0 +1,22 @@
+[
+ {
+  "text": "New sectionals on the floor",
+  "to": "/showroom/living",
+  "sample": true
+ },
+ {
+  "text": "Washer and dryer pairs",
+  "to": "/showroom/appliances",
+  "sample": true
+ },
+ {
+  "text": "Mattress deals: ask in store",
+  "to": "/showroom/mattress",
+  "sample": true
+ },
+ {
+  "text": "Outdoor sets for the season",
+  "to": "/showroom/outdoor",
+  "sample": true
+ }
+]

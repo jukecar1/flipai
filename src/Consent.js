@@ -24,10 +24,7 @@ export default function CookieNotice() {
   return (
     <div className="consent" role="dialog" aria-label="Cookie notice">
       <div className="container consent-row">
-        <div>
-          <b>Privacy first</b>
-          <p>We use only what is needed to run the site and remember your choice. There are no advertising trackers and we do not sell your information. Read the <Link to="/cookies">cookie policy</Link> or the <Link to="/privacy">privacy policy</Link>.</p>
-        </div>
+        <p>We use only what the site needs. No ad trackers, and we never sell your data. <Link to="/cookies">Cookie policy</Link> · <Link to="/privacy">Privacy</Link></p>
         <div className="consent-actions">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => choose('necessary')}>Reject non-essential</button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => choose('all')}>Accept all</button>

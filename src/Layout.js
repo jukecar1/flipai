@@ -5,6 +5,7 @@ import { reply } from './assistant';
 import { productPath, money } from './products';
 import { LOGO_SVG } from './logoSvg';
 import { Icon, CallLink } from './ui';
+import { useList } from './list';
 import { openConsent } from './Consent';
 
 const NAV = [
@@ -27,6 +28,7 @@ export function Logo() {
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const list = useList();
   const { pathname } = useLocation();
   useEffect(() => {
     setOpen(false);
@@ -43,6 +45,7 @@ export function Header() {
           ))}
         </nav>
         <div className="header-actions">
+          <Link to="/list" className="list-btn" aria-label={`My list, ${list.ids.length} saved`}><Icon name="heart" size={20} fill={list.ids.length > 0} />{list.ids.length > 0 && <span className="list-count">{list.ids.length}</span>}</Link>
           <CallLink className="btn btn-primary btn-sm">
             <Icon name="phone" />
             <span className="hide-sm">{STORE.phone}</span>
@@ -158,7 +161,7 @@ export function Assistant() {
                       <li key={p.id}>
                         <Link to={productPath(p)} onClick={close}>
                           <span className="a-name">{p.name}</span>
-                          <span className="a-price">{p.price != null ? money(p.price) : 'Call for price'}</span>
+                          <span className="a-price">{p.price != null ? money(p.price) : 'Ask for price'}</span>
                         </Link>
                       </li>
                     ))}
@@ -178,8 +181,8 @@ export function Assistant() {
           </form>
         </div>
       )}
-      <button className="btn btn-primary assistant-fab" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <Icon name="chat" /> Royal Assistant
+      <button className="btn btn-primary assistant-fab" aria-label="Royal Assistant" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon name="chat" size={22} /> <span className="fab-label">Royal Assistant</span>
       </button>
     </div>
   );

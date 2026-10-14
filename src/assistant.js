@@ -120,7 +120,7 @@ export function reply(input) {
     return { text: `Our floor changes weekly, so the fastest way to confirm an item is to call. ${call}` };
   }
   if (has(q, /\b(price|cost|how much|cheap|sale|deal)/)) {
-    return { text: `Items on this site show their price when we list one and say "Call for price" otherwise. ${call}` };
+    return { text: `Items on this site show their price when we list one, and you can tap "Ask for price" on any other item. ${call}` };
   }
   return { text: `I am not sure about that one. Try asking about hours, directions, financing or an item such as "sofas under ${money(800).replace('.00', '')}". Or ${call.charAt(0).toLowerCase()}${call.slice(1)}` };
 }

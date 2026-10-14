@@ -6,6 +6,8 @@ React site (Create React App). Run `npm start` for development and `npm run buil
 
 - **Contact form:** create a free form at formspree.io pointed at the store's email, then build with
   `REACT_APP_FORM_ENDPOINT=https://formspree.io/f/your-id npm run build`. Without it the form opens the visitor's email app.
+- **Visit counts (optional):** make a free site at goatcounter.com and build with `REACT_APP_ANALYTICS_URL=https://yourname.goatcounter.com/count`. It counts page and product views with no cookies, and the privacy text updates itself. The most viewed products are the real best sellers: put their names in `src/popular.json`.
+- **Weekly specials:** edit `src/specials.json` (text and an optional link). Remove the `sample` flags.
 - **Best sellers:** `src/popular.json` is a demo list. Replace it with the store's real best-sellers (exact product names).
 - **Reviews:** `src/reviews.json` holds sample reviews. Replace them with real Google reviews and delete the `sample` flags.
 - **Catalog:** `src/products.json` was copied from the previous site (n name, c collection, t type, i image, p price).

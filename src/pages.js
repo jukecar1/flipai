@@ -6,6 +6,8 @@ import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import reviews from './reviews.json';
 import { FORM_ENDPOINT } from './config';
 import { usePageMeta } from './meta';
+import { useList, readList } from './list';
+import specials from './specials.json';
 import { LEGAL } from './legal';
 
 const COUNTS = {};
@@ -63,12 +65,19 @@ function Price({ p }) {
 }
 
 function ProductCard({ p }) {
+  const list = useList();
+  const saved = list.has(p.id);
   return (
-    <Link to={productPath(p)} className="prod" aria-label={`View ${p.name}`}>
-      <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
-      <span className="prod-name">{p.name}</span>
-      <Price p={p} />
-    </Link>
+    <div className="prod">
+      <Link to={productPath(p)} className="prod-link" aria-label={`View ${p.name}`}>
+        <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
+        <span className="prod-name">{p.name}</span>
+      </Link>
+      <button type="button" className={'heart' + (saved ? ' on' : '')} aria-pressed={saved} aria-label={saved ? `Remove ${p.name} from my list` : `Save ${p.name} to my list`} onClick={() => list.toggle(p.id)}>
+        <Icon name="heart" size={18} fill={saved} />
+      </button>
+      {p.price != null ? <span className="price">{money(p.price)}</span> : <Link className="ask" to={`/contact?item=${encodeURIComponent(p.name)}&ask=price`}>Ask for price</Link>}
+    </div>
   );
 }
 
@@ -101,7 +110,7 @@ export function Home() {
   return (
     <>
       <section className="hero">
-        <img className="hero-bg" src={STORE_PHOTO} alt="" width="1000" height="611" fetchPriority="high" decoding="async" />
+        <img className="hero-bg" src={STORE_PHOTO} alt="" width="1100" height="703" fetchPriority="high" decoding="async" />
         <div className="container hero-copy">
           <p className="eyebrow">Pensacola, Florida</p>
           <h1>Furniture and appliances for every room</h1>
@@ -132,6 +141,18 @@ export function Home() {
           </Link>
         </div>
       </section>
+
+      {specials.length > 0 && (
+        <section className="specials" aria-label="This week at the showroom">
+          <div className="container">
+            <div className="specials-row">
+              <span className="k">This week</span>
+              <ul>{specials.map((s) => <li key={s.text}>{s.to ? <Link to={s.to}>{s.text}</Link> : <span>{s.text}</span>}</li>)}</ul>
+            </div>
+            {specials.some((s) => s.sample) && <p className="sample-note">Sample specials to show the layout. Replace them with this week's real specials.</p>}
+          </div>
+        </section>
+      )}
 
       <section className="section">
         <div className="container">
@@ -381,9 +402,11 @@ function ShareBox({ p }) {
 
 export function ProductPage() {
   const { slug } = useParams();
+  const list = useList();
   const p = PRODUCTS[parseInt(slug, 10)];
   usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
   if (!p) return <Showroom />;
+  const saved = list.has(p.id);
   const dept = CATEGORIES.find((c) => c.id === p.cat);
   const seen = new Set([p.name]);
   const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
@@ -406,7 +429,8 @@ export function ProductPage() {
             <div className="btn-row">
               <CallLink className="btn btn-primary"><Icon name="phone" /> Call {STORE.phone}</CallLink>
               <a className="btn btn-ghost" href={MAPS_URL} target="_blank" rel="noreferrer"><Icon name="nav" /> Get Directions</a>
-              <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}`}>Ask about this item</Link>
+              <Link className="btn btn-ghost" to={`/contact?item=${encodeURIComponent(p.name)}${p.price == null ? '&ask=price' : ''}`}>{p.price == null ? 'Ask for price' : 'Ask about this item'}</Link>
+              <button type="button" className={'btn btn-ghost' + (saved ? ' is-saved' : '')} aria-pressed={saved} onClick={() => list.toggle(p.id)}><Icon name="heart" size={18} fill={saved} /> {saved ? 'Saved to my list' : 'Save to my list'}</button>
             </div>
             <dl className="info pp-facts">
               <dt>Collection</dt><dd>{dept?.name}</dd>
@@ -510,6 +534,49 @@ export function OtherStores() {
   );
 }
 
+export function MyList() {
+  usePageMeta('My list', 'Items you saved from the Royal Appliance Outlet showroom. Send your list to the store or call about it.');
+  const list = useList();
+  const items = list.ids.map((id) => PRODUCTS[id]).filter(Boolean);
+  const [copied, setCopied] = useState(false);
+  const text = `My list from Royal Appliance Outlet:\n${items.map((x) => `- ${x.name}${x.price != null ? ` (${money(x.price)})` : ''}`).join('\n')}`;
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch (e) { setCopied(false); } };
+  return (
+    <>
+      <section className="page-head">
+        <div className="container">
+          <BackLink to="/showroom" label="showroom" />
+          <p className="eyebrow">Saved items</p>
+          <h1 className="h1-sm">My list</h1>
+          <p className="lead">Save pieces as you browse, then send the list to the store or call and ask about them.</p>
+        </div>
+      </section>
+      <section className="section tight">
+        <div className="container">
+          {items.length ? (
+            <>
+              <div className="btn-row">
+                <Link className="btn btn-primary" to="/contact?list=1">Send my list to the store</Link>
+                <CallLink className="btn btn-ghost"><Icon name="phone" /> Call {STORE.phone}</CallLink>
+                <button type="button" className="btn btn-ghost" onClick={copy}>{copied ? 'List copied' : 'Copy my list'}</button>
+                <button type="button" className="btn btn-ghost" onClick={list.clear}>Clear list</button>
+              </div>
+              <p className="count muted">{items.length} {items.length === 1 ? 'item' : 'items'} saved on this device</p>
+              <div className="prod-grid">{items.map((x) => <ProductCard key={x.id} p={x} />)}</div>
+            </>
+          ) : (
+            <div className="empty">
+              <h2 className="h3">Nothing saved yet</h2>
+              <p className="muted">Tap the heart on any item to save it here. Your list stays on this device.</p>
+              <Link className="btn btn-primary" to="/showroom">Browse the showroom</Link>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
 export function Financing() {
   usePageMeta('Financing', 'Ask about Synchrony, Snap Finance and Acima Leasing financing and lease-to-own options at Royal Appliance Outlet in Pensacola, FL. Approval and terms vary.');
   return (
@@ -554,7 +621,12 @@ export function Contact() {
   usePageMeta('Contact', 'Contact Royal Appliance Outlet in Pensacola, FL. Call (850) 741-4143, visit 1612 N Pace Blvd Suite 4, or send us a message.');
   const [params] = useSearchParams();
   const item = params.get('item');
-  const [f, setF] = useState({ name: '', phone: '', email: '', msg: item ? `I'm interested in: ${item}\n\n` : '', _gotcha: '' });
+  const wantsPrice = params.get('ask') === 'price';
+  const listNames = params.get('list') ? readList().map((id) => PRODUCTS[id] && PRODUCTS[id].name).filter(Boolean) : [];
+  const start = listNames.length
+    ? `I would like to ask about these items from my list:\n${listNames.map((n) => `- ${n}`).join('\n')}\n\n`
+    : item ? (wantsPrice ? `Could you tell me the price of: ${item}\n\n` : `I'm interested in: ${item}\n\n`) : '';
+  const [f, setF] = useState({ name: '', phone: '', email: '', msg: start, _gotcha: '' });
   const [state, setState] = useState('idle'); // idle | sending | sent | error
   const [err, setErr] = useState('');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });

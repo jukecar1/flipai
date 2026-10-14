@@ -1,4 +1,6 @@
 // Policy text adapted from the store's current website. Have the store review it before launch.
+import { analyticsEnabled } from './analytics';
+
 const PH = '(850) 741-4143';
 const EM = 'royalapplianceoutlet@yahoo.com';
 const ADDR = '1612 N Pace Blvd Suite 4, Pensacola, FL 32505';
@@ -14,14 +16,14 @@ export const LEGAL = {
         'Why: to reply to you, respond to your inquiry and remember your privacy preference.',
         'Who may process it: our website host and the form service that delivers your message to our inbox.',
         'Your choices: change cookie preferences any time from the footer, clear your browser storage, or contact us to access or delete what we hold.',
-        'Not happening: no advertising trackers, no analytics tool installed today, and no selling of personal information.',
+        analyticsEnabled ? 'Page counts: we count page and product views with a privacy-friendly service that uses no cookies and builds no profile of you. It is skipped if you reject non-essential storage. There are no advertising trackers and we never sell personal information.' : 'Not happening: no advertising trackers, no analytics tool installed today, and no selling of personal information.',
       ] },
       { h: 'The short version' },
       { p: 'Royal Appliance Outlet is a local store, not a data business. We use only the information needed to run the site, remember your preferences, and respond to inquiries.' },
       { h: 'What we collect' },
       { ul: ['Contact form details: your name, email, phone and message, so we can reply.', 'Cookie choice: your consent selection, stored in your browser so we do not ask again on every visit.'] },
       { h: 'Analytics, advertising and the Royal Assistant' },
-      { p: 'This website does not currently load an analytics tool, and there are no advertising or retargeting trackers. The Royal Assistant chat runs in your browser using a fixed set of store answers; what you type is not sent to an outside AI service.' },
+      { p: analyticsEnabled ? 'This website counts page and product views with a privacy-friendly service that sets no cookies and keeps no personal profile, and it is skipped if you reject non-essential storage. There are no advertising or retargeting trackers. The Royal Assistant' : 'This website does not currently load an analytics tool, and there are no advertising or retargeting trackers. The Royal Assistant chat runs in your browser using a fixed set of store answers; what you type is not sent to an outside AI service.' },
       { p: 'Product photos and fonts load from outside servers (the manufacturers\' image servers and Google Fonts). Like any website you visit, those servers receive standard technical data such as your IP address.' },
       { h: 'Security and retention' },
       { p: 'We use reasonable safeguards and keep collection to a minimum. No website can promise perfect security, so please do not send sensitive details such as card numbers through the contact form. We keep inquiry records only as long as needed to serve you and meet normal business record-keeping requirements.' },
@@ -44,11 +46,11 @@ export const LEGAL = {
       { h: 'Categories' },
       { ul: [
         'Strictly necessary (always on): required for the site to work, including remembering this choice.',
-        'Analytics (not used): no analytics tool is installed on this site today.',
+        analyticsEnabled ? 'Analytics (optional): cookie-free page and product counts with no personal profile. Skipped if you reject non-essential storage.' : 'Analytics (not used): no analytics tool is installed on this site today.',
         'Marketing and advertising (not used): there are no advertising or retargeting trackers on this site.',
       ] },
       { h: 'What is stored today' },
-      { ul: ['royal_cookie_consent: local storage, first party. Stores your cookie choice so the notice is not shown again. Kept until you change your choice or clear browser data.'] },
+      { ul: ['royal_cookie_consent: local storage, first party. Stores your cookie choice so the notice is not shown again. Kept until you change your choice or clear browser data.', 'royal_my_list: local storage, first party. Remembers the items you save to My list on this device. Kept until you clear your list or your browser data.'] },
       { p: 'Your browser, our hosting provider and the outside servers that deliver product photos and fonts may also handle standard technical data, such as an IP address, needed to deliver pages. The image servers of the manufacturers and their retail platforms can set their own cookies when a photo loads. We do not control those servers and we do not use them for tracking.' },
       { h: 'Changing your mind' },
       { p: 'You can update your choice any time with the "Cookie preferences" link in the footer, and you can clear cookies and local storage in your browser settings.' },
