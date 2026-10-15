@@ -65,7 +65,7 @@ function Pageviews() {
 function DeepLink() {
   const nav = useNavigate();
   useEffect(() => {
-    const m = /^#p-(\d+)$/.exec(window.location.hash);
+    const m = /^#p-([a-z0-9]+)$/.exec(window.location.hash);
     if (m) nav(`/product/${m[1]}`, { replace: true });
   }, [nav]);
   return null;

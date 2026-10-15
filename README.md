@@ -15,7 +15,7 @@ React site (Create React App). Run `npm start` for development and `npm run buil
 - **Map:** the live site shows a Google map when a visitor taps "Show interactive map", so no map cookies load until then.
 - **Best sellers:** `src/popular.json` is a demo list. Replace it with the store's real best-sellers (exact product names).
 - **Reviews:** `src/reviews.json` holds sample reviews. Replace them with real Google reviews and delete the `sample` flags.
-- **Catalog:** `src/products.json` was copied from the previous site (n name, c collection, t type, i image, p price).
+- **Catalog:** `src/products.json` is generated from the Google Sheet by `npm run sync` (see `catalog/README.md`); `catalog/catalog.csv` is the starting sheet. Do not edit the JSON by hand.
 
 # Getting Started with Create React App
 

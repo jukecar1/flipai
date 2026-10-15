@@ -26,7 +26,7 @@ export const ASHLEY = 'https://cdn.ashley.com/assets/';
 // window.__IMG is an optional offline image map used by static previews.
 export const imgUrl = (a, w = 600) =>
   (typeof window !== 'undefined' && window.__IMG && (window.__IMG[a + '@' + w] || window.__IMG[a + '@600'] || window.__IMG[a + '@800'])) ||
-  (a.startsWith('http') ? a : `${ASHLEY}${a}?fit=bounds&format=auto&height=${w}&quality=80&width=${w}`);
+  (a.startsWith('http') ? a : a.startsWith('photos/') ? `${process.env.PUBLIC_URL || ''}/${a}` : `${ASHLEY}${a}?fit=bounds&format=auto&height=${w}&quality=80&width=${w}`);
 
 export const CATEGORIES = [
   { id: 'appliances', img: 'https://cdn11.bigcommerce.com/s-pacto3wrn2/products/137164/images/1005731/6e0722a1deef5bfa26636d9334b589de3d654443__62307.1776489082.386.513.jpg?c=2', cutout: true, name: 'Appliances', blurb: 'Kitchen, laundry and home-comfort appliances.' },

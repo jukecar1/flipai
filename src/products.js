@@ -3,21 +3,26 @@
 import data from './products.json';
 import popular from './popular.json';
 
-export const PRODUCTS = data.map((x, k) => ({ id: k, cat: x.c, type: x.t, name: x.n.replace(/[\s\u00a0]+/g, ' ').trim(), img: x.i, price: x.p ?? null }));
+// id is a stable string (from the sheet's id column, or a hash of the item), so shared links, My list and compare
+// survive catalog edits. nw / b are the sheet's "new" and "best_seller" flags.
+export const PRODUCTS = data.map((x) => ({ id: x.id, cat: x.c, type: x.t, name: x.n.replace(/[\s\u00a0]+/g, ' ').trim(), img: x.i, price: x.p ?? null, isNew: !!x.nw, flagged: !!x.b }));
+const BY_ID = new Map(PRODUCTS.map((p) => [p.id, p]));
+export const getProduct = (id) => BY_ID.get(String(id));
 
 export const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Best-sellers, most popular first, as exact product names in src/popular.json. The catalog carries no sales data, so
-// the current list is a DEMO ordering. Replace it with the store's real best-sellers; if it is empty the
-// "Most popular" sort and the "Best seller" badges are hidden.
-const RANK = new Map(popular.map((n, i) => [n, i]));
-export const HAS_POPULAR = popular.length > 0;
+// Best sellers: items flagged best_seller in the sheet (in sheet order). With no flags it falls back to the exact
+// product names in src/popular.json, which is a DEMO ordering. With neither, the "Most popular" sort and the
+// "Best seller" badges are hidden.
+const FLAGGED = PRODUCTS.filter((p) => p.flagged);
+const RANK = new Map(FLAGGED.length ? FLAGGED.map((p, i) => [p.name, i]) : popular.map((n, i) => [n, i]));
+export const HAS_POPULAR = RANK.size > 0;
 export const popularRank = (p) => (RANK.has(p.name) ? RANK.get(p.name) : Infinity);
 
 // The first few ranked items in each collection earn a "Best seller" badge.
 const BEST = new Set();
 const taken = {};
-popular.forEach((n) => {
+[...RANK.keys()].forEach((n) => {
   PRODUCTS.filter((p) => p.name === n).forEach((p) => {
     taken[p.cat] = taken[p.cat] || 0;
     if (taken[p.cat] < 4) { BEST.add(p.id); taken[p.cat] += 1; }
@@ -29,8 +34,8 @@ export const BEST_SELLERS = PRODUCTS.filter((p) => BEST.has(p.id));
 // Unranked small appliances and parts (blender lids, cleaning kits) sort after the main appliances.
 export const tier = (p) => (p.type === 'Small Appliances' ? 1 : 0);
 
-// Shareable product links. The numeric id is the item's position in products.json, so keep that file's order stable
-// (or switch to SKUs) once the catalog is edited by hand.
+// Shareable product links: /product/<id>-<name>. Only the id matters; the name is for readability.
+export const idFromSlug = (slug) => String(slug).split('-')[0];
 export const productSlug = (p) => `${p.id}-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)}`;
 export const productPath = (p) => `/product/${productSlug(p)}`;
 export function shareUrl(p) {

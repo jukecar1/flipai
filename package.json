@@ -17,7 +17,10 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "sync": "node scripts/sync-catalog.js",
+    "catalog:export": "node scripts/export-catalog.js",
+    "catalog:test": "node --test scripts/catalog-lib.test.js"
   },
   "eslintConfig": {
     "extends": [

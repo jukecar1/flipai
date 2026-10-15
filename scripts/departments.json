@@ -1,0 +1,58 @@
+[
+ {
+  "id": "appliances",
+  "name": "Appliances"
+ },
+ {
+  "id": "living",
+  "name": "Living Room"
+ },
+ {
+  "id": "bedroom",
+  "name": "Bedroom"
+ },
+ {
+  "id": "dining",
+  "name": "Kitchen & Dining"
+ },
+ {
+  "id": "office",
+  "name": "Home Office"
+ },
+ {
+  "id": "accent",
+  "name": "Accent Furniture"
+ },
+ {
+  "id": "entry",
+  "name": "Entryway"
+ },
+ {
+  "id": "kids",
+  "name": "Kids & Baby"
+ },
+ {
+  "id": "outdoor",
+  "name": "Outdoor"
+ },
+ {
+  "id": "mattress",
+  "name": "Mattresses"
+ },
+ {
+  "id": "decor",
+  "name": "Decor / Home Accents"
+ },
+ {
+  "id": "rugs",
+  "name": "Rugs"
+ },
+ {
+  "id": "lighting",
+  "name": "Lighting"
+ },
+ {
+  "id": "storage",
+  "name": "Storage / Organization"
+ }
+]

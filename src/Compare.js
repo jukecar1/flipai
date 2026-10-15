@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CATEGORIES, imgUrl, STORE } from './data';
-import { PRODUCTS, isBest, productPath, keyDetails } from './products';
+import { getProduct, isBest, productPath, keyDetails } from './products';
 import { useCompare, compareFullEvent, MAX_COMPARE } from './compareStore';
 import { Icon, CallLink, BackLink } from './ui';
 import { Price } from './pages';
@@ -35,7 +35,7 @@ export function CompareBar() {
     return () => document.documentElement.classList.remove('compare-open');
   }, [show]);
   if (!show) return null;
-  const items = cmp.ids.map((id) => PRODUCTS[id]).filter(Boolean);
+  const items = cmp.ids.map((id) => getProduct(id)).filter(Boolean);
   const ready = items.length >= 2;
   return (
     <div ref={barRef} className="compare-bar" role="region" aria-label="Compare items">
@@ -57,7 +57,7 @@ export function CompareBar() {
 export function ComparePage() {
   usePageMeta('Compare items', 'Compare furniture and appliances side by side at Royal Appliance Outlet in Pensacola, FL.');
   const cmp = useCompare();
-  const items = cmp.ids.map((id) => PRODUCTS[id]).filter(Boolean);
+  const items = cmp.ids.map((id) => getProduct(id)).filter(Boolean);
   const n = items.length;
   const head = (
     <section className="page-head">

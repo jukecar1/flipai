@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { STORE, CATEGORIES, STORE_PHOTO, imgUrl, FINANCING, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, VCARD_HREF, openStatus } from './data';
-import { PRODUCTS, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
+import { PRODUCTS, getProduct, idFromSlug, money, HAS_POPULAR, popularRank, tier, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
 import { CallButtons, CallLink, TextLink, BackLink, Icon, Stars, openSheet } from './ui';
 import { useCompare } from './compareStore';
 import { ABOUT } from './about';
@@ -76,7 +76,7 @@ function ProductCard({ p }) {
   return (
     <div className="prod">
       <Link to={productPath(p)} className="prod-link" aria-label={`View ${p.name}`}>
-        <span className="prod-img">{isBest(p) && <span className="badge">Best seller</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
+        <span className="prod-img">{isBest(p) ? <span className="badge">Best seller</span> : p.isNew && <span className="badge">New</span>}<img src={imgUrl(p.img)} srcSet={`${imgUrl(p.img, 360)} 360w, ${imgUrl(p.img, 600)} 600w`} sizes="(min-width: 1100px) 22vw, (min-width: 700px) 30vw, 46vw" alt="" loading="lazy" decoding="async" width="600" height="600" /></span>
         <span className="prod-name">{p.name}</span>
         <span className="prod-type">{p.type}</span>
       </Link>
@@ -472,7 +472,7 @@ export function ProductPage() {
   const list = useList();
   const cmp = useCompare();
   const [shareOpen, setShareOpen] = useState(false);
-  const p = PRODUCTS[parseInt(slug, 10)];
+  const p = getProduct(idFromSlug(slug));
   const [recent] = useState(readRecent);
   useEffect(() => { if (p) pushRecent(p.id); }, [p]);
   usePageMeta(p?.name, p ? `${p.name}${p.price != null ? ` for ${money(p.price)}` : ''} at Royal Appliance Outlet in Pensacola, FL. ${p.type} from our ${catLabel(p.cat)} collection. Call (850) 741-4143 to confirm availability.` : '');
@@ -481,7 +481,7 @@ export function ProductPage() {
   let last = null;
   try { last = window.sessionStorage.getItem('royal_last_collection'); } catch (e) { /* storage unavailable */ }
   const backTo = last && last.startsWith(`/showroom/${p.cat}`) ? last : `/showroom/${p.cat}`;
-  const viewed = recent.filter((id) => id !== p.id).map((id) => PRODUCTS[id]).filter(Boolean).slice(0, 4);
+  const viewed = recent.filter((id) => id !== p.id).map((id) => getProduct(id)).filter(Boolean).slice(0, 4);
   const dept = CATEGORIES.find((c) => c.id === p.cat);
   const seen = new Set([p.name]);
   const related = PRODUCTS.filter((x) => x.cat === p.cat && x.type === p.type && x.id !== p.id).sort((a, b) => (a.price == null) - (b.price == null)).filter((x) => !seen.has(x.name) && seen.add(x.name)).slice(0, 4);
@@ -493,7 +493,7 @@ export function ProductPage() {
       <section className="section tight">
         <div className="container pp">
           <div className="pp-img">
-            {isBest(p) && <span className="badge">Best seller</span>}
+            {isBest(p) ? <span className="badge">Best seller</span> : p.isNew && <span className="badge">New</span>}
             <img src={imgUrl(p.img, 1000)} alt={p.name} />
           </div>
           <div className="pp-info">
@@ -618,7 +618,7 @@ export function OtherStores() {
 export function MyList() {
   usePageMeta('My list', 'Items you saved from the Royal Appliance Outlet showroom. Send your list to the store or call about it.');
   const list = useList();
-  const items = list.ids.map((id) => PRODUCTS[id]).filter(Boolean);
+  const items = list.ids.map((id) => getProduct(id)).filter(Boolean);
   const [copied, setCopied] = useState(false);
   const text = `My list from Royal Appliance Outlet:\n${items.map((x) => `- ${x.name}${x.price != null ? ` (${money(x.price)})` : ''}`).join('\n')}`;
   const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch (e) { setCopied(false); } };
@@ -795,7 +795,7 @@ export function Contact() {
   const item = params.get('item');
   const wantsPrice = params.get('ask') === 'price';
   const topic = params.get('topic');
-  const listNames = params.get('list') ? readList().map((id) => PRODUCTS[id] && PRODUCTS[id].name).filter(Boolean) : [];
+  const listNames = params.get('list') ? readList().map((id) => getProduct(id) && getProduct(id).name).filter(Boolean) : [];
   const start = listNames.length
     ? `I would like to ask about these items from my list:\n${listNames.map((n) => `- ${n}`).join('\n')}\n\n`
     : topic === 'delivery' ? 'I have a question about delivery and pickup.\n\n'
