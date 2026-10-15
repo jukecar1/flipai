@@ -24,3 +24,5 @@ yarn-error.log*
 
 /vape/node_modules
 /vape/build
+/car/node_modules
+/car/build

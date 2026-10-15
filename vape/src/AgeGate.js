@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { LOGO_SVG } from './logoSvg';
 
-const KEY = 'royal_age_ok';
-const read = () => { try { return window.localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
-
-// Every visitor confirms they are 21 or older before seeing the site, as on the store's current site. The answer is
-// remembered on this device. Under-21 visitors see a closing message and nothing else.
+// Every visitor confirms they are 21 or older each time they open the site. The answer is deliberately not stored, so the
+// gate appears on every visit and every reload. Under-21 visitors see a closing message and nothing else.
 export default function AgeGate() {
-  const [ok, setOk] = useState(read);
+  const [ok, setOk] = useState(false);
   const [no, setNo] = useState(false);
   const yes = useRef(null);
   useEffect(() => {
@@ -16,7 +13,7 @@ export default function AgeGate() {
     return () => document.documentElement.classList.remove('age-locked');
   }, [ok]);
   if (ok) return null;
-  const confirm = () => { try { window.localStorage.setItem(KEY, '1'); } catch (e) { /* the gate then shows again next visit */ } setOk(true); };
+  const confirm = () => setOk(true);
   // Keep keyboard focus inside the gate while it is open.
   const trap = (e) => {
     if (e.key !== 'Tab') return;

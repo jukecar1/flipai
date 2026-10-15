@@ -4,7 +4,7 @@ The Royal Vape Mart site (royalvapemart.com), rebuilt in the same "Noir and Ston
 Create React App, React 19, hash routing. Run from this folder: `npm install`, `npm start`, `npm run build`, `npm test`.
 
 ## What is here
-- Age gate (21+), remembered on the device. Cookie notice. 21+ policy, privacy, cookie and terms pages.
+- Age gate (21+), shown every time the site is opened (the answer is not stored). Cookie notice. 21+ policy, privacy, cookie and terms pages.
 - Shop with 197 products in 11 departments, search, sort, type filters, flavor choices, shareable product pages.
 - Reserve list: reserve for pickup with name and phone, pay at the counter (no online payment), 21+ confirmation.
 - Request a product form, contact form, deals signup (email only), FAQ, reviews, other stores, map, Royal Assistant.

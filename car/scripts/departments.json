@@ -1,0 +1,22 @@
+[
+ {
+  "id": "suv",
+  "name": "SUVs"
+ },
+ {
+  "id": "truck",
+  "name": "Trucks"
+ },
+ {
+  "id": "sedan",
+  "name": "Sedans"
+ },
+ {
+  "id": "coupe",
+  "name": "Coupes & Sports"
+ },
+ {
+  "id": "van",
+  "name": "Vans & Minivans"
+ }
+]

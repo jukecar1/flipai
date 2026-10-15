@@ -1,0 +1,15 @@
+/* Palettes: the page is built from these tokens only. "teal" is the primary dark-green/charcoal, "gold" is the accent. */
+:root {
+  --ink: #111214; --ink-rgb: 17, 18, 20; --ink-line: #2b2d31; --on-ink: #cbcdd0;
+  --teal: #1f2124; --teal-rgb: 31, 33, 36; --teal2: #2e3238;
+  --gold: #d9d4c7; --accent-rgb: 217, 212, 199; --gold-lt: #e9e5da; --gold-dk: #5d584b; --on-accent: #111214; --accent-lt: #e9e5da; --star: #1a1b1d;
+  --bg: #f6f6f4; --sand: #ebebe8; --card: #fff; --line: #dcdcd8; --text: #17181a; --muted: #5f6266;
+  --open: #1c7a43; --closed: #b3261e;
+  --display: Cinzel, 'Times New Roman', serif;
+  --font: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: var(--teal2); text-decoration: none; }
+a:hover { text-decoration: underline; }
+body { overflow-x: clip; }
