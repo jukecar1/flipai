@@ -19,6 +19,8 @@ export const HAS_POPULAR = RANK.size > 0;
 export const popularRank = (p) => (RANK.has(p.id) ? RANK.get(p.id) : Infinity);
 export const isBest = (p) => RANK.has(p.id);
 export const BEST_SELLERS = FLAGGED;
+// The current best-seller picks are placeholders chosen for the preview, not sales data. Set to false once the store has chosen its own.
+export const BEST_SAMPLE = true;
 
 // Shareable product links: /product/<id>-<name>. Only the id matters; the name is for readability.
 export const idFromSlug = (slug) => String(slug).split('-')[0];

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { STORE, CATEGORIES, BRANDS, imgUrl, FAQS, MAPS_URL, REVIEWS_URL, OTHER_STORES, VCARD_HREF, openStatus } from './data';
-import { PRODUCTS, getProduct, idFromSlug, money, HAS_POPULAR, popularRank, isBest, BEST_SELLERS, productPath, shareUrl } from './products';
+import { PRODUCTS, getProduct, idFromSlug, money, HAS_POPULAR, popularRank, isBest, BEST_SELLERS, BEST_SAMPLE, productPath, shareUrl } from './products';
 import { CallButtons, CallLink, BackLink, Icon, Stars, openSheet } from './ui';
 import { readRecent, pushRecent } from './recent';
 import { useReserve, lineTotal } from './reserve';
@@ -121,12 +121,9 @@ function AgeNotice() {
   );
 }
 
-const HERO_NAMES = ['Geek Bar Mate Kit', 'ZYN', 'Lost Mary Nera Fullview Kit', 'RAZ LTX 25k'];
-
 export function Home() {
   usePageMeta('', 'Royal Vape Mart in Pensacola offers vapes, nicotine pouches, THC products, mushroom products, beer and wine. Open daily 6AM to 1AM. 21+ only. Reserve online and pick up in store.');
   const status = openStatus();
-  const heroItems = useMemo(() => HERO_NAMES.map((n) => PRODUCTS.find((p) => p.name === n)).filter(Boolean), []);
   return (
     <>
       <section className="hero">
@@ -140,9 +137,10 @@ export function Home() {
           </div>
           <p className="hero-age">21+ only. Valid ID required for every purchase. No exceptions.</p>
         </div>
-        {heroItems.length > 0 && (
-          <div className="container hero-art" aria-hidden="true">
-            {heroItems.map((p) => <span key={p.id}><img src={imgUrl(p.img)} alt="" width="520" height="520" decoding="async" /></span>)}
+        {BEST_SELLERS.length > 0 && (
+          <div className="hero-best">
+            <div className="container"><p className="eyebrow">Best sellers</p><h2>What customers pick most</h2>{BEST_SAMPLE && <p className="hero-note">Sample picks for the preview. The store sets the real ones in the sheet.</p>}</div>
+            <div className="rail on-ink" role="list">{BEST_SELLERS.slice(0, 12).map((p) => <div role="listitem" key={p.id}><ProductCard p={p} /></div>)}</div>
           </div>
         )}
       </section>
@@ -179,13 +177,6 @@ export function Home() {
           <Mosaic />
         </div>
       </section>
-
-      {BEST_SELLERS.length > 0 && (
-        <section className="section sand">
-          <div className="container"><div className="section-head"><div><p className="eyebrow dark">Best sellers</p><h2>What customers pick most</h2></div></div></div>
-          <div className="rail" role="list">{BEST_SELLERS.slice(0, 12).map((p) => <div role="listitem" key={p.id}><ProductCard p={p} /></div>)}</div>
-        </section>
-      )}
 
       <section className="section sand">
         <div className="container split">

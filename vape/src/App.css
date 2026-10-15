@@ -405,3 +405,11 @@ html.age-locked, html.age-locked body { overflow: hidden; }
 .filters { margin-bottom: 1.25rem; }
 .brands img { width: auto; height: auto; }
 .side h2 { margin: 0 0 .6rem; font: 700 .78rem var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); } .side h2:not(:first-child) { margin-top: 1.8rem; }
+
+.hero-best { position: relative; z-index: 2; padding: 0 0 96px; }
+.hero-best h2 { color: #fff; font-size: 1.5rem; margin: 0 0 .3rem; } .hero-best .eyebrow { margin-bottom: .3rem; }
+.hero-note { margin: 0 0 .6rem; font-size: .8rem; color: var(--on-ink); opacity: .75; }
+.rail.on-ink { padding-top: 10px; }
+.rail.on-ink .prod-name { color: #fff; } .rail.on-ink .prod-type { color: var(--on-ink); opacity: .75; } .rail.on-ink .price { color: #fff; }
+.rail.on-ink .prod:hover .prod-img { border-color: var(--gold); }
+.rail.on-ink .btn-primary { background: var(--gold); color: var(--on-accent); }
