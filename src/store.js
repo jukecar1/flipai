@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 
 // A tiny saved-ids store kept in this browser's local storage (used for My list and Compare).
-export function createStore(key, max = Infinity) {
+// `valid` drops saved ids that no longer exist (an item removed from the catalog, or ids saved before the catalog changed).
+export function createStore(key, max = Infinity, valid = () => true) {
   const evt = `royal-store-${key}`;
   let memory = null; // used when storage is blocked
 
   const read = () => {
-    try { const v = JSON.parse(window.localStorage.getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return memory || []; }
+    try { const v = JSON.parse(window.localStorage.getItem(key) || '[]'); return Array.isArray(v) ? v.filter(valid) : []; } catch (e) { return memory || []; }
   };
   const write = (ids) => {
     memory = ids;
