@@ -21,7 +21,7 @@ function StoresBand() {
         <Link to="/other-stores" className="bigbox">
           <span className="k">Same owner</span>
           <b>Check out our other stores</b>
-          <small>Royal Appliance Outlet and our car auction business</small>
+          <small>Royal Appliance Outlet and our car business</small>
           <span className="go" aria-hidden="true"><Icon name="arrow" size={22} /></span>
         </Link>
       </div>

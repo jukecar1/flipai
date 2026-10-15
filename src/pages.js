@@ -544,7 +544,7 @@ export function Socials() {
     { k: 'Call', t: STORE.phone, s: 'Expert help in store', call: true },
     { k: 'Email', t: 'Send us a message', s: STORE.email, to: '/contact' },
     { k: 'Hours', t: 'Open 7 days', s: 'Tap for store hours', sheet: 'hours' },
-    { k: 'Same owner', t: 'Our other stores', s: 'Royal Vape Mart and our car auction', to: '/other-stores' },
+    { k: 'Same owner', t: 'Our other stores', s: 'Royal Vape Mart and our car business', to: '/other-stores' },
     { k: 'Showroom', t: 'Browse the showroom', s: `${PRODUCTS.length.toLocaleString('en-US')} items in 14 departments`, to: '/showroom' },
     { k: 'Financing', t: 'Ask about financing', s: 'Synchrony, Snap and Acima Leasing', to: '/financing' },
   ];
@@ -581,7 +581,7 @@ export function Socials() {
 }
 
 export function OtherStores() {
-  usePageMeta('Our other stores', 'Royal Appliance Outlet is part of a family of local Pensacola businesses, including Royal Vape Mart and a car auction business.');
+  usePageMeta('Our other stores', 'Royal Appliance Outlet is part of a family of local Pensacola businesses, including Royal Vape Mart and a car business.');
   return (
     <>
       <section className="page-head">
@@ -678,7 +678,7 @@ export function About() {
             <h2 className="h3 sub-h">How we help</h2>
             <p>Our team helps you compare sizes, features and fit, and talks through financing and lease-to-own options with Synchrony, Snap Finance and Acima Leasing.</p>
             <h2 className="h3 sub-h">Part of a local family of businesses</h2>
-            <p>The same owner also runs Royal Vape Mart and a car auction business. <Link to="/other-stores">See our other stores</Link>.</p>
+            <p>The same owner also runs Royal Vape Mart and a car business. <Link to="/other-stores">See our other stores</Link>.</p>
             {ABOUT.story.length > 0 && <><h2 className="h3 sub-h">Our story</h2>{ABOUT.story.map((t) => <p key={t}>{t}</p>)}</>}
           </div>
           <div>

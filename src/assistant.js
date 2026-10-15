@@ -79,7 +79,7 @@ export function reply(input) {
   if (has(q, /\b(financ|credit|lease|payment plan|layaway|monthly|approval|afford|no credit|bad credit)/)) {
     return { text: `We work with ${FINANCING.map((f) => f.name).join(', ')}. Approval, eligibility and terms vary by provider, so ask our team which fits you.`, link: { to: '/financing', label: 'See financing options' } };
   }
-  if (has(q, /\b(vape|smoke|auction|other stores?|other locations?|car)\b/) && !has(q, /\b(sofa|bed|table|chair)\b/)) {
+  if (has(q, /\b(vape|smoke|auction|dealer|dealership|other stores?|other locations?|car)\b/) && !has(q, /\b(sofa|bed|table|chair)\b/)) {
     return { text: `The same owner also runs ${OTHER_STORES.map((s) => s.title).join(' and ')}.`, link: { to: '/other-stores', label: 'Our other stores' } };
   }
   if (has(q, /\b(review|rating|rated|reputation)\b/)) {

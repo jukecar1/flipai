@@ -709,7 +709,7 @@ export function Socials() {
     { k: 'Call', t: STORE.phone, s: 'A real person answers', call: true },
     { k: 'Hours', t: 'Open 6AM to 1AM', s: 'Tap for store hours', sheet: 'hours' },
     { k: 'Request', t: 'What should we carry?', s: 'Ask us to stock a brand or flavor', to: '/request' },
-    { k: 'Same owner', t: 'Our other stores', s: 'Royal Appliance Outlet and our car auction', to: '/other-stores' },
+    { k: 'Same owner', t: 'Our other stores', s: 'Royal Appliance Outlet and our car business', to: '/other-stores' },
     { k: 'Answers', t: 'FAQ', s: 'Pickup, hours, ID and pricing', to: '/faq' },
   ];
   const body = (b) => (
@@ -745,7 +745,7 @@ export function Socials() {
 }
 
 export function OtherStores() {
-  usePageMeta('Our other stores', 'Royal Vape Mart is part of a family of local Pensacola businesses, including Royal Appliance Outlet (furniture and appliances) and a car auction business.');
+  usePageMeta('Our other stores', 'Royal Vape Mart is part of a family of local Pensacola businesses, including Royal Appliance Outlet (furniture and appliances) and a car business.');
   return (
     <>
       <section className="page-head">

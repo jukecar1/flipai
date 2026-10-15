@@ -86,7 +86,7 @@ export function reply(input) {
   if (has(q, /\b(phone|call|number|talk to|speak)\b/)) {
     return { text: `You can reach the store at ${STORE.phone}.`, link: { href: `tel:${STORE.tel}`, label: `Call ${STORE.phone}`, tel: true } };
   }
-  if (has(q, /\b(furniture|appliance|auction|other stores?|other locations?|car)\b/)) {
+  if (has(q, /\b(furniture|appliance|auction|dealer|dealership|other stores?|other locations?|car)\b/)) {
     return { text: `The same owner also runs ${OTHER_STORES.map((s) => s.title).join(' and ')}.`, link: { to: '/other-stores', label: 'Our other stores' } };
   }
   if (has(q, /\b(review|rating|rated|reputation)\b/)) {

@@ -13,6 +13,6 @@ Create React App, React 19, hash routing. Run from this folder: `npm install`, `
 ## Before launch
 - Forms: create a form at https://formspree.io (or any service that accepts a JSON POST) and build with `REACT_APP_FORM_ENDPOINT=<form url>`. Without it the forms ask the visitor to call, because the store has no email address on the site.
 - Analytics (optional, cookie-free): `REACT_APP_ANALYTICS_URL`.
-- Confirm with the store: Google review rating and count (not shown until confirmed), social links, email address, real best sellers (`best_seller` column), the car auction details, and the legal pages (have an attorney review them).
+- Confirm with the store: Google review rating and count (not shown until confirmed), social links, email address, real best sellers (`best_seller` column), the car business details, and the legal pages (have an attorney review them).
 - The old site takes reservations with its own cart and checkout. This version sends the reservation as a form message instead.
 - Photos are copies of the product images on the current site, resized (`public/photos`). Brand logos are in `public/img/brands`. The logo here is a new Noir and Stone wordmark; the store's original red and yellow logo is not used.

@@ -65,7 +65,7 @@ export function openStatus(now = new Date()) {
 // The owner's other businesses.
 export const OTHER_STORES = [
   { k: 'Furniture and appliances', title: 'Royal Appliance Outlet', text: 'Furniture, mattresses and home appliances. Open Monday to Saturday 10 AM to 7 PM, Sunday 10 AM to 6 PM.', url: '', phone: '(850) 741-4143', address: '1612 N Pace Blvd Suite 4, Pensacola' },
-  { k: 'Car auction', title: 'Car auction', text: 'Vehicles bought and sold at auction.', url: '', phone: '', address: '' },
+  { k: 'Car dealership', title: "Sean's Car Business", text: 'Used cars, trucks and SUVs in Pensacola.', url: '', phone: '', address: '' },
 ];
 
 STORE.sms = STORE.tel;
