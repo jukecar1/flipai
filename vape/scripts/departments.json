@@ -1,0 +1,13 @@
+[
+ {"id":"vape","name":"Vape"},
+ {"id":"hardware","name":"Vape Hardware"},
+ {"id":"eliquid","name":"E-Liquid"},
+ {"id":"tobacco","name":"Tobacco"},
+ {"id":"thc","name":"THC Seltzers"},
+ {"id":"kratom","name":"Kratom"},
+ {"id":"delta","name":"Delta"},
+ {"id":"cigarettes","name":"Cigarettes"},
+ {"id":"cigars","name":"Cigars"},
+ {"id":"detox","name":"Detox"},
+ {"id":"misc","name":"Misc."}
+]
