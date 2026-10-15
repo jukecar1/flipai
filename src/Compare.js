@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CATEGORIES, imgUrl, STORE } from './data';
 import { PRODUCTS, isBest, productPath, keyDetails } from './products';
@@ -21,6 +21,15 @@ export function CompareBar() {
     return () => { window.removeEventListener(compareFullEvent, on); clearTimeout(t); };
   }, []);
   const show = cmp.ids.length > 0 && pathname !== '/compare';
+  const barRef = useRef(null);
+  useEffect(() => {
+    if (!show || !barRef.current || typeof ResizeObserver === 'undefined') return undefined;
+    const set = () => document.documentElement.style.setProperty('--bar-compare', `${barRef.current ? barRef.current.offsetHeight : 0}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(barRef.current);
+    return () => { ro.disconnect(); document.documentElement.style.setProperty('--bar-compare', '0px'); };
+  }, [show]);
   useEffect(() => {
     document.documentElement.classList.toggle('compare-open', show);
     return () => document.documentElement.classList.remove('compare-open');
@@ -29,7 +38,7 @@ export function CompareBar() {
   const items = cmp.ids.map((id) => PRODUCTS[id]).filter(Boolean);
   const ready = items.length >= 2;
   return (
-    <div className="compare-bar" role="region" aria-label="Compare items">
+    <div ref={barRef} className="compare-bar" role="region" aria-label="Compare items">
       {msg && <p className="compare-msg" role="status">{msg}</p>}
       <div className="container compare-row">
         <div className="compare-thumbs">

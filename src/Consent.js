@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const KEY = 'royal_cookie_consent';
@@ -9,6 +9,7 @@ export const openConsent = () => window.dispatchEvent(new Event('royal-consent-o
 
 export default function CookieNotice() {
   const [open, setOpen] = useState(false);
+  const ref = useRef(null);
   useEffect(() => {
     if (!read()) setOpen(true);
     const on = () => setOpen(true);
@@ -19,10 +20,18 @@ export default function CookieNotice() {
     document.documentElement.classList.toggle('consent-open', open);
     return () => document.documentElement.classList.remove('consent-open');
   }, [open]);
+  useEffect(() => {
+    if (!open || !ref.current || typeof ResizeObserver === 'undefined') return undefined;
+    const set = () => document.documentElement.style.setProperty('--bar-consent', `${ref.current ? ref.current.offsetHeight : 0}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(ref.current);
+    return () => { ro.disconnect(); document.documentElement.style.setProperty('--bar-consent', '0px'); };
+  }, [open]);
   if (!open) return null;
   const choose = (v) => { write(v); setOpen(false); };
   return (
-    <div className="consent" role="dialog" aria-label="Cookie notice">
+    <div ref={ref} className="consent" role="dialog" aria-label="Cookie notice">
       <div className="container consent-row">
         <p>We use only what the site needs. No ad trackers, and we never sell your data. <Link to="/cookies">Cookie policy</Link> · <Link to="/privacy">Privacy</Link></p>
         <div className="consent-actions">
