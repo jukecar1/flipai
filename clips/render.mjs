@@ -43,7 +43,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: dpr });
 page.on('console', (m) => { const t = m.text(); if (!t.includes('404')) console.log('[page]', t); });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-await page.goto(`http://localhost:${port}/clips/${clip}/index.html?manual&dpr=${dpr}`);
+await page.goto(`http://localhost:${port}/clips/${clip}/index.html?manual&dpr=${dpr}${process.env.EXTRA ? '&' + process.env.EXTRA : ''}`);
 await page.waitForFunction('window.READY === true', null, { timeout: 120000 });
 
 fs.mkdirSync(outDir, { recursive: true });

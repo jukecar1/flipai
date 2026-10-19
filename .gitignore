@@ -23,3 +23,6 @@ yarn-debug.log*
 yarn-error.log*
 clips/.frames/
 clips/*.mp4
+clips/la/data/*.ppm
+clips/la/data/ne_*.geojson
+clips/la/data/osm/
