@@ -1,9 +1,9 @@
 **Title:** Evolution of Los Angeles: 3D city timelapse (1781–2026) 🌴
 
 **Caption:**
-From a village of 44 settlers to a city of almost 4 million. Watch Los Angeles grow across 245 years on real terrain: the river, the railroads, the oil boom, Hollywood, the freeways and the skyline. 🗺️
+From a village of 44 settlers to a city of almost 4 million. Watch Los Angeles grow across 245 years on a real map: the river, the railroads, the oil boom, Hollywood, the freeways and the skyline. 🗺️
 
-This is a stylized timelapse. The terrain and freeway routes are real, but the spread of the city is a model, not a map of actual construction dates.
+This is a modeled timelapse. The terrain, streets, buildings and parks are real (OpenStreetMap), but the year each one appears is an estimate, not an actual construction date.
 
 What's in it:
 • 1781: El Pueblo de Los Ángeles is founded on Sept 4 by 44 settlers
@@ -20,4 +20,4 @@ What's in it:
 
 Which decade of LA is your favorite? 👇
 
-#losangeles #la #timelapse #history #3d #citygrowth #evolution #california #fyp #shorts
+#losangeles #la #timelapse #history #3d #citygrowth #openstreetmap #evolution #california #fyp #shorts

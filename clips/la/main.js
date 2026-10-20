@@ -32,6 +32,10 @@ const elev = new Float32Array(await (await fetch('./data/terrain.bin')).arrayBuf
 const yrs = new Uint16Array(await (await fetch('./data/year.bin')).arrayBuffer());
 let roads = { mw: [], pr: [], rl: [] }; try { roads = await (await fetch('./data/roads.json')).json(); } catch (e) { /* optional */ }
 const { W, H, cell, x0, y0, lon0, lat0, kx, ky } = meta;
+const DET = await (await fetch('./data/detail.json')).json();
+const detBytes = new Uint8Array(await (await fetch('./data/detail.bin')).arrayBuffer());
+const BL = new Float32Array(await (await fetch('./data/bldg.bin')).arrayBuffer());
+const RAIL = await (await fetch('./data/rail.json')).json();
 const EXAG = 3.2;
 const kmOf = (lon, lat) => [(lon - lon0) * kx, -((lat - lat0) * ky)]; // x east, z south
 const cellAt = (x, z) => { const i = Math.round((x - x0) / cell - 0.5), j = Math.round((-z - y0) / cell - 0.5); return [clamp(i, 0, W - 1), clamp(j, 0, H - 1)]; };
@@ -51,7 +55,8 @@ composer.setSize(innerWidth * DPR, innerHeight * DPR); composer.addPass(new Rend
 { const fxaa = new ShaderPass(FXAAShader); fxaa.material.uniforms['resolution'].value.set(1 / (innerWidth * DPR), 1 / (innerHeight * DPR)); composer.addPass(fxaa); }
 const SUN = new THREE.Vector3(-0.62, 0.55, 0.42).normalize();
 const SEAHAZE = new THREE.Color(0.60, 0.68, 0.69);
-const U = { uSeaHaze: { value: SEAHAZE }, uYear: { value: 1781 }, uSun: { value: SUN }, uHaze: { value: HAZE }, uCam: { value: new THREE.Vector3() }, uHazeD: { value: 0.0022 } };
+const detTex = new THREE.DataTexture(detBytes, DET.w, DET.h, THREE.RGBAFormat, THREE.UnsignedByteType); detTex.generateMipmaps = true; detTex.minFilter = THREE.LinearMipmapLinearFilter; detTex.magFilter = THREE.LinearFilter; detTex.wrapS = detTex.wrapT = THREE.ClampToEdgeWrapping; detTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); detTex.needsUpdate = true;
+const U = { uDet: { value: detTex }, uDetG: { value: new THREE.Vector4(DET.x0, DET.z0, 1 / (DET.w * DET.px), 1 / (DET.h * DET.px)) }, uSeaHaze: { value: SEAHAZE }, uYear: { value: 1781 }, uSun: { value: SUN }, uHaze: { value: HAZE }, uCam: { value: new THREE.Vector3() }, uHazeD: { value: 0.0022 } };
 const HZ_FRAG = `float hz = 1.0 - exp(-length(vW - uCam) * uHazeD); col = mix(col, uHaze, clamp(hz, 0.0, 0.88)); col = pow(clamp(col, 0.0, 1.0), vec3(2.2));`;
 
 /* ---------- terrain mesh (real elevations), with a developed-ground tint and a street grid that fade in with the year ---------- */
@@ -64,7 +69,7 @@ const HZ_FRAG = `float hz = 1.0 - exp(-length(vW - uCam) * uHazeD); col = mix(co
   const mat = new THREE.ShaderMaterial({
     uniforms: U,
     vertexShader: 'attribute float aYear; attribute float aElev; varying float vYear, vElev; varying vec3 vN, vW; void main(){ vYear = aYear; vElev = aElev; vN = normal; vW = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform float uYear; uniform vec3 uSun, uHaze, uCam, uSeaHaze; uniform float uHazeD; varying float vYear, vElev; varying vec3 vN, vW;
+    fragmentShader: `uniform float uYear; uniform vec3 uSun, uHaze, uCam, uSeaHaze; uniform float uHazeD; uniform sampler2D uDet; uniform vec4 uDetG; varying float vYear, vElev; varying vec3 vN, vW;
       float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
       float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(h21(i), h21(i+vec2(1,0)), f.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), f.x), f.y); }
       void main(){
@@ -77,8 +82,17 @@ const HZ_FRAG = `float hz = 1.0 - exp(-length(vW - uCam) * uHazeD); col = mix(co
         vec3 urban = vec3(0.66, 0.60, 0.51) * (0.55 + 0.7 * ndl);
         vec2 gp = vW.xz / 1.6; vec2 gl = abs(fract(gp - 0.5) - 0.5) / max(fwidth(gp), vec2(0.0001)); float grid = 1.0 - min(min(gl.x, gl.y), 1.0);
         vec2 gp2 = vW.xz / 0.4; vec2 gl2 = abs(fract(gp2 - 0.5) - 0.5) / max(fwidth(gp2), vec2(0.0001)); float grid2 = (1.0 - min(min(gl2.x, gl2.y), 1.0)) * 0.45;
-        col = mix(col, urban, built * 0.62); col = mix(col, col * 0.7, built * max(grid, grid2) * 0.5);
-        if (e <= 0.5) { vec3 sea = mix(vec3(0.46, 0.54, 0.55), vec3(0.34, 0.43, 0.46), smoothstep(0.0, -60.0, e)); sea *= 0.75 + 0.45 * ndl + vn(vW.xz * 1.5 + 3.0) * 0.06; float shore = smoothstep(-6.0, 0.4, e); col = mix(sea, vec3(0.95, 0.93, 0.87), shore * 0.7); }
+        vec2 duv = (vW.xz - uDetG.xy) * uDetG.zw; vec2 ein = min(duv, 1.0 - duv) * vec2(1.0 / uDetG.z, 1.0 / uDetG.w);
+        float inside = smoothstep(0.0, 2.5, min(ein.x, ein.y)); vec4 d = texture2D(uDet, clamp(duv, 0.001, 0.999)); float lc = d.b * 255.0;
+        col = mix(col, urban, built * 0.62); col = mix(col, col * 0.7, built * max(grid, grid2) * 0.5 * (1.0 - inside));
+        float yr1 = smoothstep(1850.0, 1930.0, uYear), yr2 = smoothstep(1880.0, 1950.0, uYear);
+        float green = (1.0 - smoothstep(8.0, 14.0, abs(lc - 60.0))) + (1.0 - smoothstep(6.0, 12.0, abs(lc - 70.0)));
+        float ind = 1.0 - smoothstep(8.0, 14.0, abs(lc - 120.0)), ret = 1.0 - smoothstep(8.0, 14.0, abs(lc - 180.0));
+        col = mix(col, vec3(0.50, 0.58, 0.36) * (0.62 + 0.55 * ndl), clamp(green, 0.0, 1.0) * inside * (0.35 + 0.55 * built) * (0.3 + 0.7 * yr1));
+        col = mix(col, vec3(0.62, 0.58, 0.58) * (0.6 + 0.6 * ndl), ind * inside * built * 0.7 * yr1); col = mix(col, vec3(0.80, 0.58, 0.44) * (0.6 + 0.6 * ndl), ret * inside * built * 0.55 * yr1);
+        col = mix(col, vec3(0.70, 0.62, 0.50) * (0.55 + 0.7 * ndl), d.a * inside * built * 0.55 * yr1);
+        col = mix(col, col * 0.55, d.r * inside * built * 0.75 * yr1); col = mix(col, vec3(0.26, 0.21, 0.16) * (0.7 + 0.5 * ndl), d.g * inside * built * 0.85 * yr2);
+        float wat = (1.0 - smoothstep(8.0, 14.0, abs(lc - 240.0))) * inside; if (e <= 0.5 || wat > 0.5) { vec3 sea = mix(vec3(0.46, 0.54, 0.55), vec3(0.34, 0.43, 0.46), smoothstep(0.0, -60.0, e)); sea *= 0.75 + 0.45 * ndl + vn(vW.xz * 1.5 + 3.0) * 0.06; float shore = smoothstep(-6.0, 0.4, e); col = mix(sea, vec3(0.95, 0.93, 0.87), shore * 0.7 * (1.0 - step(0.5, wat))); }
         float edge = min(min(vW.x - ${(x0 + 2).toFixed(2)}, ${(x0 + W * cell - 2).toFixed(2)} - vW.x), min(-vW.z - ${(y0 + 2).toFixed(2)}, ${(y0 + H * cell - 2).toFixed(2)} + vW.z)); col = mix(e <= 0.5 ? uSeaHaze : uHaze, col, smoothstep(0.0, 12.0, edge));
         ${HZ_FRAG}
         gl_FragColor = vec4(col, 1.0);
@@ -91,24 +105,39 @@ const HZ_FRAG = `float hz = 1.0 - exp(-length(vW - uCam) * uHazeD); col = mix(co
 
 /* ---------- buildings (instanced blocks that rise when the front arrives) ---------- */
 const CENTERS = [[-118.2437, 34.0522, 15, 1.9], [-118.4175, 34.0565, 9, 1.0], [-118.3287, 34.0983, 4.5, 1.0], [-118.3 , 34.0617, 4.5, 1.8], [-118.4437, 34.0635, 5, 0.9], [-118.5568, 34.1836, 4, 1.1], [-118.2551, 34.1425, 4, 1.0], [-118.1445, 34.1478, 3.5, 1.0], [-118.1937, 33.7701, 6, 1.4], [-118.3089, 34.1808, 3, 1.0], [-118.4912, 34.0195, 3, 0.9], [-118.40, 33.93, 2.5, 1.5], [-117.9145, 33.8353, 2.5, 1.5], [-118.3406, 33.8358, 2, 1.2]].map(([lo, la, a, r]) => [...kmOf(lo, la), a, r]);
+const inDet = (x, z) => x > DET.x0 + 0.6 && x < DET.x0 + DET.w * DET.px - 0.6 && z > DET.z0 + 0.6 && z < DET.z0 + DET.h * DET.px - 0.6;
+const LANDMARK_YEARS = { 'Wilshire Grand Building': 2017, 'U.S. Bank Tower': 1989, 'Aon Center': 1973, 'Gas Company Tower': 1991, 'Wells Fargo Tower': 1983, 'Bank of America': 1974, 'KPMG Tower': 1983, 'Two California Plaza': 1992, 'One California Plaza': 1985, 'City National Tower': 1971, 'Paul Hastings Tower': 1972, 'Citigroup Center': 1986, '777 Tower': 1991, 'Century Plaza Tower I': 1975, 'Century Plaza Tower II': 1975, 'Oceanwide Plaza I': 2020, 'Metropolis Residential Tower III': 2018, 'The Beaudry Apartments': 2017, 'Figueroa at Wilshire': 1990, '611 Place': 1990, '825 South Hill': 2019, 'Olympic and Hill': 2021 };
 const bldgs = (() => {
-  const r = rng(2025), off = [], size = [], yr = [], shade = [], low = []; const kmDT = kmOf(-118.2437, 34.0522);
+  const r = rng(2025), off = [], size = [], yr = [], shade = [], low = [], ang = [], kmDT = kmOf(-118.2437, 34.0522);
+  const hash = (i) => { let h = (i * 2654435761) >>> 0; h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13; return (h >>> 0) / 4294967296; };
+  // outside the detailed box: the stylized block model
   for (let j = 2; j < H - 2; j++) for (let i = 2; i < W - 2; i++) {
-    const k = j * W + i, y = yrs[k]; if (!y) continue; const x = x0 + (i + 0.5) * cell, z = -(y0 + (j + 0.5) * cell), dd = Math.hypot(x - kmDT[0], z - kmDT[1]);
+    const k = j * W + i, y = yrs[k]; if (!y) continue; const x = x0 + (i + 0.5) * cell, z = -(y0 + (j + 0.5) * cell); if (inDet(x, z)) continue; const dd = Math.hypot(x - kmDT[0], z - kmDT[1]);
     const dens = 0.7 - Math.min(0.28, dd * 0.004); if (r() > dens) continue;
     let boost = 1 + 1.6 * Math.exp(-dd / 14); for (const [cx, cz, a, rr] of CENTERS) { const d = Math.hypot(x - cx, z - cz); boost += a * Math.exp(-Math.pow(d / rr, 2)) * (0.6 + 0.8 * r()); }
     const base = 0.007 + 0.011 * r(), hKm = base * boost, hh = hKm * EXAG * 2.0, s = (y < 1895 ? 0.06 + 0.045 * r() : 0.13 + 0.09 * r());
-    off.push(x + (r() - 0.5) * 0.08, heightKm(x, z), z + (r() - 0.5) * 0.08); size.push(s, hh, s * (0.8 + 0.4 * r())); low.push(Math.min(hh, (0.0045 + 0.0045 * r()) * EXAG * 2.4)); yr.push(y + (r() - 0.5) * 2); shade.push(0.82 + 0.3 * r() - Math.min(0.12, hKm * 0.2));
+    off.push(x + (r() - 0.5) * 0.08, heightKm(x, z), z + (r() - 0.5) * 0.08); size.push(s, hh, s * (0.8 + 0.4 * r())); low.push(Math.min(hh, (0.0045 + 0.0045 * r()) * EXAG * 2.4)); yr.push(y + (r() - 0.5) * 2); shade.push(0.82 + 0.3 * r() - Math.min(0.12, hKm * 0.2)); ang.push(0);
   }
-  { const pz = kmOf(-118.2379, 34.0572), rr2 = rng(77); for (let q = 0; q < 14; q++) { const a = (q / 14) * 6.283 + rr2() * 0.3, d = 0.09 + 0.05 * rr2(), x = pz[0] + Math.cos(a) * d, z = pz[1] + Math.sin(a) * d * 0.8; off.push(x, heightKm(x, z), z); size.push(0.028 + 0.012 * rr2(), 0.05, 0.028 + 0.012 * rr2()); yr.push(1776 + q * 0.2); shade.push(0.78 + 0.12 * rr2()); low.push(0.05); } }
-  return { off: new Float32Array(off), size: new Float32Array(size), yr: new Float32Array(yr), low: new Float32Array(low), shade: new Float32Array(shade), n: yr.length };
+  // inside: real OpenStreetMap footprints and heights, each one rising in its cell's built year
+  const VX = EXAG * 1.5, named = RAIL.named || [];
+  for (let n = 0; n < BL.length / 7; n++) {
+    const o = n * 7, cx = BL[o], cz = BL[o + 1], w = BL[o + 2], d = BL[o + 3], a = BL[o + 4], hm = BL[o + 5], area = w * d * 1e6;
+    if (!(hm >= 14 || area >= 1200) && hash(n) > 0.34) continue;
+    const [ci, cj] = cellAt(cx, cz); let y = yrs[cj * W + ci]; if (!y) continue; y = Math.min(y + hash(n + 7) * 6, 2023); y = Math.max(y, hm < 8 && area < 400 ? 1852 : hm < 12 ? 1875 : hm < 20 ? 1893 : hm < 35 ? 1908 : hm < 60 ? 1924 : 1945);
+    if (hm >= 60) { y = Math.max(y, 1958 + hash(n + 3) * 34 * (hm < 150 ? 1.2 : 0.8)); if (hm >= 150) y = Math.max(y, 1970); }
+    for (const [nm, nx, nz, nh] of named) if (LANDMARK_YEARS[nm] && Math.abs(cx - nx) < 0.05 && Math.abs(cz - nz) < 0.05 && hm > nh * 0.5) y = LANDMARK_YEARS[nm];
+    const hh = hm / 1000 * VX, big = hm >= 25; off.push(cx, heightKm(cx, cz), cz); size.push(Math.max(w, 0.006), Math.max(hh, 0.012), Math.max(d, 0.006)); ang.push(-a);
+    yr.push(y); low.push(-Math.min(hh, 0.006 * (1 + hash(n + 11)))); shade.push(big ? 0.9 + 0.2 * hash(n + 5) : 0.78 + 0.34 * hash(n + 5));
+  }
+  { const pz = kmOf(-118.2379, 34.0572), rr2 = rng(77); for (let q = 0; q < 14; q++) { const a = (q / 14) * 6.283 + rr2() * 0.3, d = 0.09 + 0.05 * rr2(), x = pz[0] + Math.cos(a) * d, z = pz[1] + Math.sin(a) * d * 0.8; off.push(x, heightKm(x, z), z); size.push(0.028 + 0.012 * rr2(), 0.05, 0.028 + 0.012 * rr2()); yr.push(1776 + q * 0.2); shade.push(0.78 + 0.12 * rr2()); low.push(0.05); ang.push(0); } }
+  return { off: new Float32Array(off), size: new Float32Array(size), yr: new Float32Array(yr), low: new Float32Array(low), shade: new Float32Array(shade), ang: new Float32Array(ang), n: yr.length };
 })();
 {
   const ig = new THREE.InstancedBufferGeometry(); const box = new THREE.BoxGeometry(1, 1, 1); box.translate(0, 0.5, 0); ig.index = box.index; ig.setAttribute('position', box.attributes.position); ig.setAttribute('normal', box.attributes.normal);
-  ig.setAttribute('aOff', new THREE.InstancedBufferAttribute(bldgs.off, 3)); ig.setAttribute('aSize', new THREE.InstancedBufferAttribute(bldgs.size, 3)); ig.setAttribute('aYear', new THREE.InstancedBufferAttribute(bldgs.yr, 1)); ig.setAttribute('aShade', new THREE.InstancedBufferAttribute(bldgs.shade, 1)); ig.setAttribute('aLow', new THREE.InstancedBufferAttribute(bldgs.low, 1)); ig.instanceCount = bldgs.n;
+  ig.setAttribute('aOff', new THREE.InstancedBufferAttribute(bldgs.off, 3)); ig.setAttribute('aSize', new THREE.InstancedBufferAttribute(bldgs.size, 3)); ig.setAttribute('aYear', new THREE.InstancedBufferAttribute(bldgs.yr, 1)); ig.setAttribute('aShade', new THREE.InstancedBufferAttribute(bldgs.shade, 1)); ig.setAttribute('aLow', new THREE.InstancedBufferAttribute(bldgs.low, 1)); ig.setAttribute('aAng', new THREE.InstancedBufferAttribute(bldgs.ang, 1)); ig.instanceCount = bldgs.n;
   const mat = new THREE.ShaderMaterial({ uniforms: U,
-    vertexShader: 'attribute vec3 aOff, aSize; attribute float aYear, aShade, aLow; uniform float uYear; varying vec3 vN, vW; varying float vSh, vTop; void main(){ float g = smoothstep(aYear, aYear + 4.0, uYear); float tall = smoothstep(1895.0, 1990.0, uYear) * smoothstep(aYear + 4.0, aYear + 50.0, uYear); float h = mix(aLow, aSize.y, tall) * g; vec3 p = aOff + vec3(position.x * aSize.x, position.y * h, position.z * aSize.z); if (g <= 0.001) p = vec3(0.0, -50.0, 0.0); vN = normal; vW = p; vSh = aShade; vTop = position.y; gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0); }',
-    fragmentShader: `uniform vec3 uSun, uHaze, uCam; uniform float uHazeD; varying vec3 vN, vW; varying float vSh, vTop; void main(){ vec3 n = normalize(vN); float ndl = clamp(dot(n, uSun), 0.0, 1.0); vec3 col = vec3(0.90, 0.85, 0.76) * vSh * (0.52 + 0.7 * ndl); col *= 0.82 + 0.18 * smoothstep(0.0, 1.0, vTop);
+    vertexShader: 'attribute vec3 aOff, aSize; attribute float aYear, aShade, aLow, aAng; uniform float uYear; varying vec3 vN, vW; varying float vSh, vTop, vTall; void main(){ float g = smoothstep(aYear, aYear + 4.0, uYear); float tall = aLow < 0.0 ? smoothstep(aYear + 1.0, aYear + 2.5 + aSize.y * 12.0, uYear) : smoothstep(1895.0, 1990.0, uYear) * smoothstep(aYear + 4.0, aYear + 50.0, uYear); float h = mix(abs(aLow), aSize.y, tall) * g; float ca = cos(aAng), sa = sin(aAng); vec2 q = vec2(position.x * aSize.x, position.z * aSize.z); vec3 p = aOff + vec3(q.x * ca - q.y * sa, position.y * h, q.x * sa + q.y * ca); vTall = aSize.y; if (g <= 0.001) p = vec3(0.0, -50.0, 0.0); vN = vec3(normal.x * ca - normal.z * sa, normal.y, normal.x * sa + normal.z * ca); vW = p; vSh = aShade; vTop = position.y; gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0); }',
+    fragmentShader: `uniform vec3 uSun, uHaze, uCam; uniform float uHazeD; varying vec3 vN, vW; varying float vSh, vTop, vTall; void main(){ vec3 n = normalize(vN); float ndl = clamp(dot(n, uSun), 0.0, 1.0); vec3 col = vec3(0.90, 0.85, 0.76) * vSh * (0.52 + 0.7 * ndl); col *= 0.82 + 0.18 * smoothstep(0.0, 1.0, vTop); if (vTall > 0.08 && abs(n.y) < 0.5) { float fl = abs(fract(vW.y / 0.0158) - 0.5); col *= 0.82 + 0.30 * smoothstep(0.08, 0.28, fl); }
       ${HZ_FRAG}
       gl_FragColor = vec4(col, 1.0);
       #include <colorspace_fragment>
@@ -121,9 +150,9 @@ const FWY = { 'I 5': [1953, 1971], 'US 101': [1940, 1968], 'CA 110': [1940, 1970
 {
   const dt = kmOf(-118.2437, 34.0522), pos = [], idx = [], aY = [], aD = [], aP = [], aK = [];
   const refRank = {}; for (const w of roads.mw) { const key = (w.ref || '').split(';')[0].trim(); let m = 0; for (let i = 0; i < w.p.length; i += 2) m = Math.max(m, Math.hypot(w.p[i] - dt[0], w.p[i + 1] - dt[1])); refRank[key] = Math.max(refRank[key] || 1, m); }
-  const addWay = (w, kind, hw, yStart, dur) => {
+  const addWay = (w, kind, hw, yStart, dur, half) => {
     const p = w.p, n = p.length / 2; if (n < 2) return; let tot = 0; const seg = []; for (let i = 1; i < n; i++) { const d = Math.hypot(p[i * 2] - p[i * 2 - 2], p[i * 2 + 1] - p[i * 2 - 1]); seg.push(d); tot += d; } if (tot < 0.2) return; let acc = 0; const base = pos.length / 3;
-    for (let i = 0; i < n; i++) { const x = p[i * 2], z = p[i * 2 + 1]; let dx, dz; if (i === 0) { dx = p[2] - p[0]; dz = p[3] - p[1]; } else if (i === n - 1) { dx = p[i * 2] - p[i * 2 - 2]; dz = p[i * 2 + 1] - p[i * 2 - 1]; } else { dx = p[i * 2 + 2] - p[i * 2 - 2]; dz = p[i * 2 + 3] - p[i * 2 - 1]; } const L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L, hw2 = kind === 0 ? 0.11 : kind === 1 ? 0.07 : kind === 3 ? 0.05 : 0.045, y = heightKm(x, z) + (kind === 0 ? 0.03 : 0.02);
+    for (let i = 0; i < n; i++) { const x = p[i * 2], z = p[i * 2 + 1]; let dx, dz; if (i === 0) { dx = p[2] - p[0]; dz = p[3] - p[1]; } else if (i === n - 1) { dx = p[i * 2] - p[i * 2 - 2]; dz = p[i * 2 + 1] - p[i * 2 - 1]; } else { dx = p[i * 2 + 2] - p[i * 2 - 2]; dz = p[i * 2 + 3] - p[i * 2 - 1]; } const L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L, hw2 = half || (kind === 0 ? 0.042 : kind === 1 ? 0.03 : kind === 3 ? 0.03 : 0.03), y = heightKm(x, z) + (kind === 0 ? 0.03 : 0.02);
       pos.push(x + nx * hw2, y, z + nz * hw2, x - nx * hw2, y, z - nz * hw2); const pr = acc / tot; aY.push(yStart, yStart); aD.push(dur, dur); aP.push(pr, pr); aK.push(kind, kind); if (i < n - 1) acc += seg[i]; }
     for (let i = 0; i < n - 1; i++) { const a = base + i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   };
@@ -132,11 +161,13 @@ const FWY = { 'I 5': [1953, 1971], 'US 101': [1940, 1968], 'CA 110': [1940, 1970
     addWay(w, w.hw === 'motorway' ? 0 : 1, w.hw, ys, dur); }
   const [ci, cj] = [0, 0]; void ci; void cj;
   for (const w of roads.wr || []) addWay(w, 3, 'river', 1700, 1);
+  for (const w of RAIL.rail) { const mx = (w.p[0] + w.p[w.p.length - 2]) / 2, mz = (w.p[1] + w.p[w.p.length - 1]) / 2, [i, j] = cellAt(mx, mz), y = yrs[j * W + i] || 1950, ww = { p: w.p }; const mod = w.k === 'subway' || w.k === 'light_rail'; addWay(ww, 2, 'rail', mod ? 1990 + 32 * clamp(Math.hypot(mx - dt[0], mz - dt[1]) / 28) : Math.max(1876, y - 8), mod ? 4 : 5, mod ? 0.02 : 0.016); }
+  for (const w of RAIL.air) addWay({ p: w.p }, w.k === 'runway' ? 4 : 5, 'air', 1928, 8, w.k === 'runway' ? 0.035 : 0.014);
   for (const w of roads.rl || []) { const mx = (w.p[0] + w.p[w.p.length - 2]) / 2, mz = (w.p[1] + w.p[w.p.length - 1]) / 2, [i, j] = cellAt(mx, mz), y = yrs[j * W + i] || 1950; addWay(w, 2, 'rail', Math.max(1876, y - 10), 5); }
   if (pos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aY', new THREE.Float32BufferAttribute(aY, 1)); g.setAttribute('aD', new THREE.Float32BufferAttribute(aD, 1)); g.setAttribute('aP', new THREE.Float32BufferAttribute(aP, 1)); g.setAttribute('aK', new THREE.Float32BufferAttribute(aK, 1)); g.setIndex(idx);
     const mat = new THREE.ShaderMaterial({ uniforms: U, transparent: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       vertexShader: 'attribute float aY, aD, aP, aK; varying float vF, vK; varying vec3 vW; uniform float uYear; void main(){ vF = uYear - (aY + aP * aD); vK = aK; vW = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform vec3 uHaze, uCam; uniform float uHazeD; varying float vF, vK; varying vec3 vW; void main(){ if (vF < 0.0) discard; vec3 col = vK < 0.5 ? vec3(0.17, 0.14, 0.11) : vK < 1.5 ? vec3(0.28, 0.24, 0.19) : vK < 2.5 ? vec3(0.42, 0.37, 0.30) : vec3(0.50, 0.58, 0.58); float tip = exp(-vF * 2.2); col = mix(col, vec3(1.0, 0.82, 0.45), tip * 0.85);
+      fragmentShader: `uniform vec3 uHaze, uCam; uniform float uHazeD; varying float vF, vK; varying vec3 vW; void main(){ if (vF < 0.0) discard; vec3 col = vK < 0.5 ? vec3(0.17, 0.14, 0.11) : vK < 1.5 ? vec3(0.28, 0.24, 0.19) : vK < 2.5 ? vec3(0.36, 0.31, 0.25) : vK < 3.5 ? vec3(0.50, 0.58, 0.58) : vK < 4.5 ? vec3(0.24, 0.23, 0.22) : vec3(0.38, 0.36, 0.33); float tip = exp(-vF * 2.2); col = mix(col, vec3(1.0, 0.82, 0.45), tip * 0.85);
         ${HZ_FRAG}
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
@@ -149,6 +180,7 @@ const lonlat = (lo, la) => { const [x, z] = kmOf(lo, la); return new THREE.Vecto
 const runway = (lo, la, lenKm, ang, off) => { const p = lonlat(lo, la), m = new THREE.Mesh(new THREE.PlaneGeometry(lenKm, 0.07), new THREE.MeshBasicMaterial({ color: 0x2a2520 })); m.rotation.x = -Math.PI / 2; m.rotation.z = ang; m.position.set(p.x + off[0], p.y + 0.04, p.z + off[1]); m.visible = false; scene.add(m); return m; };
 const lax = [runway(-118.4081, 33.9505, 3.6, 0.0, [0, -0.0]), runway(-118.4081, 33.9505, 3.6, 0.0, [0, 0.35]), runway(-118.4081, 33.9330, 3.4, 0.0, [0, 0]), runway(-118.4081, 33.9330, 3.4, 0.0, [0, 0.35])];
 const derricks = (() => { const grp = new THREE.Group(), r = rng(9), cl = [[-118.1675, 33.8044, 1921, 60], [-118.0, 33.66, 1920, 36], [-118.4655, 33.987, 1930, 16], [-118.2610, 34.0716, 1892, 12], [-118.0, 33.93, 1930, 22]]; const geo = new THREE.ConeGeometry(0.03, 0.16, 5); const mat = new THREE.MeshBasicMaterial({ color: 0x4a3a28 }); const items = []; for (const [lo, la, yy, n] of cl) { const c = lonlat(lo, la); for (let i = 0; i < n; i++) { const m = new THREE.Mesh(geo, mat); const a = r() * 6.283, d = Math.sqrt(r()) * (n > 30 ? 1.1 : 0.55); m.position.set(c.x + Math.cos(a) * d, heightKm(c.x + Math.cos(a) * d, c.z + Math.sin(a) * d) + 0.08, c.z + Math.sin(a) * d); m.visible = false; grp.add(m); items.push({ m, y: yy + r() * 6 }); } } scene.add(grp); return items; })();
+const hollywood = (() => { const g = new THREE.Group(), c = lonlat(-118.3216, 34.1341); const mat = new THREE.MeshBasicMaterial({ color: 0xfaf6ea }); for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.0095, 0.0137 * EXAG * 1.6, 0.0035), mat); m.position.set(c.x - 0.045 + i * 0.0112, c.y + 0.012, c.z); g.add(m); } g.visible = false; scene.add(g); return g; })();
 const pillarGeo = new THREE.CylinderGeometry(0.035, 0.035, 1, 6); pillarGeo.translate(0, 0.5, 0);
 const ringGeo = new THREE.RingGeometry(0.4, 0.5, 40); ringGeo.rotateX(-Math.PI / 2);
 
@@ -176,11 +208,11 @@ const pillars = MIL.map((m) => { const g = new THREE.Group(), p = new THREE.Mesh
 /* ---------- camera ---------- */
 const CAMK = [ // year, target [lon,lat], distance km, azimuth deg (0 = camera south of the target), pitch deg
   [1781, [-118.2379, 34.0572], 2.6, -40, 46], [1850, [-118.2379, 34.0572], 4.2, -40, 46], [1880, [-118.2437, 34.0522], 12, -40, 46], [1900, [-118.25, 34.06], 24, -40, 46],
-  [1930, [-118.30, 34.03], 62, -40, 45], [1960, [-118.22, 34.02], 105, -40, 45], [1990, [-118.15, 34.03], 135, -40, 45], [2026, [-118.12, 34.05], 150, -40, 45],
+  [1930, [-118.29, 34.03], 40, -40, 45], [1960, [-118.27, 34.02], 54, -40, 45], [1990, [-118.25, 34.03], 58, -40, 45], [2026, [-118.25, 34.03], 52, -40, 45],
 ];
 function camAt(year, T) {
   const f = (i) => { for (let k = 1; k < CAMK.length; k++) if (year <= CAMK[k][0]) { const a = CAMK[k - 1], b = CAMK[k], u = smooth((year - a[0]) / (b[0] - a[0])); return [lerp(a[1][0], b[1][0], u), lerp(a[1][1], b[1][1], u), lerp(Math.log(a[2]), Math.log(b[2]), u), lerp(a[3], b[3], u), lerp(a[4], b[4], u)][i]; } const l = CAMK[CAMK.length - 1]; return [l[1][0], l[1][1], Math.log(l[2]), l[3], l[4]][i]; };
-  const hold = smooth((T - (timeOfYear(2020) + HOLD + 1.0)) / 4.5), [tx, tz] = kmOf(f(0), f(1)), D = Math.exp(f(2)) * (1 - 0.1 * hold), az = (f(3) + 5 * Math.sin(T * 0.12) + 30 * hold) * Math.PI / 180, pt = f(4) * Math.PI / 180, ty = heightKm(tx, tz) * 0.5;
+  const hold = smooth((T - (timeOfYear(2020) + HOLD + 0.6)) / 5.0), [tx0, tz0] = kmOf(f(0), f(1)), [dx, dz] = kmOf(-118.2530, 34.0500), tx = lerp(tx0, dx, hold), tz = lerp(tz0, dz, hold), D = Math.exp(f(2)) * (1 - 0.74 * hold), az = (f(3) + 5 * Math.sin(T * 0.12) + 38 * hold) * Math.PI / 180, pt = (f(4) - 13 * hold) * Math.PI / 180, ty = heightKm(tx, tz) * 0.5;
   camera.position.set(tx + Math.sin(az) * Math.cos(pt) * D, ty + Math.sin(pt) * D, tz + Math.cos(az) * Math.cos(pt) * D); camera.lookAt(tx, ty, tz);
   if (P.get('cam') === 'top') { camera.position.set(x0 + W * cell / 2, 190, -(y0 + H * cell / 2) + 0.01); camera.lookAt(x0 + W * cell / 2, 0, -(y0 + H * cell / 2)); }
   camera.near = Math.max(0.03, D * 0.01); camera.far = D * 6 + 400; camera.updateProjectionMatrix();
@@ -189,7 +221,8 @@ function camAt(year, T) {
 /* ---------- update ---------- */
 function update(T) {
   const year = yearAt(T); U.uYear.value = year; camAt(year, T); U.uCam.value.copy(camera.position); U.uHazeD.value = clamp(0.0006 + 0.0000 * year + 0.0018 * smooth((year - 1880) / 100), 0.0006, 0.0026) * (T < 3 ? 1.2 : 1);
-  lax.forEach((m, i) => { m.visible = year >= 1928; m.scale.x = clamp((year - 1928) / (i < 2 ? 3 : 18)) * 1 + 0.001; });
+  
+  hollywood.visible = year >= 1923;
   derricks.forEach((d) => { d.m.visible = year >= d.y && year < d.y + 70 || year >= d.y && d.y > 1900; d.m.scale.y = clamp((year - d.y) / 2) + 0.01; });
   MIL.forEach((m, i) => { const on = T >= m.T0 && T < m.T1, a = on ? sm(m.T0, m.T0 + 0.4, T) * (1 - sm(m.T1 - 0.5, m.T1, T)) : 0, p = pillars[i], D = camera.position.distanceTo(m.p); p.p.visible = p.r.visible = a > 0.01; p.p.material.opacity = 0.75 * a; p.r.material.opacity = 0.85 * a; const sc = D * 0.015; p.p.scale.set(Math.max(0.6, sc * 0.7), D * 0.14, Math.max(0.6, sc * 0.7)); p.r.scale.setScalar(Math.max(0.25, sc * (1 + 0.35 * Math.sin(T * 5)))); });
 }
@@ -203,7 +236,7 @@ const commaN = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, 
 const v3 = new THREE.Vector3();
 function drawCallouts(T, k) {
   for (const m of MIL) { if (!(T >= m.T0 && T < m.T1)) continue; const a = sm(m.T0, m.T0 + 0.5, T) * (1 - sm(m.T1 - 0.5, m.T1, T)); v3.copy(m.p); v3.y += 0.5; v3.project(camera); if (v3.z > 1) continue; const sx = (v3.x * 0.5 + 0.5) * gfx.width, sy = (-v3.y * 0.5 + 0.5) * gfx.height;
-    const left = sx > gfx.width * 0.52, ox = (left ? -1 : 1) * 36 * k, oy = -40 * k; const tx = clamp(sx + ox, 24 * k, gfx.width - 24 * k), ty = clamp(sy + oy, 330 * k, 900 * k);
+    const left = sx > gfx.width * 0.52, ox = (left ? -1 : 1) * 36 * k, oy = -40 * k; const tx = clamp(sx + ox, 24 * k, gfx.width - 24 * k), ty = clamp(sy + oy, 378 * k, 900 * k);
     gc.save(); gc.globalAlpha = a; gc.strokeStyle = `rgba(${INK},.75)`; gc.lineWidth = 1.4 * k; gc.beginPath(); gc.moveTo(sx, sy); gc.lineTo(tx, ty); gc.stroke(); gc.fillStyle = `rgb(${INK})`; gc.beginPath(); gc.arc(sx, sy, 3.2 * k, 0, 6.283); gc.fill();
     const tw = left ? tx - 6 * k : tx + 6 * k; gc.textAlign = left ? 'right' : 'left'; gc.font = `700 ${20 * k}px ${SERIF}`; const w1 = gc.measureText(m.t).width; gc.font = `600 ${14.5 * k}px ${SERIF}`; const w2 = gc.measureText(m.s).width, bw = Math.max(w1, w2) + 16 * k, bx = left ? tx - bw : tx - 2 * k;
     gc.shadowBlur = 0; gc.fillStyle = 'rgba(247,239,221,.86)'; gc.beginPath(); gc.roundRect ? gc.roundRect(bx, ty - 21 * k, bw, 46 * k, 8 * k) : gc.rect(bx, ty - 21 * k, bw, 46 * k); gc.fill();
@@ -219,7 +252,7 @@ function drawGraph(T, k) {
 }
 function updateOverlay(T) {
   const year = Math.min(2026, Math.floor(yearAt(T) + 0.0001)); const el = document.getElementById('year'); el.textContent = String(year); el.style.opacity = sm(0.2, 0.9, T) * (1 - sm(T_SCENE - 0.5, T_SCENE, T));
-  const ban = document.getElementById('banner'); ban.style.opacity = 1 - sm(T_SCENE - 0.3, T_SCENE + 0.2, T);
+  const ban = document.getElementById('title'); ban.style.opacity = sm(0.15, 0.9, T) * (1 - sm(T_SCENE - 0.5, T_SCENE, T)); document.getElementById('scrim').style.opacity = ban.style.opacity;
   const head = document.getElementById('head'), m = MIL.find((q) => T >= q.T0 && T < q.T1); if (m) { head.textContent = m.head; head.style.opacity = sm(m.T0, m.T0 + 0.4, T) * (1 - sm(m.T1 - 0.5, m.T1, T)); } else head.style.opacity = 0;
   const hud = document.getElementById('hud'), pop = popAt(yearAt(T)); hud.querySelector('.label').textContent = 'Population · city of Los Angeles'; hud.querySelector('.value').textContent = (year < 1850 ? '' : '~') + commaN(year < 1790 ? 44 : pop); hud.querySelector('.sub').textContent = year < 1850 ? 'The 44 settlers of 1781' : 'Census counts, smoothed between decades'; hud.style.opacity = sm(1.0, 1.6, T) * (1 - sm(T_SCENE - 0.6, T_SCENE, T));
   document.getElementById('tag').style.opacity = T > 1.0 && T < 54.2 ? 0.7 * sm(1.0, 1.8, T) * (1 - sm(53.6, 54.2, T)) : 0;

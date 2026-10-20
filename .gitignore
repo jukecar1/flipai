@@ -26,3 +26,8 @@ clips/*.mp4
 clips/la/data/*.ppm
 clips/la/data/ne_*.geojson
 clips/la/data/osm/
+clips/la/data/pbf/
+clips/la/data/detail.bin
+clips/la/data/bldg.bin
+clips/la/data/detail_*.png
+clips/la/data/extract.*

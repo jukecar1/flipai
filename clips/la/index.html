@@ -21,8 +21,13 @@
   #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, rgba(40,28,10,0) 58%, rgba(40,28,10,.38) 100%); }
   #grain { position: absolute; inset: 0; pointer-events: none; opacity: .06; mix-blend-mode: overlay; }
   .txt { position: absolute; color: #f4efe6; font-family: var(--serif); text-shadow: 0 1px 14px rgba(0,0,0,.6); }
-  #banner { position: absolute; left: 7vw; right: 7vw; top: 6.4vh; padding: 1.1vh 2vh 1.3vh; background: rgba(255,255,255,.96); border-radius: 1.8vh; color: #111; font-family: var(--sans); font-weight: 800; font-size: 3.3vh; line-height: 1.12; text-align: center; letter-spacing: -.01em; }
-  #year { left: 0; right: 0; top: 23vh; text-align: center; font-family: var(--serif); font-weight: 600; font-size: 9.6vh; line-height: 1; letter-spacing: .02em; text-shadow: 0 .3vh 2.4vh rgba(30,20,8,.45); }
+  #scrim { position: absolute; left: 0; right: 0; top: 0; height: 30vh; pointer-events: none; background: linear-gradient(to bottom, rgba(34,24,10,.5), rgba(34,24,10,.22) 55%, rgba(34,24,10,0)); }
+  #title { left: 0; right: 0; top: 6.2vh; text-align: center; opacity: 0; }
+  #title .k { font-family: var(--sans); font-size: 1.25vh; letter-spacing: .5em; text-indent: .5em; text-transform: uppercase; font-weight: 700; opacity: .85; }
+  #title .n { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 7.4vh; line-height: 1.02; margin-top: .6vh; letter-spacing: .01em; text-shadow: 0 .3vh 2.4vh rgba(30,20,8,.5); }
+  #title .r { width: 11vh; height: 1px; background: rgba(244,239,230,.7); margin: 1.1vh auto 1vh; }
+  #title .s { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .34em; text-indent: .34em; text-transform: uppercase; font-weight: 600; opacity: .8; }
+  #year { left: 0; right: 0; top: 24vh; text-align: center; font-family: var(--serif); font-weight: 600; font-size: 9.6vh; line-height: 1; letter-spacing: .02em; text-shadow: 0 .3vh 2.4vh rgba(30,20,8,.45); }
   #head { left: 4vw; right: 4vw; top: 35.5vh; text-align: center; font-family: var(--sans); font-weight: 700; font-size: 1.9vh; letter-spacing: .42em; text-transform: uppercase; opacity: 0; text-shadow: 0 .2vh 1.4vh rgba(30,20,8,.55); }
   #hud { left: 6vw; top: 69vh; opacity: 0; }
   #hud .label { font-family: var(--sans); font-size: 1.15vh; letter-spacing: .24em; text-transform: uppercase; font-weight: 700; opacity: .9; }
@@ -47,12 +52,13 @@
   <div id="dip"></div>
   <div id="vignette"></div>
   <canvas id="grain" width="256" height="256"></canvas>
-  <div id="banner">EVOLUTION OF LOS ANGELES _ 3D CITY TIMELAPSE (1781–2026) #1</div>
+  <div id="scrim"></div>
+  <div class="txt" id="title"><div class="k">The evolution of</div><div class="n">Los Angeles</div><div class="r"></div><div class="s">1781 – 2026 · A 3D timelapse</div></div>
   <div class="txt" id="year">1781</div>
   <div class="txt" id="head"></div>
   <div class="txt" id="hud"><div class="label"></div><div class="value"></div><div class="sub"></div></div>
   <div class="txt" id="caption"></div>
-  <div class="txt" id="tag">Stylized growth · real terrain and freeway routes</div>
+  <div class="txt" id="tag">Real terrain, streets and buildings · growth over time is modeled</div>
   <div id="facts"></div>
   <div id="end">
     <div class="a">It started with 44 settlers.</div>
